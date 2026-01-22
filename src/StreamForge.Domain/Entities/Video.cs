@@ -1,0 +1,215 @@
+using StreamForge.Domain.Enums;
+
+namespace StreamForge.Domain.Entities;
+
+/// <summary>
+/// Represents a video with metadata and settings
+/// </summary>
+public class Video : BaseEntity
+{
+    /// <summary>
+    /// Video title
+    /// </summary>
+    public string Title { get; private set; }
+
+    /// <summary>
+    /// Video description
+    /// </summary>
+    public string? Description { get; private set; }
+
+    /// <summary>
+    /// Uploader user ID
+    /// </summary>
+    public Guid UploaderId { get; private set; }
+
+    /// <summary>
+    /// Category ID
+    /// </summary>
+    public Guid? CategoryId { get; private set; }
+
+    /// <summary>
+    /// Video visibility
+    /// </summary>
+    public VideoVisibility Visibility { get; private set; }
+
+    /// <summary>
+    /// Whether comments are allowed
+    /// </summary>
+    public bool AllowComments { get; private set; }
+
+    /// <summary>
+    /// Whether likes are allowed
+    /// </summary>
+    public bool AllowLikes { get; private set; }
+
+    /// <summary>
+    /// Whether bookmarks are allowed
+    /// </summary>
+    public bool AllowBookmarks { get; private set; }
+
+    /// <summary>
+    /// Autoplay setting
+    /// </summary>
+    public bool Autoplay { get; private set; }
+
+    /// <summary>
+    /// Loop playback setting
+    /// </summary>
+    public bool Loop { get; private set; }
+
+    /// <summary>
+    /// Default volume (0-100)
+    /// </summary>
+    public int DefaultVolume { get; private set; }
+
+    /// <summary>
+    /// Whether captions are enabled
+    /// </summary>
+    public bool CaptionsEnabled { get; private set; }
+
+    /// <summary>
+    /// Player theme
+    /// </summary>
+    public string PlayerTheme { get; private set; }
+
+    /// <summary>
+    /// Total view count (denormalized for performance)
+    /// </summary>
+    public long ViewCount { get; private set; }
+
+    /// <summary>
+    /// Last update timestamp
+    /// </summary>
+    public DateTime UpdatedAt { get; private set; }
+
+    // Navigation properties
+    public User Uploader { get; private set; } = null!;
+    public Category? Category { get; private set; }
+    public ICollection<VideoVersion> Versions { get; private set; }
+    public ICollection<VideoThumbnail> Thumbnails { get; private set; }
+    public ICollection<VideoProcessingJob> ProcessingJobs { get; private set; }
+    public ICollection<VideoTranscription> Transcriptions { get; private set; }
+    public ICollection<VideoTag> VideoTags { get; private set; }
+    public ICollection<VideoReaction> Reactions { get; private set; }
+    public ICollection<VideoComment> Comments { get; private set; }
+    public ICollection<Bookmark> Bookmarks { get; private set; }
+    public ICollection<PlaylistVideo> PlaylistVideos { get; private set; }
+    public ICollection<AccessControl> AccessControls { get; private set; }
+    public ICollection<Notification> Notifications { get; private set; }
+    public ICollection<AnalyticsEvent> AnalyticsEvents { get; private set; }
+
+    // Private constructor for EF Core
+    private Video() : base()
+    {
+        Title = string.Empty;
+        PlayerTheme = "default";
+        Versions = new List<VideoVersion>();
+        Thumbnails = new List<VideoThumbnail>();
+        ProcessingJobs = new List<VideoProcessingJob>();
+        Transcriptions = new List<VideoTranscription>();
+        VideoTags = new List<VideoTag>();
+        Reactions = new List<VideoReaction>();
+        Comments = new List<VideoComment>();
+        Bookmarks = new List<Bookmark>();
+        PlaylistVideos = new List<PlaylistVideo>();
+        AccessControls = new List<AccessControl>();
+        Notifications = new List<Notification>();
+        AnalyticsEvents = new List<AnalyticsEvent>();
+    }
+
+    /// <summary>
+    /// Creates a new video
+    /// </summary>
+    public static Video Create(
+        string title, 
+        string? description, 
+        Guid uploaderId, 
+        Guid? categoryId = null,
+        VideoVisibility visibility = VideoVisibility.Public)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            throw new ArgumentException("Title cannot be empty", nameof(title));
+
+        if (uploaderId == Guid.Empty)
+            throw new ArgumentException("Uploader ID is required", nameof(uploaderId));
+
+        var video = new Video
+        {
+            Title = title,
+            Description = description,
+            UploaderId = uploaderId,
+            CategoryId = categoryId,
+            Visibility = visibility,
+            AllowComments = true,
+            AllowLikes = true,
+            AllowBookmarks = true,
+            Autoplay = false,
+            Loop = false,
+            DefaultVolume = 100,
+            CaptionsEnabled = true,
+            PlayerTheme = "default",
+            ViewCount = 0,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        return video;
+    }
+
+    /// <summary>
+    /// Updates video metadata
+    /// </summary>
+    public void UpdateMetadata(string title, string? description, Guid? categoryId)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            throw new ArgumentException("Title cannot be empty", nameof(title));
+
+        Title = title;
+        Description = description;
+        CategoryId = categoryId;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Updates video visibility
+    /// </summary>
+    public void UpdateVisibility(VideoVisibility visibility)
+    {
+        Visibility = visibility;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Updates engagement settings
+    /// </summary>
+    public void UpdateEngagementSettings(bool allowComments, bool allowLikes, bool allowBookmarks)
+    {
+        AllowComments = allowComments;
+        AllowLikes = allowLikes;
+        AllowBookmarks = allowBookmarks;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Updates player settings
+    /// </summary>
+    public void UpdatePlayerSettings(bool autoplay, bool loop, int defaultVolume, bool captionsEnabled, string playerTheme)
+    {
+        if (defaultVolume < 0 || defaultVolume > 100)
+            throw new ArgumentException("Volume must be between 0 and 100", nameof(defaultVolume));
+
+        Autoplay = autoplay;
+        Loop = loop;
+        DefaultVolume = defaultVolume;
+        CaptionsEnabled = captionsEnabled;
+        PlayerTheme = playerTheme;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Increments view count
+    /// </summary>
+    public void IncrementViewCount()
+    {
+        ViewCount++;
+    }
+}
