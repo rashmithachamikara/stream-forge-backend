@@ -1,0 +1,6 @@
+@StreamForge.Api_HostAddress = http://localhost:5186
+
+GET {{StreamForge.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
