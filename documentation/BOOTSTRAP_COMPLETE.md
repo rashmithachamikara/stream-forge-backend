@@ -92,6 +92,10 @@ Domain ← Application ← Infrastructure
 - [ ] Create authentication use cases (Login, Register, RefreshToken)
 - [ ] Add authentication middleware
 - [ ] Implement role-based authorization
+- [ ] Add auth abstractions (`ITokenService`, `ICurrentUserService`, `IAuthorizationService`)
+- [ ] Centralize video authorization rules (owner, visibility, access grants)
+- [ ] Add AccessControl query helpers for per-user and token-based sharing
+- [ ] Keep auth provider adapters pluggable for future OAuth/OIDC integration
 
 ### Phase 4: Video Upload (Week 4-5)
 - [ ] Create storage abstraction (IStorageService)
