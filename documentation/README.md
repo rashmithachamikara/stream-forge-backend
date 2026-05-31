@@ -52,11 +52,12 @@ Project structure and architectural decisions.
 ### For Project Managers
 
 1. **Project Status**
-   - Check [../BOOTSTRAP_COMPLETE.md](../BOOTSTRAP_COMPLETE.md) for completion status
+   - Check [../EXECUTION_PLAN.md](../EXECUTION_PLAN.md) for current phase status
    - Review [../README.md](../README.md) for feature overview
 
 2. **Development Roadmap**
-   - See [../BOOTSTRAP_COMPLETE.md](../BOOTSTRAP_COMPLETE.md) Phase planning
+   - See [../EXECUTION_PLAN.md](../EXECUTION_PLAN.md) for execution phases
+   - See [plans/](plans/) for phase-specific details
    - Track progress against schema implementation phases
 
 ## 📖 Documentation Index
