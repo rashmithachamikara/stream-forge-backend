@@ -85,13 +85,13 @@ public class Video : BaseEntity
     // Navigation properties
     public User Uploader { get; private set; } = null!;
     public Category? Category { get; private set; }
-    public ICollection<VideoVersion> Versions { get; private set; }
-    public ICollection<VideoThumbnail> Thumbnails { get; private set; }
-    public ICollection<VideoProcessingJob> ProcessingJobs { get; private set; }
-    public ICollection<VideoTranscription> Transcriptions { get; private set; }
+    public ICollection<VideoVersion> VideoVersions { get; private set; }
+    public ICollection<VideoThumbnail> VideoThumbnails { get; private set; }
+    public ICollection<VideoProcessingJob> VideoProcessingJobs { get; private set; }
+    public ICollection<VideoTranscription> VideoTranscriptions { get; private set; }
     public ICollection<VideoTag> VideoTags { get; private set; }
-    public ICollection<VideoReaction> Reactions { get; private set; }
-    public ICollection<VideoComment> Comments { get; private set; }
+    public ICollection<VideoReaction> VideoReactions { get; private set; }
+    public ICollection<VideoComment> VideoComments { get; private set; }
     public ICollection<Bookmark> Bookmarks { get; private set; }
     public ICollection<PlaylistVideo> PlaylistVideos { get; private set; }
     public ICollection<AccessControl> AccessControls { get; private set; }
@@ -103,13 +103,13 @@ public class Video : BaseEntity
     {
         Title = string.Empty;
         PlayerTheme = "default";
-        Versions = new List<VideoVersion>();
-        Thumbnails = new List<VideoThumbnail>();
-        ProcessingJobs = new List<VideoProcessingJob>();
-        Transcriptions = new List<VideoTranscription>();
+        VideoVersions = new List<VideoVersion>();
+        VideoThumbnails = new List<VideoThumbnail>();
+        VideoProcessingJobs = new List<VideoProcessingJob>();
+        VideoTranscriptions = new List<VideoTranscription>();
         VideoTags = new List<VideoTag>();
-        Reactions = new List<VideoReaction>();
-        Comments = new List<VideoComment>();
+        VideoReactions = new List<VideoReaction>();
+        VideoComments = new List<VideoComment>();
         Bookmarks = new List<Bookmark>();
         PlaylistVideos = new List<PlaylistVideo>();
         AccessControls = new List<AccessControl>();

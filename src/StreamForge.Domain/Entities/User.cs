@@ -38,11 +38,11 @@ public class User : BaseEntity
     public DateTime UpdatedAt { get; private set; }
 
     // Navigation properties
-    public ICollection<Video> UploadedVideos { get; private set; }
+    public ICollection<Video> Videos { get; private set; }
     public ICollection<Playlist> Playlists { get; private set; }
     public ICollection<Bookmark> Bookmarks { get; private set; }
-    public ICollection<VideoReaction> Reactions { get; private set; }
-    public ICollection<VideoComment> Comments { get; private set; }
+    public ICollection<VideoReaction> VideoReactions { get; private set; }
+    public ICollection<VideoComment> VideoComments { get; private set; }
     public ICollection<Notification> Notifications { get; private set; }
     public ICollection<AccessControl> AccessControls { get; private set; }
     public ICollection<AnalyticsEvent> AnalyticsEvents { get; private set; }
@@ -53,11 +53,11 @@ public class User : BaseEntity
         Name = string.Empty;
         Email = string.Empty;
         PasswordHash = string.Empty;
-        UploadedVideos = new List<Video>();
+        Videos = new List<Video>();
         Playlists = new List<Playlist>();
         Bookmarks = new List<Bookmark>();
-        Reactions = new List<VideoReaction>();
-        Comments = new List<VideoComment>();
+        VideoReactions = new List<VideoReaction>();
+        VideoComments = new List<VideoComment>();
         Notifications = new List<Notification>();
         AccessControls = new List<AccessControl>();
         AnalyticsEvents = new List<AnalyticsEvent>();

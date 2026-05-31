@@ -27,14 +27,14 @@ public class Category : BaseEntity
 
     // Navigation properties
     public Category? ParentCategory { get; private set; }
-    public ICollection<Category> SubCategories { get; private set; }
+    public ICollection<Category> Subcategories { get; private set; }
     public ICollection<Video> Videos { get; private set; }
 
     // Private constructor for EF Core
     private Category() : base()
     {
         Name = string.Empty;
-        SubCategories = new List<Category>();
+        Subcategories = new List<Category>();
         Videos = new List<Video>();
     }
 

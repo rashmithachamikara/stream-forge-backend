@@ -20,7 +20,7 @@ public class AnalyticsEvent : BaseEntity
     /// <summary>
     /// Session identifier for grouping events
     /// </summary>
-    public string SessionId { get; private set; }
+    public Guid SessionId { get; private set; }
 
     /// <summary>
     /// Event type
@@ -28,14 +28,19 @@ public class AnalyticsEvent : BaseEntity
     public AnalyticsEventType EventType { get; private set; }
 
     /// <summary>
-    /// Playback position in seconds when event occurred
+    /// Event timestamp
     /// </summary>
-    public int? Timestamp { get; private set; }
+    public DateTime EventTime { get; private set; }
 
     /// <summary>
-    /// Event-specific metadata (JSON)
+    /// Playback position in seconds when event occurred
     /// </summary>
-    public string? Metadata { get; private set; }
+    public int? Position { get; private set; }
+
+    /// <summary>
+    /// Duration watched in this event
+    /// </summary>
+    public int? DurationWatched { get; private set; }
 
     /// <summary>
     /// User's IP address
@@ -54,7 +59,6 @@ public class AnalyticsEvent : BaseEntity
     // Private constructor for EF Core
     private AnalyticsEvent() : base()
     {
-        SessionId = string.Empty;
         IpAddress = string.Empty;
     }
 
@@ -63,25 +67,29 @@ public class AnalyticsEvent : BaseEntity
     /// </summary>
     public static AnalyticsEvent Create(
         Guid videoId,
-        string sessionId,
+        Guid sessionId,
         AnalyticsEventType eventType,
         string ipAddress,
         Guid? userId = null,
-        int? timestamp = null,
-        string? metadata = null,
+        DateTime? eventTime = null,
+        int? position = null,
+        int? durationWatched = null,
         string? userAgent = null)
     {
         if (videoId == Guid.Empty)
             throw new ArgumentException("Video ID is required", nameof(videoId));
 
-        if (string.IsNullOrWhiteSpace(sessionId))
+        if (sessionId == Guid.Empty)
             throw new ArgumentException("Session ID is required", nameof(sessionId));
 
         if (string.IsNullOrWhiteSpace(ipAddress))
             throw new ArgumentException("IP address is required", nameof(ipAddress));
 
-        if (timestamp.HasValue && timestamp.Value < 0)
-            throw new ArgumentException("Timestamp cannot be negative", nameof(timestamp));
+        if (position.HasValue && position.Value < 0)
+            throw new ArgumentException("Position cannot be negative", nameof(position));
+
+        if (durationWatched.HasValue && durationWatched.Value < 0)
+            throw new ArgumentException("Duration watched cannot be negative", nameof(durationWatched));
 
         var analyticsEvent = new AnalyticsEvent
         {
@@ -89,23 +97,13 @@ public class AnalyticsEvent : BaseEntity
             UserId = userId,
             SessionId = sessionId,
             EventType = eventType,
-            Timestamp = timestamp,
-            Metadata = metadata,
+            EventTime = eventTime ?? DateTime.UtcNow,
+            Position = position,
+            DurationWatched = durationWatched,
             IpAddress = ipAddress,
             UserAgent = userAgent
         };
 
         return analyticsEvent;
-    }
-
-    /// <summary>
-    /// Updates the event metadata
-    /// </summary>
-    public void UpdateMetadata(string metadata)
-    {
-        if (string.IsNullOrWhiteSpace(metadata))
-            throw new ArgumentException("Metadata cannot be empty", nameof(metadata));
-
-        Metadata = metadata;
     }
 }
