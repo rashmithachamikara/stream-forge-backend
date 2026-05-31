@@ -22,16 +22,16 @@
 - [X] Align configurations with schema/domain naming
 - [X] Verify successful build after infrastructure alignment
 
-### Phase 4: Authentication and Authorization (Week 3-4)
-- [ ] Install JWT packages
-- [ ] Implement JWT token service
-- [ ] Create authentication use cases (Login, Register, RefreshToken)
-- [ ] Add authentication middleware
-- [ ] Implement role-based authorization
-- [ ] Add auth abstractions (`ITokenService`, `ICurrentUserService`, `IAuthorizationService`)
-- [ ] Centralize video authorization rules (owner, visibility, access grants)
-- [ ] Add AccessControl query helpers for per-user and token-based sharing
-- [ ] Keep auth provider adapters pluggable for future OAuth/OIDC integration
+### Phase 4: Authentication and Authorization (Week 3-4) [X]
+- [X] Install JWT packages
+- [X] Implement JWT token service
+- [X] Create authentication use cases (Login, Register, RefreshToken)
+- [X] Add authentication middleware
+- [X] Implement role-based authorization
+- [X] Add auth abstractions (`ITokenService`, `ICurrentUserService`, `IAuthorizationService`)
+- [X] Centralize video authorization rules (owner, visibility, access grants)
+- [X] Add AccessControl query helpers for per-user and token-based sharing
+- [X] Keep auth provider adapters pluggable for future OAuth/OIDC integration
 
 ### Phase 5: Video Upload (Week 4-5)
 - [ ] Create storage abstraction (`IStorageService`)
