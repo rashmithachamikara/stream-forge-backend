@@ -128,6 +128,7 @@ Configuration for different storage backends.
 **Indexes:**
 - `IX_StorageProviders_Name` (UNIQUE)
 - `IX_StorageProviders_IsDefault`
+- `UQ_StorageProviders_Default_True` (UNIQUE WHERE IsDefault = TRUE)
 
 **Notes:**
 - Configuration JSON contains keys, bucket names, paths, etc.
@@ -315,6 +316,10 @@ Video access permissions and sharing tokens.
 | IsActive | BOOLEAN | NOT NULL, DEFAULT TRUE | Active status |
 | CreatedAt | TIMESTAMP | NOT NULL | Creation timestamp |
 
+**Check Constraints:**
+- `CHK_AccessControl_UserOrToken` (UserId IS NOT NULL OR ShareToken IS NOT NULL)
+- `CHK_AccessControl_NoDualPrincipal` (NOT (UserId IS NOT NULL AND ShareToken IS NOT NULL))
+
 **Indexes:**
 - `IX_AccessControl_VideoId`
 - `IX_AccessControl_UserId`
@@ -454,7 +459,7 @@ User notification system.
 | Id | GUID | PK | Unique notification identifier |
 | UserId | GUID | FK → Users(Id), NOT NULL | Recipient user |
 | VideoId | GUID | FK → Videos(Id), NULL | Related video |
-| NotificationType | ENUM | NOT NULL | Comment, Like, Upload, ProcessingComplete |
+| NotificationType | ENUM | NOT NULL | Comment, Like, Upload, ProcessingComplete, Reply |
 | Message | TEXT | NOT NULL | Notification message |
 | IsRead | BOOLEAN | NOT NULL, DEFAULT FALSE | Read status |
 | CreatedAt | TIMESTAMP | NOT NULL | Notification timestamp |
@@ -654,9 +659,9 @@ Categories (1) ──→ (N) Categories [ParentCategoryId, hierarchical]
 |-------|-----------|----------|
 | AnalyticsEvents | 2 years | Archive to cold storage, aggregate to summary tables |
 | VideoProcessingJobs | 90 days | Delete completed jobs older than 90 days |
-| Notifications | 1 year | Soft delete read notifications after 1 year |
+| Notifications | 1 year | Hard delete read notifications after 1 year (or add soft-delete columns) |
 | VideoFiles | Indefinite | Keep with Videos |
-| All others | Indefinite | Maintain with soft delete flags |
+| All others | Indefinite | Keep indefinitely unless table-specific archival policy is defined |
 
 ---
 
@@ -671,7 +676,7 @@ Categories (1) ──→ (N) Categories [ParentCategoryId, hierarchical]
 
 ### Phase 2 - Post-MVP
 - ⏳ VideoTranscriptions (when AI integration ready)
-- ⏳ AccessControl (when sharing features implemented)
+- ⏳ AccessControl enhancements (token lifecycle, revocation UX, auditing)
 - ⏳ Notifications (when notification system ready)
 - ⏳ AnalyticsEvents (start collecting immediately, analyze later)
 
