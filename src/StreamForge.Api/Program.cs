@@ -17,6 +17,7 @@ using StreamForge.Infrastructure.Authentication;
 using StreamForge.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
+const string CorsPolicyName = "StreamForgeCors";
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -76,6 +77,8 @@ builder.Services
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+builder.Services.Configure<CorsOptions>(builder.Configuration.GetSection(CorsOptions.SectionName));
+
 builder.Services.AddSingleton<IValidateOptions<RateLimiterConfigOptions>, RateLimiterOptionsValidator>();
 
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
@@ -88,6 +91,21 @@ var connectionStrings = builder.Configuration.GetSection(ConnectionStringsOption
 var rateLimiterOptions = builder.Configuration.GetSection(RateLimiterConfigOptions.SectionName)
     .Get<RateLimiterConfigOptions>()
     ?? throw new InvalidOperationException("RateLimiter configuration is missing.");
+
+var corsOptions = builder.Configuration.GetSection(CorsOptions.SectionName)
+    .Get<CorsOptions>()
+    ?? new CorsOptions();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(CorsPolicyName, policy =>
+    {
+        policy
+            .WithOrigins(corsOptions.AllowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -156,6 +174,8 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 // Rate limiting middleware
 app.UseRateLimiter();
+
+app.UseCors(CorsPolicyName);
 
 app.UseAuthentication();
 app.UseAuthorization();
