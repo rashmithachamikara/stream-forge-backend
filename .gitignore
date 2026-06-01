@@ -388,9 +388,10 @@ appsettings.Development.json
 appsettings.Local.json
 
 # Storage folders
-storage/
-uploads/
-temp/
+/storage/
+/uploads/
+/temp/
+/src/StreamForge.Api/uploads/
 
 # FFmpeg outputs
 transcoded/
