@@ -1,4 +1,7 @@
 using System.Text.Json;
+using StreamForge.Domain.Exceptions;
+using DomainUnauthorizedAccessException = StreamForge.Domain.Exceptions.UnauthorizedAccessException;
+using DomainValidationException = StreamForge.Domain.Exceptions.ValidationException;
 
 namespace StreamForge.Api.Middleware;
 
@@ -21,7 +24,15 @@ public class ExceptionHandlingMiddleware
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Unhandled exception: {Message}", exception.Message);
+            if (exception is DomainException or ArgumentException)
+            {
+                _logger.LogWarning(exception, "Request failed: {Message}", exception.Message);
+            }
+            else
+            {
+                _logger.LogError(exception, "Unhandled exception: {Message}", exception.Message);
+            }
+
             await HandleExceptionAsync(context, exception);
         }
     }
@@ -32,7 +43,17 @@ public class ExceptionHandlingMiddleware
 
         var (statusCode, message) = exception switch
         {
-            UnauthorizedAccessException => 
+            DomainUnauthorizedAccessException =>
+                (StatusCodes.Status401Unauthorized, exception.Message),
+            DomainValidationException =>
+                (StatusCodes.Status400BadRequest, exception.Message),
+            DuplicateEntityException =>
+                (StatusCodes.Status409Conflict, exception.Message),
+            EntityNotFoundException =>
+                (StatusCodes.Status404NotFound, exception.Message),
+            BusinessRuleViolationException =>
+                (StatusCodes.Status400BadRequest, exception.Message),
+            System.UnauthorizedAccessException =>
                 (StatusCodes.Status401Unauthorized, "Invalid credentials or unauthorized access."),
             ArgumentException => 
                 (StatusCodes.Status400BadRequest, exception.Message),
@@ -43,6 +64,19 @@ public class ExceptionHandlingMiddleware
         };
 
         context.Response.StatusCode = statusCode;
+
+        if (exception is DomainValidationException { Errors.Count: > 0 } validationException)
+        {
+            var validationResponse = JsonSerializer.Serialize(new
+            {
+                error = message,
+                errors = validationException.Errors,
+                statusCode,
+                timestamp = DateTime.UtcNow
+            });
+
+            return context.Response.WriteAsync(validationResponse);
+        }
 
         var response = JsonSerializer.Serialize(new
         {
