@@ -79,8 +79,17 @@
 - [ ] Configure production database
 - [ ] Deploy to cloud
 
+### Phase 12: Upload Hardening and Advanced Storage
+- [ ] Implement real S3 multipart uploads and presigned URL generation
+- [ ] Add resumable retry semantics for duplicate or partially uploaded chunks
+- [ ] Add cleanup jobs for expired/failed upload sessions and abandoned chunk files
+- [ ] Add post-upload processing queue integration after successful completion
+- [ ] Add optional upload-time thumbnail/player/access metadata if product flow requires it
+- [ ] Add upload observability for sessions, chunk failures, cleanup results, and storage usage
+- [ ] Add integration tests for S3, cleanup, retries, and large-file upload flows
+
 ## Notes
 
 - Detailed implementation notes for each phase will be maintained under `documentation/plans/`.
 - This document tracks phase-level status only.
-- Schema source of truth remains `documentation/schema/schema-v1.0.md`.
+- Schema source of truth remains `documentation/schema/schema-v2.0.md`.
