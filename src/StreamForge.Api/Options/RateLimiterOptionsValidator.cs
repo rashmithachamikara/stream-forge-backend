@@ -22,6 +22,21 @@ public sealed class RateLimiterOptionsValidator : IValidateOptions<RateLimiterOp
             return ValidateOptionsResult.Fail("SegmentsPerWindow must be at least 1.");
         }
 
+        if (options.UploadPermitLimit < 1)
+        {
+            return ValidateOptionsResult.Fail("UploadPermitLimit must be at least 1.");
+        }
+
+        if (options.UploadWindowMinutes < 1)
+        {
+            return ValidateOptionsResult.Fail("UploadWindowMinutes must be at least 1.");
+        }
+
+        if (options.UploadSegmentsPerWindow < 1)
+        {
+            return ValidateOptionsResult.Fail("UploadSegmentsPerWindow must be at least 1.");
+        }
+
         return ValidateOptionsResult.Success;
     }
 }

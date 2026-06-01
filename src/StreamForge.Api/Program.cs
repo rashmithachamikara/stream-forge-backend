@@ -15,6 +15,7 @@ using StreamForge.Application.Interfaces;
 using StreamForge.Domain.Enums;
 using StreamForge.Infrastructure.Authentication;
 using StreamForge.Infrastructure.Data;
+using StreamForge.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 const string CorsPolicyName = "StreamForgeCors";
@@ -142,23 +143,45 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<IAuthorizationService, VideoAuthorizationService>();
 
-// Configure rate limiting - 100 requests per minute per IP
+// Configure rate limiting. Upload chunk traffic has a separate bucket because
+// large files can legitimately require hundreds of requests in a short burst.
 builder.Services.AddRateLimiter(limiterOptions =>
 {
     limiterOptions.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
     limiterOptions.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
-        RateLimitPartition.GetSlidingWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            factory: _ => new SlidingWindowRateLimiterOptions
+    {
+        var remoteIp = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var isUploadChunkRequest =
+            httpContext.Request.Path.StartsWithSegments("/api/v1/uploads/sessions") &&
+            (httpContext.Request.Path.Value?.Contains("/parts/", StringComparison.OrdinalIgnoreCase) == true ||
+             httpContext.Request.Path.Value?.EndsWith("/target", StringComparison.OrdinalIgnoreCase) == true);
+
+        return RateLimitPartition.GetSlidingWindowLimiter(
+            partitionKey: $"{(isUploadChunkRequest ? "upload" : "api")}:{remoteIp}",
+            factory: _ =>
             {
-                AutoReplenishment = true,
-                PermitLimit = rateLimiterOptions.PermitLimit,
-                QueueLimit = 0,
-                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                SegmentsPerWindow = rateLimiterOptions.SegmentsPerWindow,
-                Window = TimeSpan.FromMinutes(rateLimiterOptions.WindowMinutes)
-            }));
+                var permitLimit = isUploadChunkRequest
+                    ? rateLimiterOptions.UploadPermitLimit
+                    : rateLimiterOptions.PermitLimit;
+                var segmentsPerWindow = isUploadChunkRequest
+                    ? rateLimiterOptions.UploadSegmentsPerWindow
+                    : rateLimiterOptions.SegmentsPerWindow;
+                var windowMinutes = isUploadChunkRequest
+                    ? rateLimiterOptions.UploadWindowMinutes
+                    : rateLimiterOptions.WindowMinutes;
+
+                return new SlidingWindowRateLimiterOptions
+                {
+                    AutoReplenishment = true,
+                    PermitLimit = permitLimit,
+                    QueueLimit = 0,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    SegmentsPerWindow = segmentsPerWindow,
+                    Window = TimeSpan.FromMinutes(windowMinutes)
+                };
+            });
+    });
 });
 
 // Configure database
@@ -183,7 +206,8 @@ using (var scope = app.Services.CreateScope())
     }
     else
     {
-        await DataSeeder.SeedAsync(context);
+        var seedLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(DataSeeder).FullName!);
+        await DataSeeder.SeedAsync(context, seedLogger);
     }
 }
 
@@ -198,10 +222,10 @@ if (app.Environment.IsDevelopment())
 // Exception handling middleware (outermost layer)
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+app.UseCors(CorsPolicyName);
+
 // Rate limiting middleware
 app.UseRateLimiter();
-
-app.UseCors(CorsPolicyName);
 
 app.UseAuthentication();
 app.UseAuthorization();
