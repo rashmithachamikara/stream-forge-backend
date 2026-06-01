@@ -1,0 +1,123 @@
+namespace StreamForge.Application.Interfaces;
+
+/// <summary>
+/// Storage target type
+/// </summary>
+public enum StorageTargetType
+{
+    /// <summary>
+    /// Direct backend upload endpoint
+    /// </summary>
+    BackendEndpoint = 0,
+
+    /// <summary>
+    /// Pre-signed S3 URL
+    /// </summary>
+    S3PresignedUrl = 1
+}
+
+/// <summary>
+/// Represents where a client should upload a video file
+/// </summary>
+public class UploadTarget
+{
+    /// <summary>
+    /// Type of target
+    /// </summary>
+    public StorageTargetType Type { get; set; }
+
+    /// <summary>
+    /// The URL or endpoint where the client should upload
+    /// </summary>
+    public required string Url { get; set; }
+
+    /// <summary>
+    /// Optional headers to include in the request (for S3)
+    /// </summary>
+    public Dictionary<string, string>? Headers { get; set; }
+
+    /// <summary>
+    /// Optional HTTP method (default: PUT for S3, POST for backend)
+    /// </summary>
+    public string? HttpMethod { get; set; }
+}
+
+/// <summary>
+/// Abstraction for file storage operations
+/// </summary>
+public interface IStorageService
+{
+    /// <summary>
+    /// Saves a file to storage
+    /// </summary>
+    /// <param name="sessionId">Upload session ID</param>
+    /// <param name="partNumber">Part number in chunked upload</param>
+    /// <param name="fileStream">File stream to save</param>
+    /// <param name="fileName">Original file name</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Storage path where the file was saved</returns>
+    Task<string> SavePartAsync(
+        Guid sessionId,
+        int partNumber,
+        Stream fileStream,
+        string fileName,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the upload target for a client to upload a chunk
+    /// </summary>
+    /// <param name="sessionId">Upload session ID</param>
+    /// <param name="partNumber">Part number in chunked upload</param>
+    /// <param name="fileSize">Size of the file part in bytes</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Upload target with URL and method</returns>
+    Task<UploadTarget> GetUploadTargetAsync(
+        Guid sessionId,
+        int partNumber,
+        long fileSize,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Assembles uploaded chunks into a final file
+    /// </summary>
+    /// <param name="sessionId">Upload session ID</param>
+    /// <param name="partPaths">Paths to all parts in order</param>
+    /// <param name="finalFileName">Final output file name</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Path to the assembled final file</returns>
+    Task<string> AssembleChunksAsync(
+        Guid sessionId,
+        IEnumerable<string> partPaths,
+        string finalFileName,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes a file from storage
+    /// </summary>
+    /// <param name="storagePath">Storage path to delete</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task DeleteAsync(string storagePath, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes multiple files from storage
+    /// </summary>
+    /// <param name="storagePaths">Storage paths to delete</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task DeleteRangeAsync(IEnumerable<string> storagePaths, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the size of a stored file
+    /// </summary>
+    /// <param name="storagePath">Storage path</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>File size in bytes</returns>
+    Task<long> GetFileSizeAsync(string storagePath, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Checks if a file exists
+    /// </summary>
+    /// <param name="storagePath">Storage path</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if file exists</returns>
+    Task<bool> ExistsAsync(string storagePath, CancellationToken cancellationToken = default);
+}
