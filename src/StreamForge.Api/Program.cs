@@ -161,6 +161,26 @@ builder.Services.AddDbContext<StreamForgeDbContext>(options =>
 
 var app = builder.Build();
 
+// Check database migration status and seed data when schema is current.
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<StreamForgeDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseStartup");
+    var pendingMigrations = (await context.Database.GetPendingMigrationsAsync()).ToArray();
+
+    if (pendingMigrations.Length > 0)
+    {
+        logger.LogWarning(
+            "Database has {MigrationCount} pending migration(s): {PendingMigrations}. Run database migrations before starting the application in this environment.",
+            pendingMigrations.Length,
+            string.Join(", ", pendingMigrations));
+    }
+    else
+    {
+        await DataSeeder.SeedAsync(context);
+    }
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
