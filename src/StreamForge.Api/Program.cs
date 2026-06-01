@@ -77,6 +77,12 @@ builder.Services
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+builder.Services
+    .Configure<UploadOptions>(builder.Configuration.GetSection(UploadOptions.SectionName))
+    .AddOptions<UploadOptions>()
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
 builder.Services.Configure<CorsOptions>(builder.Configuration.GetSection(CorsOptions.SectionName));
 
 builder.Services.AddSingleton<IValidateOptions<RateLimiterConfigOptions>, RateLimiterOptionsValidator>();
