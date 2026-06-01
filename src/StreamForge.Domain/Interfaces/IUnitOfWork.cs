@@ -43,6 +43,16 @@ public interface IUnitOfWork : IDisposable
     IAnalyticsEventRepository AnalyticsEvents { get; }
 
     /// <summary>
+    /// Upload session repository
+    /// </summary>
+    IUploadSessionRepository UploadSessions { get; }
+
+    /// <summary>
+    /// Upload session part repository
+    /// </summary>
+    IUploadSessionPartRepository UploadSessionParts { get; }
+
+    /// <summary>
     /// Saves all changes made in this unit of work
     /// </summary>
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

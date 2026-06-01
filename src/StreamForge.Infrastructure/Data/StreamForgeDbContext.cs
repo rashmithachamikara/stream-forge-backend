@@ -42,6 +42,10 @@ public class StreamForgeDbContext : DbContext
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<AnalyticsEvent> AnalyticsEvents => Set<AnalyticsEvent>();
 
+    // Upload Entities
+    public DbSet<UploadSession> UploadSessions => Set<UploadSession>();
+    public DbSet<UploadSessionPart> UploadSessionParts => Set<UploadSessionPart>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
