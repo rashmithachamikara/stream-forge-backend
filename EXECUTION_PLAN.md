@@ -43,18 +43,24 @@
 - [X] Create video at upload-session start and mark it ready on completion
 - [X] Validate chunks, assemble final file, compute checksum, and delete temporary chunks
 
-### Phase 6: Video Processing (Week 5-7)
-- [ ] Install Hangfire/Quartz.NET
-- [ ] Create video transcoding job
-- [ ] Create thumbnail generation job
-- [ ] Implement FFmpeg wrapper service
-- [ ] Add job scheduling
+### Phase 6: Video Processing And Streaming (Week 5-8)
+- [ ] Install and configure Hangfire with PostgreSQL storage
+- [ ] Add processing queue integration after upload completion
+- [ ] Implement Application abstractions for background jobs, media processing, and streaming asset access
+- [ ] Implement FFmpeg/ffprobe Infrastructure adapters
+- [ ] Probe uploaded media and update duration, codec, bitrate, and dimensions
+- [ ] Generate HLS master playlist, variant playlists, and segments
+- [ ] Generate default thumbnail/poster assets
+- [ ] Persist processing job state, progress, completion, and failure details
+- [ ] Create/update `VideoVersions`, `VideoFiles`, and `VideoThumbnails` for generated outputs
+- [ ] Add manifest, segment, and thumbnail endpoints with existing video access control
+- [ ] Keep API controllers thin and keep Hangfire, FFmpeg, filesystem, and EF orchestration outside controllers
 
-### Phase 7: Video Streaming (Week 7-8)
-- [ ] Implement HLS playlist generation
-- [ ] Create streaming endpoint
-- [ ] Add range request support
-- [ ] Implement access control
+### Phase 7: Video Streaming (Week 7-8) [X] Folded into Phase 6
+- [X] HLS playlist generation moved to Phase 6
+- [X] Streaming endpoints moved to Phase 6
+- [X] Range/manifest serving moved to Phase 6
+- [X] Streaming access control moved to Phase 6
 
 ### Phase 8: Engagement Features (Week 8-10)
 - [ ] Implement likes/dislikes
@@ -87,7 +93,6 @@
 - [ ] Implement real S3 multipart uploads and presigned URL generation
 - [ ] Add resumable retry semantics for duplicate or partially uploaded chunks
 - [ ] Add cleanup jobs for expired/failed upload sessions and abandoned chunk files
-- [ ] Add post-upload processing queue integration after successful completion
 - [ ] Add optional upload-time thumbnail/player/access metadata if product flow requires it
 - [ ] Add upload observability for sessions, chunk failures, cleanup results, and storage usage
 - [ ] Add integration tests for S3, cleanup, retries, and large-file upload flows

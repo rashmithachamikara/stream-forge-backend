@@ -4,14 +4,13 @@ Status: [ ] Planned
 
 ## Purpose
 
-Track advanced upload work intentionally deferred from Phase 5. Phase 5 focuses on the clean local/backend upload path; this phase covers production hardening, advanced storage providers, retry semantics, cleanup automation, processing integration, and upload observability.
+Track advanced upload work intentionally deferred from Phase 5. Phase 5 focuses on the clean local/backend upload path; this phase covers production hardening, advanced storage providers, retry semantics, cleanup automation, and upload observability.
 
 ## Goals
 
 - Make large uploads resilient across network failures, duplicate chunk attempts, and interrupted sessions.
 - Add production-ready S3 multipart storage support.
 - Automate cleanup of abandoned upload data.
-- Integrate completed uploads with downstream video processing.
 - Improve visibility into upload health, failure rates, cleanup behavior, and storage usage.
 
 ## Deferred Work
@@ -19,8 +18,6 @@ Track advanced upload work intentionally deferred from Phase 5. Phase 5 focuses 
 - Implement real S3 multipart upload creation, presigned part URL generation, part completion tracking, and multipart completion/abort.
 - Add resumable retry semantics for duplicate or partially uploaded chunks.
 - Add cleanup jobs for expired upload sessions, stale `Uploading` videos, failed sessions, abandoned chunk files, and incomplete S3 multipart uploads.
-- Add post-upload processing queue integration after successful completion.
-- Probe uploaded media and update version metadata such as playback duration, codec, bitrate, and player-ready metadata.
 - Add optional upload-time thumbnail, player, and access-control metadata if product flow requires it.
 - Add observability for upload sessions, chunk failures, cleanup results, upload duration, throughput, and storage usage.
 - Add integration tests for S3 multipart upload, cleanup, retry/resume behavior, and large-file flows.
@@ -28,7 +25,7 @@ Track advanced upload work intentionally deferred from Phase 5. Phase 5 focuses 
 ## Dependencies
 
 - Phase 5 local/backend upload flow and clean-architecture refactor.
-- Phase 6 video processing infrastructure for post-upload job queue integration.
+- Phase 6 video processing and streaming infrastructure for generated playback assets.
 - Phase 10 testing infrastructure for integration and large-file upload coverage.
 - Phase 11 deployment configuration for production object storage, secrets, retention, and monitoring.
 - Final storage provider configuration model for S3 or S3-compatible storage.
@@ -40,8 +37,6 @@ Track advanced upload work intentionally deferred from Phase 5. Phase 5 focuses 
 - Expired and failed upload sessions are cleaned up automatically.
 - Stale `Uploading` videos from abandoned sessions are marked failed or cleaned up according to retention policy.
 - Temporary local chunks and incomplete remote multipart uploads do not accumulate indefinitely.
-- Successful uploads enqueue downstream processing work without blocking the upload completion response.
-- Uploaded media is probed after completion and version metadata is updated from the actual file.
 - Upload health and storage usage can be inspected through logs, metrics, or operational reports.
 - Integration tests cover S3 multipart, cleanup, retry/resume, and large-file upload scenarios.
 
