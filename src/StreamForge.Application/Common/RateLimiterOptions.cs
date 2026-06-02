@@ -23,4 +23,13 @@ public sealed class RateLimiterOptions
 
     [Range(1, 1000, ErrorMessage = "UploadSegmentsPerWindow must be between 1 and 1000")]
     public int UploadSegmentsPerWindow { get; set; } = 8;
+
+    [Range(1, 100000, ErrorMessage = "PlaybackPermitLimit must be between 1 and 100000")]
+    public int PlaybackPermitLimit { get; set; } = 5000;
+
+    [Range(1, 1440, ErrorMessage = "PlaybackWindowMinutes must be between 1 and 1440")]
+    public int PlaybackWindowMinutes { get; set; } = 1;
+
+    [Range(1, 1000, ErrorMessage = "PlaybackSegmentsPerWindow must be between 1 and 1000")]
+    public int PlaybackSegmentsPerWindow { get; set; } = 8;
 }

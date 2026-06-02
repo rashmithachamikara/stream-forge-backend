@@ -39,10 +39,15 @@ The `RateLimiter` section controls per-client request throttling.
 | `UploadPermitLimit` | `1000` | Upload target/chunk request limit per window |
 | `UploadWindowMinutes` | `1` | Upload limiter window length |
 | `UploadSegmentsPerWindow` | `8` | Sliding-window segment count for upload traffic |
+| `PlaybackPermitLimit` | `5000` | Playback manifest/segment/thumbnail request limit per window |
+| `PlaybackWindowMinutes` | `1` | Playback limiter window length |
+| `PlaybackSegmentsPerWindow` | `8` | Sliding-window segment count for playback traffic |
 
 **Notes:**
 - Upload target and chunk endpoints use a separate rate-limit bucket so large videos do not exhaust the general API quota.
+- HLS playback and thumbnail endpoints use a separate rate-limit bucket because players may request many small manifests and segments during normal viewing.
 - Tune `UploadPermitLimit` based on configured chunk size, client concurrency, expected file sizes, and deployment infrastructure.
+- Tune `PlaybackPermitLimit` based on HLS segment duration, player behavior, expected concurrent viewers per IP, and whether a CDN or reverse proxy sits in front of the API.
 
 ---
 

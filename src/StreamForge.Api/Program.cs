@@ -201,8 +201,8 @@ builder.Services.AddHangfire(configuration =>
 });
 builder.Services.AddHangfireServer();
 
-// Configure rate limiting. Upload chunk traffic has a separate bucket because
-// large files can legitimately require hundreds of requests in a short burst.
+// Configure rate limiting. Upload and playback traffic have separate buckets
+// because both can legitimately require many requests in a short burst.
 builder.Services.AddRateLimiter(limiterOptions =>
 {
     limiterOptions.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -210,24 +210,30 @@ builder.Services.AddRateLimiter(limiterOptions =>
     limiterOptions.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
     {
         var remoteIp = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        var isUploadChunkRequest =
-            httpContext.Request.Path.StartsWithSegments("/api/v1/uploads/sessions") &&
-            (httpContext.Request.Path.Value?.Contains("/parts/", StringComparison.OrdinalIgnoreCase) == true ||
-             httpContext.Request.Path.Value?.EndsWith("/target", StringComparison.OrdinalIgnoreCase) == true);
+        var trafficClass = ResolveRateLimitTrafficClass(httpContext);
 
         return RateLimitPartition.GetSlidingWindowLimiter(
-            partitionKey: $"{(isUploadChunkRequest ? "upload" : "api")}:{remoteIp}",
+            partitionKey: $"{trafficClass}:{remoteIp}",
             factory: _ =>
             {
-                var permitLimit = isUploadChunkRequest
-                    ? rateLimiterOptions.UploadPermitLimit
-                    : rateLimiterOptions.PermitLimit;
-                var segmentsPerWindow = isUploadChunkRequest
-                    ? rateLimiterOptions.UploadSegmentsPerWindow
-                    : rateLimiterOptions.SegmentsPerWindow;
-                var windowMinutes = isUploadChunkRequest
-                    ? rateLimiterOptions.UploadWindowMinutes
-                    : rateLimiterOptions.WindowMinutes;
+                var permitLimit = trafficClass switch
+                {
+                    "upload" => rateLimiterOptions.UploadPermitLimit,
+                    "playback" => rateLimiterOptions.PlaybackPermitLimit,
+                    _ => rateLimiterOptions.PermitLimit
+                };
+                var segmentsPerWindow = trafficClass switch
+                {
+                    "upload" => rateLimiterOptions.UploadSegmentsPerWindow,
+                    "playback" => rateLimiterOptions.PlaybackSegmentsPerWindow,
+                    _ => rateLimiterOptions.SegmentsPerWindow
+                };
+                var windowMinutes = trafficClass switch
+                {
+                    "upload" => rateLimiterOptions.UploadWindowMinutes,
+                    "playback" => rateLimiterOptions.PlaybackWindowMinutes,
+                    _ => rateLimiterOptions.WindowMinutes
+                };
 
                 return new SlidingWindowRateLimiterOptions
                 {
@@ -241,6 +247,33 @@ builder.Services.AddRateLimiter(limiterOptions =>
             });
     });
 });
+
+static string ResolveRateLimitTrafficClass(HttpContext httpContext)
+{
+    var path = httpContext.Request.Path;
+    var pathValue = path.Value;
+
+    if (httpContext.Request.Method.Equals(HttpMethods.Get, StringComparison.OrdinalIgnoreCase) &&
+        path.StartsWithSegments("/api/v1/videos") &&
+        (pathValue?.Contains("/playback/", StringComparison.OrdinalIgnoreCase) == true ||
+         pathValue?.EndsWith("/thumbnail", StringComparison.OrdinalIgnoreCase) == true))
+    {
+        return "playback";
+    }
+
+    if (path.StartsWithSegments("/api/v1/uploads/sessions"))
+    {
+        var isUploadChunkRequest =
+            pathValue?.Contains("/parts/", StringComparison.OrdinalIgnoreCase) == true ||
+            pathValue?.EndsWith("/target", StringComparison.OrdinalIgnoreCase) == true;
+        if (isUploadChunkRequest)
+        {
+            return "upload";
+        }
+    }
+
+    return "api";
+}
 
 // Configure database
 builder.Services.AddDbContext<StreamForgeDbContext>(options =>
