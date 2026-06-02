@@ -45,6 +45,24 @@ The `RateLimiter` section controls per-client request throttling.
 
 ---
 
+## VideoProcessing
+
+The `VideoProcessing` section controls local FFmpeg/ffprobe processing for generated playback assets.
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `FfmpegPath` | `ffmpeg` | Executable path or command name for FFmpeg |
+| `FfprobePath` | `ffprobe` | Executable path or command name for ffprobe |
+| `HlsSegmentSeconds` | `6` | Target duration for generated HLS segments |
+| `ThumbnailTimestampPercent` | `10` | Percent into the video where the default thumbnail is captured |
+
+**Notes:**
+- FFmpeg and ffprobe must be installed in the runtime environment or configured with absolute paths.
+- Generated HLS and thumbnail assets are stored under the configured `Upload.StoragePath`.
+- Hangfire uses `ConnectionStrings.DefaultConnection` for durable processing jobs.
+
+---
+
 ## Jwt
 
 The `Jwt` section controls access-token and refresh-token behavior.
