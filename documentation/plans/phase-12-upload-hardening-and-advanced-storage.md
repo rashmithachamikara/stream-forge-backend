@@ -18,8 +18,9 @@ Track advanced upload work intentionally deferred from Phase 5. Phase 5 focuses 
 
 - Implement real S3 multipart upload creation, presigned part URL generation, part completion tracking, and multipart completion/abort.
 - Add resumable retry semantics for duplicate or partially uploaded chunks.
-- Add cleanup jobs for expired upload sessions, failed sessions, abandoned chunk files, and incomplete S3 multipart uploads.
+- Add cleanup jobs for expired upload sessions, stale `Uploading` videos, failed sessions, abandoned chunk files, and incomplete S3 multipart uploads.
 - Add post-upload processing queue integration after successful completion.
+- Probe uploaded media and update version metadata such as playback duration, codec, bitrate, and player-ready metadata.
 - Add optional upload-time thumbnail, player, and access-control metadata if product flow requires it.
 - Add observability for upload sessions, chunk failures, cleanup results, upload duration, throughput, and storage usage.
 - Add integration tests for S3 multipart upload, cleanup, retry/resume behavior, and large-file flows.
@@ -37,8 +38,10 @@ Track advanced upload work intentionally deferred from Phase 5. Phase 5 focuses 
 - S3 multipart upload works with real presigned URLs and does not use placeholder targets.
 - Interrupted uploads can resume or retry without re-uploading successful chunks.
 - Expired and failed upload sessions are cleaned up automatically.
+- Stale `Uploading` videos from abandoned sessions are marked failed or cleaned up according to retention policy.
 - Temporary local chunks and incomplete remote multipart uploads do not accumulate indefinitely.
 - Successful uploads enqueue downstream processing work without blocking the upload completion response.
+- Uploaded media is probed after completion and version metadata is updated from the actual file.
 - Upload health and storage usage can be inspected through logs, metrics, or operational reports.
 - Integration tests cover S3 multipart, cleanup, retry/resume, and large-file upload scenarios.
 

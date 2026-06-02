@@ -60,6 +60,7 @@ Core video metadata and settings.
 | UploaderId | GUID | FK -> Users(Id), NOT NULL | User who uploaded the video |
 | CategoryId | GUID | FK -> Categories(Id), NULL | Video category |
 | Visibility | ENUM | NOT NULL | Public, Private, Internal |
+| Status | ENUM | NOT NULL, DEFAULT Ready | Uploading, Processing, Ready, Failed, Deleted |
 | AllowComments | BOOLEAN | NOT NULL, DEFAULT TRUE | Enable comments |
 | AllowLikes | BOOLEAN | NOT NULL, DEFAULT TRUE | Enable likes |
 | AllowBookmarks | BOOLEAN | NOT NULL, DEFAULT TRUE | Enable bookmarks |
@@ -76,11 +77,13 @@ Core video metadata and settings.
 - `IX_Videos_UploaderId`
 - `IX_Videos_CategoryId`
 - `IX_Videos_Visibility`
+- `IX_Videos_Status`
 - `IX_Videos_CreatedAt`
 
 **Notes:**
 - VideoSettings merged into Videos table (1:1 relationship eliminated)
 - ViewCount denormalized for performance
+- Upload-created videos start as `Uploading` and become `Ready` after the final file is assembled.
 
 ---
 
@@ -98,7 +101,7 @@ Different resolutions/formats of the same video.
 | Codec | VARCHAR(50) | NULL | Video codec (h264, h265, vp9) |
 | StoragePath | VARCHAR(1000) | NOT NULL | Path to video file |
 | SizeBytes | BIGINT | NOT NULL | File size in bytes |
-| DurationSeconds | INT | NOT NULL | Video duration |
+| DurationSeconds | INT | NOT NULL | Playback duration in seconds; `0` means unknown until media probing completes |
 | CreatedAt | TIMESTAMP | NOT NULL | Creation timestamp |
 
 **Indexes:**
@@ -164,25 +167,21 @@ Physical file storage references.
 
 ### 6. UploadSessions
 
-Tracks resumable video upload sessions before a final `Video` record is created.
+Tracks resumable video upload runtime state for an already-created `Video`.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | Id | GUID | PK | Unique upload session identifier |
 | UserId | GUID | FK -> Users(Id), NOT NULL | User who owns the upload |
+| VideoId | GUID | FK -> Videos(Id), NOT NULL | Video created when the upload session started |
 | Status | ENUM | NOT NULL | Created, Active, Completing, Completed, Failed, Expired |
 | TotalSize | BIGINT | NOT NULL | Total expected upload size in bytes |
 | UploadedSize | BIGINT | NOT NULL, DEFAULT 0 | Bytes received so far |
 | StorageProviderType | ENUM | NOT NULL | Local, S3, AzureBlob |
 | TemporaryStoragePath | VARCHAR(2000) | NOT NULL | Temporary local path, object prefix, or provider upload identifier |
-| VideoTitle | VARCHAR(500) | NOT NULL | Title to apply when upload completes |
-| VideoDescription | VARCHAR(2000) | NULL | Description to apply when upload completes |
-| VideoVisibility | ENUM | NOT NULL | Visibility to apply when upload completes |
-| CategoryId | GUID | NULL | Category to apply when upload completes |
 | ContentType | VARCHAR(100) | NULL | Uploaded file MIME type |
 | ExpiresAt | TIMESTAMP | NOT NULL | Session expiration timestamp |
 | UpdatedAt | TIMESTAMP | NOT NULL | Last session state update |
-| VideoId | GUID | NULL | Created video after successful completion |
 | CreatedAt | TIMESTAMP | NOT NULL | Session creation timestamp |
 
 **Indexes:**
@@ -192,10 +191,9 @@ Tracks resumable video upload sessions before a final `Video` record is created.
 - `IX_UploadSessions_VideoId`
 
 **Notes:**
-- Upload sessions are owned by a user and are separate from final video metadata.
-- `Status` drives lifecycle handling and cleanup of incomplete uploads.
-- `VideoId` is populated only after the chunks are assembled and the final `Video` is created.
-- `CategoryId` currently stores the intended category value; add an explicit FK to `Categories(Id)` if category referential enforcement is required before completion.
+- Upload sessions are owned by a user and linked to the video created at upload start.
+- Real video metadata is stored directly on `Videos` and related tables such as `VideoTags`.
+- `Status` drives upload lifecycle handling and cleanup of incomplete uploads.
 
 ---
 
@@ -583,6 +581,13 @@ Video viewing and interaction analytics.
 - `Private` - Only accessible by owner
 - `Internal` - Accessible to authenticated users
 
+### VideoStatus
+- `Uploading` - Upload session has started but no playable file exists yet
+- `Processing` - File exists and downstream processing is running
+- `Ready` - Video is ready to be listed and played
+- `Failed` - Upload or processing failed
+- `Deleted` - Video has been deleted or tombstoned
+
 ### StorageProviderType
 - `Local` - Local filesystem
 - `S3` - AWS S3 or S3-compatible
@@ -592,7 +597,7 @@ Video viewing and interaction analytics.
 - `Created` - Session created, awaiting first chunk
 - `Active` - Chunks are being uploaded
 - `Completing` - Final assembly is in progress
-- `Completed` - Upload completed and video was created
+- `Completed` - Upload completed and linked video is ready
 - `Failed` - Upload failed or was cancelled
 - `Expired` - Session expired before completion
 
@@ -664,7 +669,7 @@ Users (1) -> (N) AnalyticsEvents
 
 UploadSessions (1) -> (N) UploadSessionParts [UploadSessionId]
 UploadSessions (N) -> (1) Users [UserId]
-UploadSessions (N) -> (1) Videos [VideoId, after completion]
+UploadSessions (N) -> (1) Videos [VideoId, created at upload start]
 
 Videos (1) -> (N) VideoVersions
 Videos (1) -> (N) VideoThumbnails
@@ -769,7 +774,7 @@ Upload behavior depends on application settings such as chunk size, max file siz
 
 ### Phase 2 - Post-MVP
 - Pending: Upload session cleanup job for expired/incomplete sessions
-- Pending: Explicit category/video foreign keys on UploadSessions if pre-completion referential enforcement is required
+- Done: UploadSessions require `VideoId` and enforce `UploadSessions.VideoId -> Videos.Id`
 - Pending: VideoTranscriptions (when AI integration ready)
 - Pending: AccessControl enhancements (token lifecycle, revocation UX, auditing)
 - Pending: Notifications (when notification system ready)
@@ -804,7 +809,7 @@ Upload behavior depends on application settings such as chunk size, max file siz
 ## Next Steps
 
 1. **Add Upload Session Cleanup** for expired or failed incomplete sessions
-2. **Decide UploadSession FK Enforcement** for `CategoryId` and completed `VideoId`
+2. **Add stale Uploading video cleanup** for expired or failed incomplete sessions
 3. **Validate Chunk Completion Semantics** so `IsComplete` is marked consistently or removed if not needed
 4. **Tune Upload Rate Limits** per deployment based on chunk size and concurrent upload expectations
 5. **Document S3 Multipart Flow** when S3 presigned upload implementation is finalized
