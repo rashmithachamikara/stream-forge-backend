@@ -55,7 +55,7 @@
 - [X] Create/update `VideoVersions`, `VideoFiles`, and `VideoThumbnails` for generated outputs
 - [X] Add manifest, segment, and thumbnail endpoints with existing video access control
 - [X] Keep API controllers thin and keep Hangfire, FFmpeg, filesystem, and EF orchestration outside controllers
-- [ ] Run FFmpeg/Hangfire smoke test with a sample video
+- [X] Run FFmpeg/Hangfire smoke test with a sample video
 
 ### Phase 7: Video Streaming (Week 7-8) [X] Folded into Phase 6
 - [X] HLS playlist generation moved to Phase 6
