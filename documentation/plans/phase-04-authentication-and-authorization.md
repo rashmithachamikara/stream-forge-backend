@@ -14,6 +14,8 @@ Status: [X] Done
 - Keep auth provider details behind interfaces
 - Centralize video authorization rules (owner/visibility/access grants)
 - Use AccessControl-based query helpers for per-user and token sharing
+- Keep authorization based on the internal `Users.Id` GUID, not email, provider subject IDs, issuer names, or token-specific claims.
+- External identity providers must resolve to a local StreamForge `User` before application use cases make authorization decisions.
 
 ## Deliverables
 
@@ -68,6 +70,6 @@ Status: [X] Done
 
 ## Notes
 
-- This phase should not introduce direct OAuth/OIDC dependencies yet; only the abstractions needed to support them later.
+- This phase should not introduce direct OAuth/OIDC dependencies; external identity provider integration is tracked later in [Phase 13](phase-13-external-identity-provider-integration.md).
 - Token-related settings should come from configuration, not hard-coded values.
 - Access control logic should stay centralized so future streaming and engagement features reuse the same rules.

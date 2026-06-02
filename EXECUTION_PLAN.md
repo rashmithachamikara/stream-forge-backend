@@ -63,6 +63,19 @@
 - [X] Range/manifest serving moved to Phase 6
 - [X] Streaming access control moved to Phase 6
 
+### Phase 7.5: Content Discovery and Management
+- [ ] Add visibility-aware paginated video list and detail APIs
+- [ ] Add authenticated user video library APIs
+- [ ] Add video metadata update and delete/archive APIs
+- [ ] Add video processing-status endpoint for owner/admin progress views
+- [ ] Add category list/detail and category-video browse APIs
+- [ ] Add paginated tag list/search and tag-video browse APIs
+- [ ] Add basic video search, filtering, paging, and deterministic ordering
+- [ ] Add public/user profile metadata APIs if creator pages require them
+- [ ] Add video access/share-token management APIs if sharing management is required
+- [ ] Add shared pagination request/response DTOs for unbounded collection endpoints
+- [ ] Keep content controllers thin and enforce existing video authorization rules
+
 ### Phase 8: Engagement Features (Week 8-10)
 - [ ] Implement likes/dislikes
 - [ ] Add comments system
@@ -97,6 +110,16 @@
 - [ ] Add optional upload-time thumbnail/player/access metadata if product flow requires it
 - [ ] Add upload observability for sessions, chunk failures, cleanup results, and storage usage
 - [ ] Add integration tests for S3, cleanup, retries, and large-file upload flows
+
+### Phase 13: External Identity Provider Integration
+- [ ] Use external login with internal StreamForge JWTs as the first OAuth/OIDC strategy
+- [ ] Add external provider configuration and enabled-provider discovery endpoint
+- [ ] Add external sign-in endpoint for providers such as Google
+- [ ] Add `UserExternalLogins` model and persistence for provider/subject links
+- [ ] Resolve external identities to internal `Users.Id` before authorization
+- [ ] Keep content, upload, playback, engagement, and analytics use cases decoupled from provider-specific claims
+- [ ] Preserve a migration path to direct external bearer-token validation if enterprise OIDC requires it later
+- [ ] Follow detailed implementation notes in `documentation/plans/phase-13-external-identity-provider-integration.md`
 
 ## Notes
 
