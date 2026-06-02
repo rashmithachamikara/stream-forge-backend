@@ -139,15 +139,35 @@ public class LocalFileStorageService : IStorageService
                 touchedDirectories.Add(directory);
             }
 
-            await DeleteAsync(storagePath, cancellationToken);
+            try
+            {
+                await DeleteAsync(storagePath, cancellationToken);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning(
+                    exception,
+                    "Failed to delete temporary upload chunk {StoragePath}",
+                    storagePath);
+            }
         }
 
         foreach (var directory in touchedDirectories)
         {
             if (Directory.Exists(directory) && !Directory.EnumerateFileSystemEntries(directory).Any())
             {
-                Directory.Delete(directory);
-                _logger.LogInformation("Deleted empty upload part directory: {Directory}", directory);
+                try
+                {
+                    Directory.Delete(directory);
+                    _logger.LogInformation("Deleted empty upload part directory: {Directory}", directory);
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogWarning(
+                        exception,
+                        "Failed to delete empty upload part directory {Directory}",
+                        directory);
+                }
             }
         }
     }

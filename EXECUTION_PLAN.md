@@ -33,13 +33,15 @@
 - [X] Add AccessControl query helpers for per-user and token-based sharing
 - [X] Keep auth provider adapters pluggable for future OAuth/OIDC integration
 
-### Phase 5: Video Upload (Week 4-5)
-- [ ] Create storage abstraction (`IStorageService`)
-- [ ] Implement local storage service
-- [ ] Create UploadVideo use case
-- [ ] Implement video repository
-- [ ] Create Videos controller
-- [ ] Add file upload endpoint
+### Phase 5: Video Upload (Week 4-5) [X]
+- [X] Create storage abstraction (`IStorageService`)
+- [X] Implement local storage service
+- [X] Move upload orchestration into Application use cases
+- [X] Implement upload repositories and unit-of-work path
+- [X] Keep upload controller as a thin HTTP adapter
+- [X] Add session, target, part upload, and completion endpoints
+- [X] Create video at upload-session start and mark it ready on completion
+- [X] Validate chunks, assemble final file, compute checksum, and delete temporary chunks
 
 ### Phase 6: Video Processing (Week 5-7)
 - [ ] Install Hangfire/Quartz.NET
@@ -69,8 +71,10 @@
 
 ### Phase 10: Testing (Week 11-12)
 - [ ] Add unit tests for domain
+- [ ] Add upload use-case tests deferred from Phase 5
 - [ ] Add integration tests for repositories
 - [ ] Add API tests for endpoints
+- [ ] Add local/backend upload API tests
 - [ ] Add end-to-end tests
 
 ### Phase 11: Deployment (Week 12+)

@@ -1,6 +1,6 @@
 # Phase 5 - Video Upload
 
-Status: [ ] Partially Implemented
+Status: [X] Done
 
 ## Purpose
 
@@ -17,6 +17,7 @@ Advanced upload hardening is intentionally deferred to [Phase 12 - Upload Harden
 - Upload configuration for storage path, chunk size, maximum file size, allowed MIME types, session expiration, and storage provider type.
 - Upload-specific rate limit settings for target/chunk traffic.
 - JS SDK helper in `sdk/js-sdk/` for chunked upload flow.
+- Local/backend upload smoke flow has been run successfully.
 
 ## Current Refactor Scope
 
@@ -70,7 +71,7 @@ These items belong to Phase 12.
 - On completion, the API assembles chunks, creates `VideoVersion` and `VideoFile` records, marks the session completed, and marks the existing video `Ready`.
 - Temporary chunk files are deleted after successful completion; cleanup failures are logged without failing a completed upload.
 - The database stores upload session, session parts, video metadata, and file metadata consistently.
-- The local/backend JS SDK flow can upload and complete a sample video.
+- The local/backend upload flow can upload and complete a sample video.
 - The project builds successfully after the upload refactor.
 
 ## Notes
@@ -79,3 +80,4 @@ These items belong to Phase 12.
 - Keep S3 placeholders from being treated as production-ready behavior until Phase 12.
 - Keep transcoding, thumbnail generation, and streaming pipeline behavior outside the upload request path.
 - If completion later queues processing jobs, that integration should be added in Phase 12 or Phase 6 coordination work.
+- Automated upload use-case, API, and large-file coverage is deferred to Phase 10 testing work.

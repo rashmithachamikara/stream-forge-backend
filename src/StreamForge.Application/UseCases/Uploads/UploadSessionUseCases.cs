@@ -422,7 +422,7 @@ public sealed class CompleteUploadSessionService
         }
         catch
         {
-            // Cleanup should not fail an upload that has already completed successfully.
+            // Storage providers should log cleanup details; cleanup should not fail a completed upload.
         }
 
         return new CompleteUploadSessionResponseDto(command.SessionId, video.Id, session.Status.ToString());
