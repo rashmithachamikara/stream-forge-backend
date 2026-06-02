@@ -17,11 +17,13 @@ using StreamForge.Application.Common;
 using StreamForge.Application.Interfaces;
 using StreamForge.Application.UseCases.Uploads;
 using StreamForge.Application.UseCases.Uploads.CreateSession;
+using StreamForge.Application.UseCases.Processing;
 using StreamForge.Domain.Enums;
 using StreamForge.Domain.Interfaces;
 using StreamForge.Infrastructure.Authentication;
 using StreamForge.Infrastructure.Data;
 using StreamForge.Infrastructure.Persistence;
+using StreamForge.Infrastructure.Processing;
 using StreamForge.Infrastructure.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -95,6 +97,12 @@ builder.Services
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+builder.Services
+    .Configure<VideoProcessingOptions>(builder.Configuration.GetSection(VideoProcessingOptions.SectionName))
+    .AddOptions<VideoProcessingOptions>()
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
 builder.Services.Configure<CorsOptions>(builder.Configuration.GetSection(CorsOptions.SectionName));
 
 builder.Services.AddSingleton<IValidateOptions<RateLimiterConfigOptions>, RateLimiterOptionsValidator>();
@@ -155,6 +163,7 @@ builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<IAuthorizationService, VideoAuthorizationService>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<UploadOptions>>().Value);
+builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<VideoProcessingOptions>>().Value);
 builder.Services.AddScoped<IStorageService>(sp =>
 {
     var uploadOptions = sp.GetRequiredService<IOptions<UploadOptions>>().Value;
@@ -163,10 +172,34 @@ builder.Services.AddScoped<IStorageService>(sp =>
     var storagePath = Path.GetFullPath(Path.Combine(environment.ContentRootPath, uploadOptions.StoragePath));
     return new LocalFileStorageService(storagePath, logger);
 });
+builder.Services.AddScoped<IMediaProcessingService>(sp =>
+{
+    var uploadOptions = sp.GetRequiredService<IOptions<UploadOptions>>().Value;
+    var processingOptions = sp.GetRequiredService<IOptions<VideoProcessingOptions>>().Value;
+    var environment = sp.GetRequiredService<IWebHostEnvironment>();
+    var logger = sp.GetRequiredService<ILogger<LocalFfmpegMediaProcessingService>>();
+    var storagePath = Path.GetFullPath(Path.Combine(environment.ContentRootPath, uploadOptions.StoragePath));
+    return new LocalFfmpegMediaProcessingService(storagePath, processingOptions, logger);
+});
+builder.Services.AddScoped<IVideoProcessingQueue, HangfireVideoProcessingQueue>();
 builder.Services.AddScoped<CreateUploadSessionService>();
 builder.Services.AddScoped<GetUploadTargetService>();
 builder.Services.AddScoped<UploadPartService>();
 builder.Services.AddScoped<CompleteUploadSessionService>();
+builder.Services.AddScoped<ProcessVideoJobService>();
+builder.Services.AddScoped<GetPlaybackManifestService>();
+builder.Services.AddScoped<GetStreamingAssetService>();
+builder.Services.AddScoped<GetVideoThumbnailService>();
+
+builder.Services.AddHangfire(configuration =>
+{
+    configuration
+        .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+        .UseSimpleAssemblyNameTypeSerializer()
+        .UseRecommendedSerializerSettings()
+        .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(connectionStrings.DefaultConnection));
+});
+builder.Services.AddHangfireServer();
 
 // Configure rate limiting. Upload chunk traffic has a separate bucket because
 // large files can legitimately require hundreds of requests in a short burst.
@@ -242,6 +275,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
     app.UseSwagger();
     app.UseSwaggerUI();
+    app.UseHangfireDashboard("/hangfire");
 }
 
 // Exception handling middleware (outermost layer)

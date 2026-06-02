@@ -10,13 +10,24 @@ public interface IStorageProviderRepository : IRepository<StorageProvider>
 
 public interface IVideoVersionRepository : IRepository<VideoVersion>
 {
+    Task<IEnumerable<VideoVersion>> GetByVideoIdAsync(Guid videoId, CancellationToken cancellationToken = default);
 }
 
 public interface IVideoFileRepository : IRepository<VideoFile>
 {
+    Task<VideoFile?> GetOriginalByVideoIdAsync(Guid videoId, CancellationToken cancellationToken = default);
 }
 
 public interface IVideoTagRepository
 {
     Task AddAsync(VideoTag videoTag, CancellationToken cancellationToken = default);
+}
+
+public interface IVideoThumbnailRepository : IRepository<VideoThumbnail>
+{
+    Task<VideoThumbnail?> GetDefaultByVideoIdAsync(Guid videoId, CancellationToken cancellationToken = default);
+}
+
+public interface IVideoProcessingJobRepository : IRepository<VideoProcessingJob>
+{
 }

@@ -17,6 +17,8 @@ public sealed class UnitOfWork : IUnitOfWork
         Videos = new VideoRepository(dbContext);
         VideoVersions = new VideoVersionRepository(dbContext);
         VideoFiles = new VideoFileRepository(dbContext);
+        VideoThumbnails = new VideoThumbnailRepository(dbContext);
+        VideoProcessingJobs = new VideoProcessingJobRepository(dbContext);
         VideoTags = new VideoTagRepository(dbContext);
         StorageProviders = new StorageProviderRepository(dbContext);
         Categories = new CategoryRepository(dbContext);
@@ -32,6 +34,8 @@ public sealed class UnitOfWork : IUnitOfWork
     public IVideoRepository Videos { get; }
     public IVideoVersionRepository VideoVersions { get; }
     public IVideoFileRepository VideoFiles { get; }
+    public IVideoThumbnailRepository VideoThumbnails { get; }
+    public IVideoProcessingJobRepository VideoProcessingJobs { get; }
     public IVideoTagRepository VideoTags { get; }
     public IStorageProviderRepository StorageProviders { get; }
     public ICategoryRepository Categories { get; }

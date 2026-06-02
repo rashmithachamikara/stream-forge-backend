@@ -322,15 +322,18 @@ public sealed class CompleteUploadSessionService
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
     private readonly IStorageService _storageService;
+    private readonly IVideoProcessingQueue _videoProcessingQueue;
 
     public CompleteUploadSessionService(
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService,
-        IStorageService storageService)
+        IStorageService storageService,
+        IVideoProcessingQueue videoProcessingQueue)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
         _storageService = storageService;
+        _videoProcessingQueue = videoProcessingQueue;
     }
 
     public async Task<CompleteUploadSessionResponseDto> Handle(CompleteUploadSessionCommand command, CancellationToken cancellationToken)
@@ -398,14 +401,16 @@ public sealed class CompleteUploadSessionService
             fileSize: finalSize,
             mimeType: session.ContentType ?? "video/mp4",
             checksum: finalChecksum);
+        var processingJob = VideoProcessingJob.Create(video.Id, ProcessingJobType.Transcode);
 
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
             await _unitOfWork.VideoVersions.AddAsync(version, cancellationToken);
             await _unitOfWork.VideoFiles.AddAsync(videoFile, cancellationToken);
+            await _unitOfWork.VideoProcessingJobs.AddAsync(processingJob, cancellationToken);
 
-            video.MarkAsReady();
+            video.MarkAsProcessing();
             session.MarkAsCompleted();
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
@@ -424,6 +429,8 @@ public sealed class CompleteUploadSessionService
         {
             // Storage providers should log cleanup details; cleanup should not fail a completed upload.
         }
+
+        await _videoProcessingQueue.EnqueueAsync(processingJob.Id, cancellationToken);
 
         return new CompleteUploadSessionResponseDto(command.SessionId, video.Id, session.Status.ToString());
     }

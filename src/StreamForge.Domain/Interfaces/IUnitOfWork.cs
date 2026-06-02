@@ -27,6 +27,10 @@ public interface IUnitOfWork : IDisposable
     /// </summary>
     IVideoFileRepository VideoFiles { get; }
 
+    IVideoThumbnailRepository VideoThumbnails { get; }
+
+    IVideoProcessingJobRepository VideoProcessingJobs { get; }
+
     /// <summary>
     /// Video tag repository
     /// </summary>

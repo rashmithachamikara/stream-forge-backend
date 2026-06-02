@@ -42,6 +42,12 @@ public class UploadTarget
     public string? HttpMethod { get; set; }
 }
 
+public sealed record StoredFileDescriptor(
+    Stream Stream,
+    string ContentType,
+    string FileName,
+    long? Length);
+
 /// <summary>
 /// Abstraction for file storage operations
 /// </summary>
@@ -123,6 +129,11 @@ public interface IStorageService
     Task<string> CalculateChecksumAsync(
         string storagePath,
         string algorithm = "SHA256",
+        CancellationToken cancellationToken = default);
+
+    Task<StoredFileDescriptor> OpenReadAsync(
+        string storagePath,
+        string contentType,
         CancellationToken cancellationToken = default);
 
     /// <summary>

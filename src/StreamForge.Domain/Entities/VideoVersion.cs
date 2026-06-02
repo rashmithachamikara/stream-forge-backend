@@ -120,4 +120,14 @@ public class VideoVersion : BaseEntity
         SizeBytes = sizeBytes;
         DurationSeconds = durationSeconds;
     }
+
+    public void UpdateTechnicalMetadata(int durationSeconds, int? bitrate, string? codec)
+    {
+        if (durationSeconds < 0)
+            throw new ArgumentException("Duration cannot be negative", nameof(durationSeconds));
+
+        DurationSeconds = durationSeconds;
+        Bitrate = bitrate;
+        Codec = codec;
+    }
 }

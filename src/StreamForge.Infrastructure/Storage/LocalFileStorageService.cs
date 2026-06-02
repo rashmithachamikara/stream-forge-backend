@@ -212,6 +212,35 @@ public class LocalFileStorageService : IStorageService
         return Convert.ToHexString(checksum).ToLowerInvariant();
     }
 
+    public Task<StoredFileDescriptor> OpenReadAsync(
+        string storagePath,
+        string contentType,
+        CancellationToken cancellationToken = default)
+    {
+        var fullPath = Path.GetFullPath(Path.Combine(_storagePath, storagePath));
+        var storageRoot = Path.GetFullPath(_storagePath);
+        if (!fullPath.StartsWith(storageRoot, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Storage path is outside the configured storage root");
+        }
+
+        if (!File.Exists(fullPath))
+        {
+            throw new FileNotFoundException($"File not found: {fullPath}");
+        }
+
+        var fileInfo = new FileInfo(fullPath);
+        Stream stream = new FileStream(
+            fullPath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            bufferSize: 1024 * 1024,
+            useAsync: true);
+
+        return Task.FromResult(new StoredFileDescriptor(stream, contentType, Path.GetFileName(fullPath), fileInfo.Length));
+    }
+
     public async Task<bool> ExistsAsync(string storagePath, CancellationToken cancellationToken = default)
     {
         var fullPath = Path.Combine(_storagePath, storagePath);

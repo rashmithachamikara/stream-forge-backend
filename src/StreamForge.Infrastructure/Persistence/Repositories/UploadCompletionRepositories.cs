@@ -21,6 +21,9 @@ public sealed class VideoVersionRepository : BaseRepository<VideoVersion>, IVide
     public VideoVersionRepository(StreamForgeDbContext dbContext) : base(dbContext)
     {
     }
+
+    public async Task<IEnumerable<VideoVersion>> GetByVideoIdAsync(Guid videoId, CancellationToken cancellationToken = default) =>
+        await DbSet.Where(version => version.VideoId == videoId).ToListAsync(cancellationToken);
 }
 
 public sealed class VideoFileRepository : BaseRepository<VideoFile>, IVideoFileRepository
@@ -28,6 +31,13 @@ public sealed class VideoFileRepository : BaseRepository<VideoFile>, IVideoFileR
     public VideoFileRepository(StreamForgeDbContext dbContext) : base(dbContext)
     {
     }
+
+    public Task<VideoFile?> GetOriginalByVideoIdAsync(Guid videoId, CancellationToken cancellationToken = default) =>
+        DbSet
+            .Include(file => file.VideoVersion)
+            .Where(file => file.VideoVersion.VideoId == videoId && file.VideoVersion.Resolution == "original")
+            .OrderBy(file => file.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
 }
 
 public sealed class VideoTagRepository : IVideoTagRepository
@@ -42,5 +52,22 @@ public sealed class VideoTagRepository : IVideoTagRepository
     public async Task AddAsync(VideoTag videoTag, CancellationToken cancellationToken = default)
     {
         await _dbContext.VideoTags.AddAsync(videoTag, cancellationToken);
+    }
+}
+
+public sealed class VideoThumbnailRepository : BaseRepository<VideoThumbnail>, IVideoThumbnailRepository
+{
+    public VideoThumbnailRepository(StreamForgeDbContext dbContext) : base(dbContext)
+    {
+    }
+
+    public Task<VideoThumbnail?> GetDefaultByVideoIdAsync(Guid videoId, CancellationToken cancellationToken = default) =>
+        DbSet.FirstOrDefaultAsync(thumbnail => thumbnail.VideoId == videoId && thumbnail.IsDefault, cancellationToken);
+}
+
+public sealed class VideoProcessingJobRepository : BaseRepository<VideoProcessingJob>, IVideoProcessingJobRepository
+{
+    public VideoProcessingJobRepository(StreamForgeDbContext dbContext) : base(dbContext)
+    {
     }
 }
