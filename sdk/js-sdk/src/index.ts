@@ -9,10 +9,13 @@ export type CreateUploadSessionRequest = {
   totalSize: number;
   contentType?: string;
   categoryId?: string;
+  visibility?: 'Public' | 'Private' | 'Internal';
+  tagIds?: string[];
 };
 
 export type CreateUploadSessionResponse = {
   sessionId: string;
+  videoId: string;
   expiresAt: string;
   videoTitle: string;
 };
@@ -58,12 +61,15 @@ export type UploadFileRequest = {
   description?: string;
   contentType?: string;
   categoryId?: string;
+  visibility?: 'Public' | 'Private' | 'Internal';
+  tagIds?: string[];
   chunkSizeBytes?: number;
   onProgress?: (progress: UploadProgress) => void;
 };
 
 export type UploadFileResponse = {
   sessionId: string;
+  videoId: string;
   fileName: string;
   uploadedParts: ChunkUploadResult[];
   completeResponse: unknown;
@@ -202,7 +208,9 @@ export class StreamForgeUploadClient {
       description: request.description,
       totalSize: request.file.size,
       contentType: request.contentType ?? request.file.type ?? 'application/octet-stream',
-      categoryId: request.categoryId
+      categoryId: request.categoryId,
+      visibility: request.visibility,
+      tagIds: request.tagIds
     });
 
     const uploadedParts: ChunkUploadResult[] = [];
@@ -235,6 +243,7 @@ export class StreamForgeUploadClient {
 
     return {
       sessionId: session.sessionId,
+      videoId: session.videoId,
       fileName: request.fileName,
       uploadedParts,
       completeResponse

@@ -103,7 +103,9 @@ export class StreamForgeUploadClient {
             description: request.description,
             totalSize: request.file.size,
             contentType: request.contentType ?? request.file.type ?? 'application/octet-stream',
-            categoryId: request.categoryId
+            categoryId: request.categoryId,
+            visibility: request.visibility,
+            tagIds: request.tagIds
         });
         const uploadedParts = [];
         const totalParts = Math.ceil(request.file.size / chunkSizeBytes);
@@ -130,6 +132,7 @@ export class StreamForgeUploadClient {
         });
         return {
             sessionId: session.sessionId,
+            videoId: session.videoId,
             fileName: request.fileName,
             uploadedParts,
             completeResponse

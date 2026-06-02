@@ -8,9 +8,12 @@ export type CreateUploadSessionRequest = {
     totalSize: number;
     contentType?: string;
     categoryId?: string;
+    visibility?: 'Public' | 'Private' | 'Internal';
+    tagIds?: string[];
 };
 export type CreateUploadSessionResponse = {
     sessionId: string;
+    videoId: string;
     expiresAt: string;
     videoTitle: string;
 };
@@ -50,11 +53,14 @@ export type UploadFileRequest = {
     description?: string;
     contentType?: string;
     categoryId?: string;
+    visibility?: 'Public' | 'Private' | 'Internal';
+    tagIds?: string[];
     chunkSizeBytes?: number;
     onProgress?: (progress: UploadProgress) => void;
 };
 export type UploadFileResponse = {
     sessionId: string;
+    videoId: string;
     fileName: string;
     uploadedParts: ChunkUploadResult[];
     completeResponse: unknown;
