@@ -83,7 +83,7 @@ Core video metadata and settings.
 **Notes:**
 - VideoSettings merged into Videos table (1:1 relationship eliminated)
 - ViewCount denormalized for performance
-- Upload-created videos start as `Uploading` and become `Ready` after the final file is assembled.
+- Upload-created videos start as `Uploading`, move to `Processing` after the final source file is assembled, and become `Ready` after processing generates playable assets.
 
 ---
 
@@ -597,7 +597,7 @@ Video viewing and interaction analytics.
 - `Created` - Session created, awaiting first chunk
 - `Active` - Chunks are being uploaded
 - `Completing` - Final assembly is in progress
-- `Completed` - Upload completed and linked video is ready
+- `Completed` - Upload completed and linked video has been handed to processing
 - `Failed` - Upload failed or was cancelled
 - `Expired` - Session expired before completion
 
