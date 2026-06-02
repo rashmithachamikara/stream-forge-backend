@@ -43,26 +43,6 @@ public class UploadSession : BaseEntity
     public string TemporaryStoragePath { get; private set; }
 
     /// <summary>
-    /// Video title
-    /// </summary>
-    public string VideoTitle { get; private set; }
-
-    /// <summary>
-    /// Video description
-    /// </summary>
-    public string? VideoDescription { get; private set; }
-
-    /// <summary>
-    /// Video visibility setting
-    /// </summary>
-    public VideoVisibility VideoVisibility { get; private set; }
-
-    /// <summary>
-    /// Category ID (optional)
-    /// </summary>
-    public Guid? CategoryId { get; private set; }
-
-    /// <summary>
     /// File MIME type
     /// </summary>
     public string? ContentType { get; private set; }
@@ -78,27 +58,35 @@ public class UploadSession : BaseEntity
     public DateTime UpdatedAt { get; private set; }
 
     /// <summary>
-    /// The video ID after successful completion
+    /// Video created for this upload session.
     /// </summary>
-    public Guid? VideoId { get; private set; }
+    public Guid VideoId { get; private set; }
 
-    private UploadSession() { }
+    /// <summary>
+    /// Video navigation property.
+    /// </summary>
+    public Video Video { get; private set; } = null!;
+
+    private UploadSession()
+    {
+        TemporaryStoragePath = string.Empty;
+    }
 
     /// <summary>
     /// Creates a new upload session
     /// </summary>
     public static UploadSession Create(
         Guid userId,
-        string videoTitle,
+        Guid videoId,
         long totalSize,
         StorageProviderType storageProviderType,
         string temporaryStoragePath,
-        VideoVisibility visibility = VideoVisibility.Private,
-        string? videoDescription = null,
-        Guid? categoryId = null,
         string? contentType = null,
         int sessionExpirationMinutes = 1440) // Default 24 hours
     {
+        if (videoId == Guid.Empty)
+            throw new ArgumentException("Video ID is required", nameof(videoId));
+
         var expiresAt = DateTime.UtcNow.AddMinutes(sessionExpirationMinutes);
 
         return new UploadSession
@@ -106,19 +94,15 @@ public class UploadSession : BaseEntity
             Id = Guid.NewGuid(),
             CreatedAt = DateTime.UtcNow,
             UserId = userId,
+            VideoId = videoId,
             Status = UploadSessionStatus.Created,
             TotalSize = totalSize,
             UploadedSize = 0,
             StorageProviderType = storageProviderType,
             TemporaryStoragePath = temporaryStoragePath,
-            VideoTitle = videoTitle,
-            VideoDescription = videoDescription,
-            VideoVisibility = visibility,
-            CategoryId = categoryId,
             ContentType = contentType,
             ExpiresAt = expiresAt,
-            UpdatedAt = DateTime.UtcNow,
-            VideoId = null
+            UpdatedAt = DateTime.UtcNow
         };
     }
 
@@ -150,12 +134,11 @@ public class UploadSession : BaseEntity
     }
 
     /// <summary>
-    /// Marks session as completed with the video ID
+    /// Marks session as completed
     /// </summary>
-    public void MarkAsCompleted(Guid videoId)
+    public void MarkAsCompleted()
     {
         Status = UploadSessionStatus.Completed;
-        VideoId = videoId;
         UpdatedAt = DateTime.UtcNow;
     }
 

@@ -28,6 +28,12 @@ public class VideoConfiguration : IEntityTypeConfiguration<Video>
             .HasConversion<string>()
             .HasMaxLength(50);
 
+        builder.Property(v => v.Status)
+            .IsRequired()
+            .HasConversion<string>()
+            .HasMaxLength(50)
+            .HasDefaultValue(VideoStatus.Ready);
+
         builder.Property(v => v.AllowComments)
             .IsRequired()
             .HasDefaultValue(true);
@@ -80,6 +86,9 @@ public class VideoConfiguration : IEntityTypeConfiguration<Video>
 
         builder.HasIndex(v => v.Visibility)
             .HasDatabaseName("IX_Videos_Visibility");
+
+        builder.HasIndex(v => v.Status)
+            .HasDatabaseName("IX_Videos_Status");
 
         builder.HasIndex(v => v.CreatedAt)
             .HasDatabaseName("IX_Videos_CreatedAt");

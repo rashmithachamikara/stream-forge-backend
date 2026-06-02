@@ -30,19 +30,12 @@ public class UploadSessionConfiguration : IEntityTypeConfiguration<UploadSession
         builder.Property(s => s.StorageProviderType)
             .IsRequired();
 
+        builder.Property(s => s.VideoId)
+            .IsRequired();
+
         builder.Property(s => s.TemporaryStoragePath)
             .IsRequired()
             .HasMaxLength(2000);
-
-        builder.Property(s => s.VideoTitle)
-            .IsRequired()
-            .HasMaxLength(500);
-
-        builder.Property(s => s.VideoDescription)
-            .HasMaxLength(2000);
-
-        builder.Property(s => s.VideoVisibility)
-            .IsRequired();
 
         builder.Property(s => s.ContentType)
             .HasMaxLength(100);
@@ -75,12 +68,14 @@ public class UploadSessionConfiguration : IEntityTypeConfiguration<UploadSession
             .HasForeignKey(s => s.UserId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(s => s.Video)
+            .WithMany()
+            .HasForeignKey(s => s.VideoId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasMany<UploadSessionPart>()
             .WithOne()
             .HasForeignKey(p => p.UploadSessionId)
             .OnDelete(DeleteBehavior.Cascade);
     }
-
-    // Navigation property needs to be added to UploadSession entity if using it
-    // For now, we're using the repository to load parts
 }

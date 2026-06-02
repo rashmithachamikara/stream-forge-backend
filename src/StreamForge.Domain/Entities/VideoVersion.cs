@@ -43,7 +43,7 @@ public class VideoVersion : BaseEntity
     public long SizeBytes { get; private set; }
 
     /// <summary>
-    /// Video duration in seconds
+    /// Video duration in seconds. Zero means unknown until media probing completes.
     /// </summary>
     public int DurationSeconds { get; private set; }
 
@@ -84,8 +84,8 @@ public class VideoVersion : BaseEntity
         if (sizeBytes <= 0)
             throw new ArgumentException("Size must be greater than zero", nameof(sizeBytes));
 
-        if (durationSeconds <= 0)
-            throw new ArgumentException("Duration must be greater than zero", nameof(durationSeconds));
+        if (durationSeconds < 0)
+            throw new ArgumentException("Duration cannot be negative", nameof(durationSeconds));
 
         var version = new VideoVersion
         {
@@ -113,8 +113,8 @@ public class VideoVersion : BaseEntity
         if (sizeBytes <= 0)
             throw new ArgumentException("Size must be greater than zero", nameof(sizeBytes));
 
-        if (durationSeconds <= 0)
-            throw new ArgumentException("Duration must be greater than zero", nameof(durationSeconds));
+        if (durationSeconds < 0)
+            throw new ArgumentException("Duration cannot be negative", nameof(durationSeconds));
 
         StoragePath = storagePath;
         SizeBytes = sizeBytes;

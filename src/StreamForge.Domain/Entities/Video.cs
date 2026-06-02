@@ -33,6 +33,11 @@ public class Video : BaseEntity
     public VideoVisibility Visibility { get; private set; }
 
     /// <summary>
+    /// Video lifecycle status
+    /// </summary>
+    public VideoStatus Status { get; private set; }
+
+    /// <summary>
     /// Whether comments are allowed
     /// </summary>
     public bool AllowComments { get; private set; }
@@ -125,7 +130,8 @@ public class Video : BaseEntity
         string? description, 
         Guid uploaderId, 
         Guid? categoryId = null,
-        VideoVisibility visibility = VideoVisibility.Public)
+        VideoVisibility visibility = VideoVisibility.Public,
+        VideoStatus status = VideoStatus.Ready)
     {
         if (string.IsNullOrWhiteSpace(title))
             throw new ArgumentException("Title cannot be empty", nameof(title));
@@ -140,6 +146,7 @@ public class Video : BaseEntity
             UploaderId = uploaderId,
             CategoryId = categoryId,
             Visibility = visibility,
+            Status = status,
             AllowComments = true,
             AllowLikes = true,
             AllowBookmarks = true,
@@ -175,6 +182,51 @@ public class Video : BaseEntity
     public void UpdateVisibility(VideoVisibility visibility)
     {
         Visibility = visibility;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Marks the video as uploading.
+    /// </summary>
+    public void MarkAsUploading()
+    {
+        Status = VideoStatus.Uploading;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Marks the video as processing.
+    /// </summary>
+    public void MarkAsProcessing()
+    {
+        Status = VideoStatus.Processing;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Marks the video as ready.
+    /// </summary>
+    public void MarkAsReady()
+    {
+        Status = VideoStatus.Ready;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Marks the video as failed.
+    /// </summary>
+    public void MarkAsFailed()
+    {
+        Status = VideoStatus.Failed;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Marks the video as deleted.
+    /// </summary>
+    public void MarkAsDeleted()
+    {
+        Status = VideoStatus.Deleted;
         UpdatedAt = DateTime.UtcNow;
     }
 

@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
@@ -12,10 +13,14 @@ using StreamForge.Api.Middleware;
 using RateLimiterConfigOptions = StreamForge.Application.Common.RateLimiterOptions;
 using StreamForge.Application.Common;
 using StreamForge.Application.Interfaces;
+using StreamForge.Application.UseCases.Uploads;
+using StreamForge.Application.UseCases.Uploads.CreateSession;
 using StreamForge.Domain.Enums;
+using StreamForge.Domain.Interfaces;
 using StreamForge.Infrastructure.Authentication;
 using StreamForge.Infrastructure.Data;
 using StreamForge.Infrastructure.Persistence;
+using StreamForge.Infrastructure.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 const string CorsPolicyName = "StreamForgeCors";
@@ -57,7 +62,11 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 });
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 builder.Services.AddHttpContextAccessor();
 
 builder.Services
@@ -142,6 +151,20 @@ builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<IAuthorizationService, VideoAuthorizationService>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<UploadOptions>>().Value);
+builder.Services.AddScoped<IStorageService>(sp =>
+{
+    var uploadOptions = sp.GetRequiredService<IOptions<UploadOptions>>().Value;
+    var environment = sp.GetRequiredService<IWebHostEnvironment>();
+    var logger = sp.GetRequiredService<ILogger<LocalFileStorageService>>();
+    var storagePath = Path.GetFullPath(Path.Combine(environment.ContentRootPath, uploadOptions.StoragePath));
+    return new LocalFileStorageService(storagePath, logger);
+});
+builder.Services.AddScoped<CreateUploadSessionService>();
+builder.Services.AddScoped<GetUploadTargetService>();
+builder.Services.AddScoped<UploadPartService>();
+builder.Services.AddScoped<CompleteUploadSessionService>();
 
 // Configure rate limiting. Upload chunk traffic has a separate bucket because
 // large files can legitimately require hundreds of requests in a short burst.

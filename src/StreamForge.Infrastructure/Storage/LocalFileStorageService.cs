@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using System.Security.Cryptography;
 using StreamForge.Application.Interfaces;
 
 namespace StreamForge.Infrastructure.Storage;
@@ -63,7 +64,7 @@ public class LocalFileStorageService : IStorageService
     {
         // For local filesystem, return a backend endpoint URL
         // The actual endpoint implementation will handle the upload
-        var endpoint = $"/api/uploads/sessions/{sessionId}/parts/{partNumber}";
+        var endpoint = $"/api/v1/uploads/sessions/{sessionId}/parts/{partNumber}";
 
         var target = new UploadTarget
         {
@@ -128,9 +129,26 @@ public class LocalFileStorageService : IStorageService
 
     public async Task DeleteRangeAsync(IEnumerable<string> storagePaths, CancellationToken cancellationToken = default)
     {
+        var touchedDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var storagePath in storagePaths)
         {
+            var fullPath = Path.Combine(_storagePath, storagePath);
+            var directory = Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                touchedDirectories.Add(directory);
+            }
+
             await DeleteAsync(storagePath, cancellationToken);
+        }
+
+        foreach (var directory in touchedDirectories)
+        {
+            if (Directory.Exists(directory) && !Directory.EnumerateFileSystemEntries(directory).Any())
+            {
+                Directory.Delete(directory);
+                _logger.LogInformation("Deleted empty upload part directory: {Directory}", directory);
+            }
         }
     }
 
@@ -144,6 +162,34 @@ public class LocalFileStorageService : IStorageService
 
         var fileInfo = new FileInfo(fullPath);
         return await Task.FromResult(fileInfo.Length);
+    }
+
+    public async Task<string> CalculateChecksumAsync(
+        string storagePath,
+        string algorithm = "SHA256",
+        CancellationToken cancellationToken = default)
+    {
+        if (!string.Equals(algorithm, "SHA256", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new NotSupportedException($"Checksum algorithm '{algorithm}' is not supported by local storage");
+        }
+
+        var fullPath = Path.Combine(_storagePath, storagePath);
+        if (!File.Exists(fullPath))
+        {
+            throw new FileNotFoundException($"File not found: {fullPath}");
+        }
+
+        await using var fileStream = new FileStream(
+            fullPath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            bufferSize: 1024 * 1024,
+            useAsync: true);
+
+        var checksum = await SHA256.HashDataAsync(fileStream, cancellationToken);
+        return Convert.ToHexString(checksum).ToLowerInvariant();
     }
 
     public async Task<bool> ExistsAsync(string storagePath, CancellationToken cancellationToken = default)

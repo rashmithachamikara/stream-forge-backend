@@ -114,6 +114,18 @@ public interface IStorageService
     Task<long> GetFileSizeAsync(string storagePath, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Calculates a checksum for a stored file.
+    /// </summary>
+    /// <param name="storagePath">Storage path</param>
+    /// <param name="algorithm">Checksum algorithm. Defaults to SHA-256.</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Hex-encoded checksum</returns>
+    Task<string> CalculateChecksumAsync(
+        string storagePath,
+        string algorithm = "SHA256",
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Checks if a file exists
     /// </summary>
     /// <param name="storagePath">Storage path</param>

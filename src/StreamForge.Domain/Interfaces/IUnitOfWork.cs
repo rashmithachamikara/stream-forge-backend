@@ -18,6 +18,26 @@ public interface IUnitOfWork : IDisposable
     IVideoRepository Videos { get; }
 
     /// <summary>
+    /// Video version repository
+    /// </summary>
+    IVideoVersionRepository VideoVersions { get; }
+
+    /// <summary>
+    /// Video file repository
+    /// </summary>
+    IVideoFileRepository VideoFiles { get; }
+
+    /// <summary>
+    /// Video tag repository
+    /// </summary>
+    IVideoTagRepository VideoTags { get; }
+
+    /// <summary>
+    /// Storage provider repository
+    /// </summary>
+    IStorageProviderRepository StorageProviders { get; }
+
+    /// <summary>
     /// Category repository
     /// </summary>
     ICategoryRepository Categories { get; }

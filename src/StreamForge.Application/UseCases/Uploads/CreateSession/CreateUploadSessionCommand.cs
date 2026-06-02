@@ -11,4 +11,6 @@ public record CreateUploadSessionRequest(
     string? Description,
     long TotalSize,
     string? ContentType,
-    Guid? CategoryId = null);
+    Guid? CategoryId = null,
+    VideoVisibility? Visibility = null,
+    IReadOnlyCollection<Guid>? TagIds = null);

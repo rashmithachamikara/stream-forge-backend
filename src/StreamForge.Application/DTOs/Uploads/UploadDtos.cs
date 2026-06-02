@@ -1,3 +1,5 @@
+using StreamForge.Domain.Enums;
+
 namespace StreamForge.Application.DTOs.Uploads;
 
 /// <summary>
@@ -8,13 +10,16 @@ public sealed record CreateUploadSessionRequestDto(
     string? Description,
     long TotalSize,
     string? ContentType,
-    Guid? CategoryId = null);
+    Guid? CategoryId = null,
+    VideoVisibility? Visibility = null,
+    IReadOnlyCollection<Guid>? TagIds = null);
 
 /// <summary>
 /// Response after creating an upload session
 /// </summary>
 public sealed record CreateUploadSessionResponseDto(
     Guid SessionId,
+    Guid VideoId,
     DateTime ExpiresAt,
     string VideoTitle);
 
