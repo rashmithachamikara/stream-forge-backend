@@ -20,7 +20,9 @@ Add automated confidence around completed core behavior, including upload flows 
 - Create-session rejects invalid category, invalid tags, oversized files, and invalid MIME type.
 - Upload-part rejects invalid part number, oversized chunk, checksum mismatch, and duplicate part.
 - Complete-session rejects missing parts, non-contiguous parts, expired sessions, wrong owner, and total-size mismatch.
-- Complete-session creates `VideoVersion` and `VideoFile`, marks the existing video ready, computes final checksum, and deletes chunks after success.
+- Complete-session creates the original `VideoVersion` and `VideoFile`, marks the existing video processing, enqueues processing, computes final checksum, and deletes chunks after success.
+- Processing tests verify ffprobe metadata updates, HLS generation, thumbnail generation, job status transitions, and video `Ready`/`Failed` outcomes.
+- Streaming endpoint tests verify manifest, segment, and thumbnail authorization.
 - Failure paths mark linked uploading videos failed where applicable.
 
 ## Acceptance Criteria

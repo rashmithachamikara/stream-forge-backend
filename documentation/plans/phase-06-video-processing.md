@@ -1,6 +1,6 @@
 # Phase 6 - Video Processing And Streaming
 
-Status: [ ] Planned
+Status: [ ] Partially Implemented
 
 ## Purpose
 
@@ -14,6 +14,16 @@ Process completed local/backend uploads into playable streaming assets while pre
 - Generate HLS playlists/segments and a default thumbnail/poster.
 - Update media metadata from the actual file, including duration, codec, bitrate, and dimensions.
 - Serve manifests, segments, and thumbnails through thin API endpoints protected by existing video authorization rules.
+
+## Implemented Scope
+
+- Hangfire package registration with PostgreSQL storage.
+- Processing queue abstraction and Hangfire-backed enqueue adapter.
+- Upload completion creates a `VideoProcessingJob`, marks the video `Processing`, and enqueues background processing.
+- Application processing workflow for probing, HLS generation, thumbnail generation, DB updates, and status transitions.
+- FFmpeg/ffprobe Infrastructure adapter for local storage.
+- Manifest, streaming asset, and thumbnail endpoints backed by Application use cases.
+- Appsettings documented for FFmpeg, ffprobe, HLS segment length, and thumbnail timestamp.
 
 ## Clean Architecture Design
 
@@ -68,6 +78,7 @@ Process completed local/backend uploads into playable streaming assets while pre
 ## Notes
 
 - Phase 7 streaming work has been folded into this phase.
+- Current implementation is build-verified but still needs a real FFmpeg/Hangfire smoke test with a sample video.
 - Do not add S3 multipart upload, resumable upload retry semantics, upload cleanup jobs, or advanced upload observability here; those remain Phase 12.
 - Start with local storage and HLS playback. Additional storage providers can extend the same Application abstractions later.
 - Automated test coverage for processing and streaming can be tracked under Phase 10 unless implemented directly during this phase.

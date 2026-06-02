@@ -7,6 +7,7 @@ Status: [X] Done
 Deliver the core local/backend upload flow and refactor it into the Clean Architecture boundaries used by the rest of Stream Forge. This phase owns the upload session model, local chunk handling, upload API surface, and application-layer orchestration for creating an uploading video and attaching file records after chunks are completed.
 
 Advanced upload hardening is intentionally deferred to [Phase 12 - Upload Hardening and Advanced Storage](phase-12-upload-hardening-and-advanced-storage.md).
+Completed uploads hand off to [Phase 6 - Video Processing And Streaming](phase-06-video-processing.md) for HLS generation, thumbnails, and final playable `Ready` status.
 
 ## Implemented Scope
 
@@ -37,7 +38,6 @@ Advanced upload hardening is intentionally deferred to [Phase 12 - Upload Harden
 - Real S3 multipart upload implementation and presigned URL generation.
 - Resumable overwrite/retry semantics for duplicate or partially uploaded chunks.
 - Background cleanup jobs for expired/failed sessions and abandoned files.
-- Post-upload processing queue integration.
 - Upload-time thumbnail, player, and access-control metadata.
 - Upload observability dashboards, metrics, and alerts.
 
@@ -68,7 +68,7 @@ These items belong to Phase 12.
 - Upload session creation creates a `Video` with `Status = Uploading` and creates `VideoTag` rows.
 - Chunk uploads validate part number, part size, configured chunk limit, and checksum.
 - Completion rejects missing, non-contiguous, expired, or size-mismatched uploads.
-- On completion, the API assembles chunks, creates `VideoVersion` and `VideoFile` records, marks the session completed, and marks the existing video `Ready`.
+- On completion, the API assembles chunks, creates the original `VideoVersion` and `VideoFile` records, marks the session completed, and hands the video to Phase 6 processing.
 - Temporary chunk files are deleted after successful completion; cleanup failures are logged without failing a completed upload.
 - The database stores upload session, session parts, video metadata, and file metadata consistently.
 - The local/backend upload flow can upload and complete a sample video.
@@ -79,5 +79,5 @@ These items belong to Phase 12.
 - Start with local/backend upload as the stable development path.
 - Keep S3 placeholders from being treated as production-ready behavior until Phase 12.
 - Keep transcoding, thumbnail generation, and streaming pipeline behavior outside the upload request path.
-- If completion later queues processing jobs, that integration should be added in Phase 12 or Phase 6 coordination work.
+- Phase 6 owns the processing queue and marks videos `Ready` after playable assets are generated.
 - Automated upload use-case, API, and large-file coverage is deferred to Phase 10 testing work.

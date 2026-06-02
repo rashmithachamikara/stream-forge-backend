@@ -40,21 +40,22 @@
 - [X] Implement upload repositories and unit-of-work path
 - [X] Keep upload controller as a thin HTTP adapter
 - [X] Add session, target, part upload, and completion endpoints
-- [X] Create video at upload-session start and mark it ready on completion
+- [X] Create video at upload-session start and hand completed uploads to processing
 - [X] Validate chunks, assemble final file, compute checksum, and delete temporary chunks
 
 ### Phase 6: Video Processing And Streaming (Week 5-8)
-- [ ] Install and configure Hangfire with PostgreSQL storage
-- [ ] Add processing queue integration after upload completion
-- [ ] Implement Application abstractions for background jobs, media processing, and streaming asset access
-- [ ] Implement FFmpeg/ffprobe Infrastructure adapters
-- [ ] Probe uploaded media and update duration, codec, bitrate, and dimensions
-- [ ] Generate HLS master playlist, variant playlists, and segments
-- [ ] Generate default thumbnail/poster assets
-- [ ] Persist processing job state, progress, completion, and failure details
-- [ ] Create/update `VideoVersions`, `VideoFiles`, and `VideoThumbnails` for generated outputs
-- [ ] Add manifest, segment, and thumbnail endpoints with existing video access control
-- [ ] Keep API controllers thin and keep Hangfire, FFmpeg, filesystem, and EF orchestration outside controllers
+- [X] Install and configure Hangfire with PostgreSQL storage
+- [X] Add processing queue integration after upload completion
+- [X] Implement Application abstractions for background jobs, media processing, and streaming asset access
+- [X] Implement FFmpeg/ffprobe Infrastructure adapters
+- [X] Probe uploaded media and update duration, codec, bitrate, and dimensions
+- [X] Generate HLS master playlist, variant playlists, and segments
+- [X] Generate default thumbnail/poster assets
+- [X] Persist processing job state, progress, completion, and failure details
+- [X] Create/update `VideoVersions`, `VideoFiles`, and `VideoThumbnails` for generated outputs
+- [X] Add manifest, segment, and thumbnail endpoints with existing video access control
+- [X] Keep API controllers thin and keep Hangfire, FFmpeg, filesystem, and EF orchestration outside controllers
+- [ ] Run FFmpeg/Hangfire smoke test with a sample video
 
 ### Phase 7: Video Streaming (Week 7-8) [X] Folded into Phase 6
 - [X] HLS playlist generation moved to Phase 6
