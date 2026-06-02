@@ -98,6 +98,20 @@ public interface IStorageService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Promotes a validated completed upload source into canonical video storage.
+    /// </summary>
+    /// <param name="videoId">Video ID that owns the completed source file</param>
+    /// <param name="sourceStoragePath">Provider-relative path or key for the assembled upload source</param>
+    /// <param name="fileName">Final source file name</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Provider-relative path or key for the permanent video source file</returns>
+    Task<string> PromoteCompletedUploadAsync(
+        Guid videoId,
+        string sourceStoragePath,
+        string fileName,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Deletes a file from storage
     /// </summary>
     /// <param name="storagePath">Storage path to delete</param>

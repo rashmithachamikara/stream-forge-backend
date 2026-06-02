@@ -111,6 +111,7 @@ Different resolutions/formats of the same video.
 **Notes:**
 - Each video can have multiple versions for adaptive streaming
 - StoragePath is relative to StorageProvider configuration
+- Original upload source files are stored under a canonical video-owned storage path after upload completion, not under the temporary upload-session path.
 
 ---
 
@@ -162,6 +163,7 @@ Physical file storage references.
 **Notes:**
 - Supports multiple storage providers per video version
 - Checksum for integrity verification
+- The original uploaded source file path should point to permanent video storage, such as `videos/{videoId}/original/{fileName}` for local storage.
 
 ---
 
@@ -194,6 +196,8 @@ Tracks resumable video upload runtime state for an already-created `Video`.
 - Upload sessions are owned by a user and linked to the video created at upload start.
 - Real video metadata is stored directly on `Videos` and related tables such as `VideoTags`.
 - `Status` drives upload lifecycle handling and cleanup of incomplete uploads.
+- Local upload chunks and assembled temporary files are staged under `sessions/{sessionId}` inside the configured upload storage root.
+- Temporary upload paths are runtime staging locations only; completed original source files are promoted into video-owned storage before `VideoFiles` rows are committed.
 
 ---
 

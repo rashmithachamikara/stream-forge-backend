@@ -385,19 +385,34 @@ public sealed class CompleteUploadSessionService
             ?? throw new EntityNotFoundException("Video", session.VideoId);
 
         var finalChecksum = await _storageService.CalculateChecksumAsync(finalPath, cancellationToken: cancellationToken);
+        var permanentPath = await _storageService.PromoteCompletedUploadAsync(
+            video.Id,
+            finalPath,
+            command.FileName,
+            cancellationToken);
+
+        var permanentSize = await _storageService.GetFileSizeAsync(permanentPath, cancellationToken);
+        if (permanentSize != finalSize)
+        {
+            session.MarkAsFailed();
+            await MarkVideoFailedAsync(session.VideoId, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            throw new InvalidOperationException("Promoted video source file size does not match assembled upload size");
+        }
+
         var videoFormat = ResolveVideoFormat(command.FileName, session.ContentType);
         var version = VideoVersion.Create(
             videoId: video.Id,
             resolution: "original",
             format: videoFormat,
-            storagePath: finalPath,
+            storagePath: permanentPath,
             sizeBytes: finalSize,
             durationSeconds: 0);
 
         var videoFile = VideoFile.Create(
             videoVersionId: version.Id,
             storageProviderId: storageProvider.Id,
-            filePath: finalPath,
+            filePath: permanentPath,
             fileSize: finalSize,
             mimeType: session.ContentType ?? "video/mp4",
             checksum: finalChecksum);
@@ -423,7 +438,7 @@ public sealed class CompleteUploadSessionService
 
         try
         {
-            await _storageService.DeleteRangeAsync(parts.Select(part => part.StoragePath), cancellationToken);
+            await _storageService.DeleteRangeAsync(parts.Select(part => part.StoragePath).Append(finalPath), cancellationToken);
         }
         catch
         {

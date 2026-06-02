@@ -12,7 +12,7 @@ The `Upload` section controls video upload behavior and interacts with the `Uplo
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `StoragePath` | `./uploads` | Root path for local temporary chunks and final video files |
+| `StoragePath` | `./uploads` | Root path for local upload sessions, permanent source files, and generated processing assets |
 | `MaxFileSize` | `5368709120` | Maximum upload size in bytes, currently 5 GiB |
 | `ChunkSize` | `5242880` | Maximum chunk size in bytes, currently 5 MiB |
 | `AllowedMimeTypes` | video MIME allow-list | MIME types accepted for video uploads |
@@ -23,6 +23,7 @@ The `Upload` section controls video upload behavior and interacts with the `Uplo
 - With 5 MiB chunks, a 1.6 GiB upload requires roughly 328 part uploads.
 - If the client requests an upload target per chunk, the same upload may also make roughly 328 target requests.
 - Keep `MaxFileSize`, `ChunkSize`, reverse-proxy body limits, and client upload concurrency aligned.
+- Local upload session files are staged under `sessions/{sessionId}` inside `StoragePath`; completed source files are promoted to `videos/{videoId}/original`.
 
 ---
 

@@ -25,13 +25,14 @@ Completed uploads hand off to [Phase 6 - Video Processing And Streaming](phase-0
 - Move upload orchestration out of `UploadSessionsController` and into Application use cases.
 - Keep the controller thin: HTTP binding, authorization context, use-case calls, and DTO responses only.
 - Complete and register the existing repository/unit-of-work seam for upload workflows.
-- Keep local file save, chunk assembly, and chunk deletion behind `IStorageService`.
+- Keep local file save, chunk assembly, completed-source promotion, and chunk deletion behind `IStorageService`.
 - Accept core upload metadata: title, description, total size, content type, category, visibility, and tag IDs.
 - Store video metadata directly on `Video` and tags directly in `VideoTags` at session creation.
 - Keep `UploadSession` limited to upload/runtime state linked to `VideoId`.
 - Validate category and tag IDs before accepting an upload session.
 - Validate chunk number, chunk size, checksum, contiguous parts, and final assembled size.
-- Delete temporary chunk files after successful final file creation and database completion.
+- Promote the validated source file into video-scoped permanent storage before writing file records.
+- Delete temporary chunk files after successful permanent source creation and database completion.
 
 ## Out Of Scope For Phase 5
 
@@ -68,7 +69,7 @@ These items belong to Phase 12.
 - Upload session creation creates a `Video` with `Status = Uploading` and creates `VideoTag` rows.
 - Chunk uploads validate part number, part size, configured chunk limit, and checksum.
 - Completion rejects missing, non-contiguous, expired, or size-mismatched uploads.
-- On completion, the API assembles chunks, creates the original `VideoVersion` and `VideoFile` records, marks the session completed, and hands the video to Phase 6 processing.
+- On completion, the API assembles chunks, promotes the validated source file into canonical video storage, creates the original `VideoVersion` and `VideoFile` records, marks the session completed, and hands the video to Phase 6 processing.
 - Temporary chunk files are deleted after successful completion; cleanup failures are logged without failing a completed upload.
 - The database stores upload session, session parts, video metadata, and file metadata consistently.
 - The local/backend upload flow can upload and complete a sample video.
@@ -78,6 +79,7 @@ These items belong to Phase 12.
 
 - Start with local/backend upload as the stable development path.
 - Keep S3 placeholders from being treated as production-ready behavior until Phase 12.
+- Keep completed-source promotion provider-neutral: local storage moves the file; S3 can later copy/delete or complete multipart upload directly into the permanent video key.
 - Keep transcoding, thumbnail generation, and streaming pipeline behavior outside the upload request path.
 - Phase 6 owns the processing queue and marks videos `Ready` after playable assets are generated.
 - Automated upload use-case, API, and large-file coverage is deferred to Phase 10 testing work.

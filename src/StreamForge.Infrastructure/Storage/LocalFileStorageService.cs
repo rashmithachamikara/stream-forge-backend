@@ -9,6 +9,13 @@ namespace StreamForge.Infrastructure.Storage;
 /// </summary>
 public class LocalFileStorageService : IStorageService
 {
+    private static readonly HashSet<string> ProtectedTopLevelDirectories = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "sessions",
+        "videos",
+        "processing"
+    };
+
     private readonly string _storagePath;
     private readonly ILogger<LocalFileStorageService> _logger;
 
@@ -32,8 +39,8 @@ public class LocalFileStorageService : IStorageService
         string fileName,
         CancellationToken cancellationToken = default)
     {
-        // Create session-specific directory
-        var sessionDirectory = Path.Combine(_storagePath, sessionId.ToString());
+        // Create session-specific temporary directory
+        var sessionDirectory = GetSessionDirectory(sessionId);
         if (!Directory.Exists(sessionDirectory))
         {
             Directory.CreateDirectory(sessionDirectory);
@@ -82,7 +89,7 @@ public class LocalFileStorageService : IStorageService
         string finalFileName,
         CancellationToken cancellationToken = default)
     {
-        var finalDirectory = Path.Combine(_storagePath, sessionId.ToString(), "final");
+        var finalDirectory = Path.Combine(GetSessionDirectory(sessionId), "final");
         if (!Directory.Exists(finalDirectory))
         {
             Directory.CreateDirectory(finalDirectory);
@@ -115,9 +122,47 @@ public class LocalFileStorageService : IStorageService
         return Path.GetRelativePath(_storagePath, finalPath);
     }
 
+    public Task<string> PromoteCompletedUploadAsync(
+        Guid videoId,
+        string sourceStoragePath,
+        string fileName,
+        CancellationToken cancellationToken = default)
+    {
+        var sourcePath = ResolveStoragePath(sourceStoragePath);
+        if (!File.Exists(sourcePath))
+        {
+            throw new FileNotFoundException($"Completed upload source file not found: {sourcePath}");
+        }
+
+        var safeFileName = SanitizeFileName(Path.GetFileName(fileName));
+        if (string.IsNullOrWhiteSpace(safeFileName))
+        {
+            safeFileName = "source.mp4";
+        }
+
+        var destinationDirectory = ResolveStoragePath(Path.Combine("videos", videoId.ToString("N"), "original"));
+        Directory.CreateDirectory(destinationDirectory);
+
+        var destinationPath = Path.GetFullPath(Path.Combine(destinationDirectory, safeFileName));
+        EnsureInsideStorageRoot(destinationPath);
+        if (File.Exists(destinationPath))
+        {
+            throw new IOException($"Permanent video source already exists: {destinationPath}");
+        }
+
+        File.Move(sourcePath, destinationPath);
+        _logger.LogInformation(
+            "Promoted completed upload source for video {VideoId} from {SourcePath} to {DestinationPath}",
+            videoId,
+            sourcePath,
+            destinationPath);
+
+        return Task.FromResult(Path.GetRelativePath(_storagePath, destinationPath));
+    }
+
     public async Task DeleteAsync(string storagePath, CancellationToken cancellationToken = default)
     {
-        var fullPath = Path.Combine(_storagePath, storagePath);
+        var fullPath = ResolveStoragePath(storagePath);
         if (File.Exists(fullPath))
         {
             File.Delete(fullPath);
@@ -132,7 +177,7 @@ public class LocalFileStorageService : IStorageService
         var touchedDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var storagePath in storagePaths)
         {
-            var fullPath = Path.Combine(_storagePath, storagePath);
+            var fullPath = ResolveStoragePath(storagePath);
             var directory = Path.GetDirectoryName(fullPath);
             if (!string.IsNullOrWhiteSpace(directory))
             {
@@ -152,29 +197,15 @@ public class LocalFileStorageService : IStorageService
             }
         }
 
-        foreach (var directory in touchedDirectories)
+        foreach (var directory in touchedDirectories.OrderByDescending(directory => directory.Length))
         {
-            if (Directory.Exists(directory) && !Directory.EnumerateFileSystemEntries(directory).Any())
-            {
-                try
-                {
-                    Directory.Delete(directory);
-                    _logger.LogInformation("Deleted empty upload part directory: {Directory}", directory);
-                }
-                catch (Exception exception)
-                {
-                    _logger.LogWarning(
-                        exception,
-                        "Failed to delete empty upload part directory {Directory}",
-                        directory);
-                }
-            }
+            PruneEmptyDirectories(directory);
         }
     }
 
     public async Task<long> GetFileSizeAsync(string storagePath, CancellationToken cancellationToken = default)
     {
-        var fullPath = Path.Combine(_storagePath, storagePath);
+        var fullPath = ResolveStoragePath(storagePath);
         if (!File.Exists(fullPath))
         {
             throw new FileNotFoundException($"File not found: {fullPath}");
@@ -194,7 +225,7 @@ public class LocalFileStorageService : IStorageService
             throw new NotSupportedException($"Checksum algorithm '{algorithm}' is not supported by local storage");
         }
 
-        var fullPath = Path.Combine(_storagePath, storagePath);
+        var fullPath = ResolveStoragePath(storagePath);
         if (!File.Exists(fullPath))
         {
             throw new FileNotFoundException($"File not found: {fullPath}");
@@ -217,12 +248,7 @@ public class LocalFileStorageService : IStorageService
         string contentType,
         CancellationToken cancellationToken = default)
     {
-        var fullPath = Path.GetFullPath(Path.Combine(_storagePath, storagePath));
-        var storageRoot = Path.GetFullPath(_storagePath);
-        if (!fullPath.StartsWith(storageRoot, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException("Storage path is outside the configured storage root");
-        }
+        var fullPath = ResolveStoragePath(storagePath);
 
         if (!File.Exists(fullPath))
         {
@@ -243,8 +269,81 @@ public class LocalFileStorageService : IStorageService
 
     public async Task<bool> ExistsAsync(string storagePath, CancellationToken cancellationToken = default)
     {
-        var fullPath = Path.Combine(_storagePath, storagePath);
+        var fullPath = ResolveStoragePath(storagePath);
         return await Task.FromResult(File.Exists(fullPath));
+    }
+
+    private string ResolveStoragePath(string storagePath)
+    {
+        var fullPath = Path.GetFullPath(Path.Combine(_storagePath, storagePath));
+        EnsureInsideStorageRoot(fullPath);
+        return fullPath;
+    }
+
+    private string GetSessionDirectory(Guid sessionId)
+    {
+        return ResolveStoragePath(Path.Combine("sessions", sessionId.ToString()));
+    }
+
+    private void EnsureInsideStorageRoot(string fullPath)
+    {
+        var storageRoot = Path.GetFullPath(_storagePath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        if (!string.Equals(fullPath, storageRoot, StringComparison.OrdinalIgnoreCase) &&
+            !fullPath.StartsWith(storageRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Storage path is outside the configured storage root");
+        }
+    }
+
+    private void PruneEmptyDirectories(string? directory)
+    {
+        var storageRoot = Path.GetFullPath(_storagePath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var current = string.IsNullOrWhiteSpace(directory) ? null : Path.GetFullPath(directory);
+
+        while (!string.IsNullOrWhiteSpace(current) &&
+               !string.Equals(current, storageRoot, StringComparison.OrdinalIgnoreCase) &&
+               current.StartsWith(storageRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+        {
+            if (IsProtectedTopLevelDirectory(current, storageRoot))
+            {
+                break;
+            }
+
+            if (!Directory.Exists(current))
+            {
+                current = Directory.GetParent(current)?.FullName;
+                continue;
+            }
+
+            if (Directory.EnumerateFileSystemEntries(current).Any())
+            {
+                break;
+            }
+
+            try
+            {
+                Directory.Delete(current);
+                _logger.LogInformation("Deleted empty upload directory: {Directory}", current);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogWarning(
+                    exception,
+                    "Failed to delete empty upload directory {Directory}",
+                    current);
+                break;
+            }
+
+            current = Directory.GetParent(current)?.FullName;
+        }
+    }
+
+    private static bool IsProtectedTopLevelDirectory(string directory, string storageRoot)
+    {
+        var relativePath = Path.GetRelativePath(storageRoot, directory);
+        return !relativePath.Contains(Path.DirectorySeparatorChar) &&
+               !relativePath.Contains(Path.AltDirectorySeparatorChar) &&
+               ProtectedTopLevelDirectories.Contains(relativePath);
     }
 
     /// <summary>
