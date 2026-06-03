@@ -1,0 +1,35 @@
+using Microsoft.EntityFrameworkCore;
+using StreamForge.Domain.Entities;
+using StreamForge.Domain.Interfaces;
+using StreamForge.Infrastructure.Data;
+
+namespace StreamForge.Infrastructure.Persistence.Repositories;
+
+public sealed class AccessControlRepository : BaseRepository<AccessControl>, IAccessControlRepository
+{
+    public AccessControlRepository(StreamForgeDbContext dbContext) : base(dbContext)
+    {
+    }
+
+    public async Task<PagedQueryResult<AccessControl>> GetByVideoIdPagedAsync(
+        Guid videoId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = DbSet
+            .AsNoTracking()
+            .Include(accessControl => accessControl.User)
+            .Where(accessControl => accessControl.VideoId == videoId)
+            .OrderByDescending(accessControl => accessControl.CreatedAt)
+            .ThenByDescending(accessControl => accessControl.Id);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return new PagedQueryResult<AccessControl>(items, totalCount, page, pageSize);
+    }
+}

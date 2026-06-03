@@ -8,6 +8,14 @@ namespace StreamForge.Domain.Interfaces;
 /// </summary>
 public interface IUserRepository : IRepository<User>
 {
+    Task<PagedQueryResult<User>> SearchPagedAsync(
+        string? searchTerm,
+        UserRole? role,
+        bool? isActive,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Gets a user by email
     /// </summary>

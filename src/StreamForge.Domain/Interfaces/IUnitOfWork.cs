@@ -66,6 +66,8 @@ public interface IUnitOfWork : IDisposable
     /// </summary>
     IAnalyticsEventRepository AnalyticsEvents { get; }
 
+    IAccessControlRepository AccessControls { get; }
+
     /// <summary>
     /// Upload session repository
     /// </summary>

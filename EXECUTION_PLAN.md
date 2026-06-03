@@ -63,18 +63,18 @@
 - [X] Range/manifest serving moved to Phase 6
 - [X] Streaming access control moved to Phase 6
 
-### Phase 7.5: Content Discovery and Management
-- [ ] Add visibility-aware paginated video list and detail APIs
-- [ ] Add authenticated user video library APIs
-- [ ] Add video metadata update and delete/archive APIs
-- [ ] Add video processing-status endpoint for owner/admin progress views
-- [ ] Add category list/detail and category-video browse APIs
-- [ ] Add paginated tag list/search and tag-video browse APIs
-- [ ] Add basic video search, filtering, paging, and deterministic ordering
-- [ ] Add public/user profile metadata APIs if creator pages require them
-- [ ] Add video access/share-token management APIs if sharing management is required
-- [ ] Add shared pagination request/response DTOs for unbounded collection endpoints
-- [ ] Keep content controllers thin and enforce existing video authorization rules
+### Phase 7.5: Content Discovery and Management [X]
+- [X] Add visibility-aware paginated video list and detail APIs
+- [X] Add authenticated user video library APIs
+- [X] Add video metadata update and delete/archive APIs
+- [X] Add video processing-status endpoint for owner/admin progress views
+- [X] Add category list/detail and category-video browse APIs
+- [X] Add paginated tag list/search and tag-video browse APIs
+- [X] Add basic video search, filtering, paging, and deterministic ordering
+- [X] Add public/user profile metadata APIs if creator pages require them
+- [X] Add video access/share-token management APIs if sharing management is required
+- [X] Add shared pagination request/response DTOs for unbounded collection endpoints
+- [X] Keep content controllers thin and enforce existing video authorization rules
 
 ### Phase 8: Engagement Features (Week 8-10)
 - [ ] Implement likes/dislikes

@@ -8,6 +8,13 @@ namespace StreamForge.Domain.Interfaces;
 /// </summary>
 public interface IUploadSessionRepository : IRepository<UploadSession>
 {
+    Task<PagedQueryResult<UploadSession>> GetByUserIdPagedAsync(
+        Guid userId,
+        UploadSessionStatus? status,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Gets sessions by user ID
     /// </summary>

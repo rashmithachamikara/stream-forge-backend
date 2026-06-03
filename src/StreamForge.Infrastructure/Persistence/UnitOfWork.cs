@@ -26,6 +26,7 @@ public sealed class UnitOfWork : IUnitOfWork
         Playlists = new PlaylistRepository(dbContext);
         Notifications = new NotificationRepository(dbContext);
         AnalyticsEvents = new AnalyticsEventRepository(dbContext);
+        AccessControls = new AccessControlRepository(dbContext);
         UploadSessions = new UploadSessionRepository(dbContext);
         UploadSessionParts = new UploadSessionPartRepository(dbContext);
     }
@@ -43,6 +44,7 @@ public sealed class UnitOfWork : IUnitOfWork
     public IPlaylistRepository Playlists { get; }
     public INotificationRepository Notifications { get; }
     public IAnalyticsEventRepository AnalyticsEvents { get; }
+    public IAccessControlRepository AccessControls { get; }
     public IUploadSessionRepository UploadSessions { get; }
     public IUploadSessionPartRepository UploadSessionParts { get; }
 

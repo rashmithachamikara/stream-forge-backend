@@ -8,6 +8,32 @@ namespace StreamForge.Domain.Interfaces;
 /// </summary>
 public interface IVideoRepository : IRepository<Video>
 {
+    Task<Video?> GetWithDetailsAsync(Guid videoId, CancellationToken cancellationToken = default);
+
+    Task<PagedQueryResult<Video>> SearchVisibleAsync(
+        string? searchTerm,
+        Guid? categoryId,
+        Guid? tagId,
+        Guid? uploaderId,
+        VideoStatus? status,
+        VideoVisibility? visibility,
+        Guid? currentUserId,
+        UserRole? currentUserRole,
+        string? sort,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+
+    Task<PagedQueryResult<Video>> GetUserLibraryAsync(
+        Guid userId,
+        VideoStatus? status,
+        VideoVisibility? visibility,
+        string? searchTerm,
+        string? sort,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Gets videos by user ID
     /// </summary>

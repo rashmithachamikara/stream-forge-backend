@@ -7,6 +7,12 @@ namespace StreamForge.Domain.Interfaces;
 /// </summary>
 public interface ITagRepository : IRepository<Tag>
 {
+    Task<PagedQueryResult<Tag>> SearchPagedAsync(
+        string? searchTerm,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Gets tag by name
     /// </summary>

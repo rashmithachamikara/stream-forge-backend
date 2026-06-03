@@ -53,6 +53,23 @@ public sealed class VideoTagRepository : IVideoTagRepository
     {
         await _dbContext.VideoTags.AddAsync(videoTag, cancellationToken);
     }
+
+    public async Task<IReadOnlyList<VideoTag>> GetByVideoIdAsync(Guid videoId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.VideoTags
+            .Include(videoTag => videoTag.Tag)
+            .Where(videoTag => videoTag.VideoId == videoId)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task DeleteByVideoIdAsync(Guid videoId, CancellationToken cancellationToken = default)
+    {
+        var videoTags = await _dbContext.VideoTags
+            .Where(videoTag => videoTag.VideoId == videoId)
+            .ToListAsync(cancellationToken);
+
+        _dbContext.VideoTags.RemoveRange(videoTags);
+    }
 }
 
 public sealed class VideoThumbnailRepository : BaseRepository<VideoThumbnail>, IVideoThumbnailRepository
@@ -70,4 +87,12 @@ public sealed class VideoProcessingJobRepository : BaseRepository<VideoProcessin
     public VideoProcessingJobRepository(StreamForgeDbContext dbContext) : base(dbContext)
     {
     }
+
+    public Task<VideoProcessingJob?> GetLatestByVideoIdAsync(Guid videoId, CancellationToken cancellationToken = default) =>
+        DbSet
+            .AsNoTracking()
+            .Where(job => job.VideoId == videoId)
+            .OrderByDescending(job => job.CreatedAt)
+            .ThenByDescending(job => job.Id)
+            .FirstOrDefaultAsync(cancellationToken);
 }

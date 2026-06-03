@@ -21,6 +21,10 @@ public interface IVideoFileRepository : IRepository<VideoFile>
 public interface IVideoTagRepository
 {
     Task AddAsync(VideoTag videoTag, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<VideoTag>> GetByVideoIdAsync(Guid videoId, CancellationToken cancellationToken = default);
+
+    Task DeleteByVideoIdAsync(Guid videoId, CancellationToken cancellationToken = default);
 }
 
 public interface IVideoThumbnailRepository : IRepository<VideoThumbnail>
@@ -30,4 +34,5 @@ public interface IVideoThumbnailRepository : IRepository<VideoThumbnail>
 
 public interface IVideoProcessingJobRepository : IRepository<VideoProcessingJob>
 {
+    Task<VideoProcessingJob?> GetLatestByVideoIdAsync(Guid videoId, CancellationToken cancellationToken = default);
 }

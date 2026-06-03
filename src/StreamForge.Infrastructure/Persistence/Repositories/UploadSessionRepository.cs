@@ -15,6 +15,34 @@ public class UploadSessionRepository : BaseRepository<UploadSession>, IUploadSes
     {
     }
 
+    public async Task<PagedQueryResult<UploadSession>> GetByUserIdPagedAsync(
+        Guid userId,
+        UploadSessionStatus? status,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = DbSet
+            .AsNoTracking()
+            .Include(session => session.Video)
+            .Where(session => session.UserId == userId);
+
+        if (status.HasValue)
+        {
+            query = query.Where(session => session.Status == status.Value);
+        }
+
+        query = query.OrderByDescending(session => session.CreatedAt).ThenByDescending(session => session.Id);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return new PagedQueryResult<UploadSession>(items, totalCount, page, pageSize);
+    }
+
     public async Task<IEnumerable<UploadSession>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         return await DbSet

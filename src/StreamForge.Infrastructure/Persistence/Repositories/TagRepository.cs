@@ -11,6 +11,34 @@ public sealed class TagRepository : BaseRepository<Tag>, ITagRepository
     {
     }
 
+    public async Task<PagedQueryResult<Tag>> SearchPagedAsync(
+        string? searchTerm,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = DbSet.AsNoTracking().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var pattern = $"%{searchTerm.Trim().ToLowerInvariant()}%";
+            query = query.Where(tag => EF.Functions.ILike(tag.Name, pattern));
+        }
+
+        query = query
+            .OrderByDescending(tag => tag.UsageCount)
+            .ThenBy(tag => tag.Name)
+            .ThenBy(tag => tag.Id);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return new PagedQueryResult<Tag>(items, totalCount, page, pageSize);
+    }
+
     public Task<Tag?> GetByNameAsync(string name, CancellationToken cancellationToken = default) =>
         DbSet.FirstOrDefaultAsync(tag => tag.Name == name.Trim().ToLowerInvariant(), cancellationToken);
 

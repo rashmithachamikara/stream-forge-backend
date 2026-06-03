@@ -1,6 +1,6 @@
 # Phase 7.5 - Content Discovery And Management
 
-Status: [ ] Planned
+Status: [X] Implemented
 
 ## Purpose
 
@@ -16,6 +16,23 @@ Expose the core content APIs needed for frontend browsing, library views, video 
 - Add consistent pagination for every unbounded collection endpoint.
 - Keep controllers thin and move query/update behavior into Application use cases.
 - Reuse existing authorization rules for private, internal, public, owner, access-grant, and share-token scenarios.
+
+## Implemented Scope
+
+- Visibility-aware paginated video browse API.
+- Video detail API that reuses existing view authorization.
+- Authenticated current-user video library API.
+- Authenticated current-user upload-session recovery/list API.
+- Owner/admin video metadata, visibility, engagement-setting, player-setting, and tag update API.
+- Owner/admin video archive/delete API.
+- Owner/admin processing-status API.
+- Category list/detail and category-video browse APIs.
+- Paginated tag search/detail and tag-video browse APIs.
+- Public user profile and public user-video browse APIs.
+- Admin-only paginated user search API.
+- Owner/admin video access grant and share-token list/create/revoke APIs.
+- Shared paginated response DTO for unbounded collection endpoints.
+- Repository-backed pagination and deterministic ordering for list APIs.
 
 ## Planned API Surface
 
@@ -51,7 +68,6 @@ Expose the core content APIs needed for frontend browsing, library views, video 
 - `GET /api/v1/users/{userId}` for public profile metadata if creator pages require it.
 - `GET /api/v1/users/{userId}/videos` for public creator pages. Paginated.
 - `GET /api/v1/users` for admin/user-management search if admin screens require it. Paginated and admin-only.
-- `PATCH /api/v1/users/{userId}` for admin/user profile updates if admin screens require it.
 
 ### Sharing And Access
 

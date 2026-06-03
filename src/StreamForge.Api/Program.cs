@@ -15,6 +15,7 @@ using StreamForge.Api.Middleware;
 using RateLimiterConfigOptions = StreamForge.Application.Common.RateLimiterOptions;
 using StreamForge.Application.Common;
 using StreamForge.Application.Interfaces;
+using StreamForge.Application.UseCases.Content;
 using StreamForge.Application.UseCases.Uploads;
 using StreamForge.Application.UseCases.Uploads.CreateSession;
 using StreamForge.Application.UseCases.Processing;
@@ -190,6 +191,22 @@ builder.Services.AddScoped<ProcessVideoJobService>();
 builder.Services.AddScoped<GetPlaybackManifestService>();
 builder.Services.AddScoped<GetStreamingAssetService>();
 builder.Services.AddScoped<GetVideoThumbnailService>();
+builder.Services.AddScoped<ListVideosService>();
+builder.Services.AddScoped<GetVideoDetailsService>();
+builder.Services.AddScoped<ListMyVideosService>();
+builder.Services.AddScoped<UpdateVideoService>();
+builder.Services.AddScoped<ArchiveVideoService>();
+builder.Services.AddScoped<GetVideoProcessingStatusService>();
+builder.Services.AddScoped<ListCategoriesService>();
+builder.Services.AddScoped<GetCategoryService>();
+builder.Services.AddScoped<ListTagsService>();
+builder.Services.AddScoped<GetTagService>();
+builder.Services.AddScoped<GetUserProfileService>();
+builder.Services.AddScoped<ListUsersService>();
+builder.Services.AddScoped<ListMyUploadSessionsService>();
+builder.Services.AddScoped<ListVideoAccessGrantsService>();
+builder.Services.AddScoped<CreateVideoAccessGrantService>();
+builder.Services.AddScoped<RevokeVideoAccessGrantService>();
 
 builder.Services.AddHangfire(configuration =>
 {

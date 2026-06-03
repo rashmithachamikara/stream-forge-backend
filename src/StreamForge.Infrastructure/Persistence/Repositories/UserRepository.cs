@@ -12,6 +12,45 @@ public sealed class UserRepository : BaseRepository<User>, IUserRepository
     {
     }
 
+    public async Task<PagedQueryResult<User>> SearchPagedAsync(
+        string? searchTerm,
+        UserRole? role,
+        bool? isActive,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = DbSet.AsNoTracking().AsQueryable();
+
+        if (role.HasValue)
+        {
+            query = query.Where(user => user.Role == role.Value);
+        }
+
+        if (isActive.HasValue)
+        {
+            query = query.Where(user => user.IsActive == isActive.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var pattern = $"%{searchTerm.Trim()}%";
+            query = query.Where(user =>
+                EF.Functions.ILike(user.Name, pattern) ||
+                EF.Functions.ILike(user.Email, pattern));
+        }
+
+        query = query.OrderBy(user => user.Name).ThenBy(user => user.Id);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return new PagedQueryResult<User>(items, totalCount, page, pageSize);
+    }
+
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) =>
         DbSet.FirstOrDefaultAsync(user => user.Email == email, cancellationToken);
 

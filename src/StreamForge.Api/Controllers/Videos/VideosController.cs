@@ -1,0 +1,137 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using StreamForge.Application.DTOs.Content;
+using StreamForge.Application.UseCases.Content;
+using StreamForge.Domain.Enums;
+
+namespace StreamForge.Api.Controllers.Videos;
+
+[ApiController]
+[Route("api/v1/videos")]
+public sealed class VideosController : ControllerBase
+{
+    private readonly ListVideosService _listVideos;
+    private readonly GetVideoDetailsService _getVideoDetails;
+    private readonly UpdateVideoService _updateVideo;
+    private readonly ArchiveVideoService _archiveVideo;
+    private readonly GetVideoProcessingStatusService _getProcessingStatus;
+    private readonly ListVideoAccessGrantsService _listAccessGrants;
+    private readonly CreateVideoAccessGrantService _createAccessGrant;
+    private readonly RevokeVideoAccessGrantService _revokeAccessGrant;
+
+    public VideosController(
+        ListVideosService listVideos,
+        GetVideoDetailsService getVideoDetails,
+        UpdateVideoService updateVideo,
+        ArchiveVideoService archiveVideo,
+        GetVideoProcessingStatusService getProcessingStatus,
+        ListVideoAccessGrantsService listAccessGrants,
+        CreateVideoAccessGrantService createAccessGrant,
+        RevokeVideoAccessGrantService revokeAccessGrant)
+    {
+        _listVideos = listVideos;
+        _getVideoDetails = getVideoDetails;
+        _updateVideo = updateVideo;
+        _archiveVideo = archiveVideo;
+        _getProcessingStatus = getProcessingStatus;
+        _listAccessGrants = listAccessGrants;
+        _createAccessGrant = createAccessGrant;
+        _revokeAccessGrant = revokeAccessGrant;
+    }
+
+    [HttpGet]
+    [AllowAnonymous]
+    public async Task<ActionResult<PagedResponseDto<VideoSummaryDto>>> List(
+        [FromQuery] string? search,
+        [FromQuery] Guid? categoryId,
+        [FromQuery] Guid? tagId,
+        [FromQuery] Guid? uploaderId,
+        [FromQuery] VideoStatus? status,
+        [FromQuery] VideoVisibility? visibility,
+        [FromQuery] string? sort,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 24,
+        CancellationToken cancellationToken = default)
+    {
+        var query = new ListVideosQuery(search, categoryId, tagId, uploaderId, status, visibility, sort, page, pageSize);
+        return Ok(await _listVideos.Handle(query, cancellationToken));
+    }
+
+    [HttpGet("{videoId:guid}")]
+    [AllowAnonymous]
+    public async Task<ActionResult<VideoDetailDto>> Get(
+        Guid videoId,
+        [FromQuery] string? shareToken,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _getVideoDetails.Handle(videoId, shareToken, cancellationToken));
+    }
+
+    [HttpGet("{videoId:guid}/processing-status")]
+    [Authorize]
+    public async Task<ActionResult<VideoProcessingStatusDetailsDto>> GetProcessingStatus(
+        Guid videoId,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _getProcessingStatus.Handle(videoId, cancellationToken));
+    }
+
+    [HttpPatch("{videoId:guid}")]
+    [Authorize]
+    public async Task<ActionResult<VideoDetailDto>> Update(
+        Guid videoId,
+        [FromBody] UpdateVideoRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _updateVideo.Handle(videoId, request, cancellationToken));
+    }
+
+    [HttpPost("{videoId:guid}/archive")]
+    [Authorize]
+    public async Task<IActionResult> Archive(Guid videoId, CancellationToken cancellationToken)
+    {
+        await _archiveVideo.Handle(videoId, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpDelete("{videoId:guid}")]
+    [Authorize]
+    public async Task<IActionResult> Delete(Guid videoId, CancellationToken cancellationToken)
+    {
+        await _archiveVideo.Handle(videoId, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpGet("{videoId:guid}/access")]
+    [Authorize]
+    public async Task<ActionResult<PagedResponseDto<AccessGrantDto>>> ListAccessGrants(
+        Guid videoId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 24,
+        CancellationToken cancellationToken = default)
+    {
+        var query = new ListVideoAccessGrantsQuery(videoId, page, pageSize);
+        return Ok(await _listAccessGrants.Handle(query, cancellationToken));
+    }
+
+    [HttpPost("{videoId:guid}/access")]
+    [Authorize]
+    public async Task<ActionResult<AccessGrantDto>> CreateAccessGrant(
+        Guid videoId,
+        [FromBody] CreateAccessGrantRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _createAccessGrant.Handle(videoId, request, cancellationToken));
+    }
+
+    [HttpDelete("{videoId:guid}/access/{accessControlId:guid}")]
+    [Authorize]
+    public async Task<IActionResult> RevokeAccessGrant(
+        Guid videoId,
+        Guid accessControlId,
+        CancellationToken cancellationToken)
+    {
+        await _revokeAccessGrant.Handle(videoId, accessControlId, cancellationToken);
+        return NoContent();
+    }
+}
