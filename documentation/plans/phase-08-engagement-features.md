@@ -18,7 +18,7 @@ Add first-class engagement APIs for video reactions, comments, bookmarks, playli
 
 - Reaction summary, set, and remove APIs.
 - Comment list, create, update, delete, and reply APIs.
-- Current-user bookmark list plus bookmark and unbookmark APIs.
+- Current-user bookmark list plus personal in-video bookmark create, update, and delete APIs.
 - Public and current-user playlist APIs, playlist detail, add/remove video, and reorder endpoints.
 - Current-user notification list, unread count, mark-read, mark-unread, and mark-all-read endpoints.
 - Notification creation for top-level comments, replies, and likes.
@@ -41,9 +41,11 @@ Add first-class engagement APIs for video reactions, comments, bookmarks, playli
 
 ### Bookmarks
 
-- `GET /api/v1/me/bookmarks?page=&pageSize=`
-- `PUT /api/v1/videos/{videoId}/bookmark`
-- `DELETE /api/v1/videos/{videoId}/bookmark`
+- `GET /api/v1/me/bookmarks?videoId=&page=&pageSize=`
+- `GET /api/v1/videos/{videoId}/bookmarks?page=&pageSize=`
+- `POST /api/v1/videos/{videoId}/bookmarks`
+- `PATCH /api/v1/videos/{videoId}/bookmarks/{bookmarkId}`
+- `DELETE /api/v1/videos/{videoId}/bookmarks/{bookmarkId}`
 
 ### Playlists
 
@@ -65,17 +67,18 @@ Add first-class engagement APIs for video reactions, comments, bookmarks, playli
 - `POST /api/v1/me/notifications/{notificationId}/read`
 - `POST /api/v1/me/notifications/{notificationId}/unread`
 - `POST /api/v1/me/notifications/mark-all-read`
+- `DELETE /api/v1/me/notifications/{notificationId}`
+- `DELETE /api/v1/me/notifications/read`
 
 ## Behavior Rules
 
 - All create, update, and delete engagement actions require authentication.
 - Public read endpoints may be anonymous only when the target video or playlist is viewable by the caller.
-- Reactions, comments, and bookmarks require the target video to be `Ready` and viewable.
+- Reactions, comments, and bookmark operations require the target video to be `Ready` and viewable.
 - `Video.AllowLikes` blocks reaction create/update.
 - `Video.AllowComments` blocks new comments and replies.
-- `Video.AllowBookmarks` blocks bookmark creation.
 - One reaction is allowed per user/video. `PUT` creates or updates the reaction; `DELETE` removes it.
-- One bookmark is allowed per user/video. `PUT` is idempotent; `DELETE` is idempotent.
+- Users can create multiple personal bookmarks per video with timestamp and optional note metadata.
 - Comments support top-level comments and replies through `ParentCommentId`.
 - Comment update/delete is allowed for the comment author or admin.
 - Public playlists are readable by anyone; private playlists are readable by owner/admin only.
@@ -123,13 +126,14 @@ Add first-class engagement APIs for video reactions, comments, bookmarks, playli
 - Users can like, dislike, change, and remove their reaction to a viewable video.
 - Users can list reaction counts and their own reaction state for a video.
 - Users can create, list, edit, and delete comments and replies where allowed.
-- Users can bookmark and unbookmark viewable videos idempotently.
-- Users can list their bookmarks with pagination.
+- Users can create, update, delete, and list their personal bookmarks for viewable videos.
+- Users can list their bookmarks with pagination, optionally filtered by video.
 - Users can create, list, view, update, and delete playlists.
 - Users can add, remove, list, and reorder playlist videos.
 - Public/private playlist visibility is enforced.
 - In-app notifications are created for comment, reply, and like events.
 - Users can list notifications, filter by read state, get unread count, and mark notifications read/unread.
+- Users can delete a single notification and clear all read notifications.
 - All unbounded list endpoints are paginated with deterministic ordering.
 - The project builds successfully after implementation.
 
@@ -138,7 +142,7 @@ Add first-class engagement APIs for video reactions, comments, bookmarks, playli
 - Build with `dotnet build StreamForge.sln --no-restore`; if the API output DLLs are locked by a running server, build to a separate verification output directory.
 - Test reaction create, update, delete, summary counts, duplicate handling, and `AllowLikes=false`.
 - Test comment list pagination, top-level comments, replies, edit/delete authorization, and `AllowComments=false`.
-- Test bookmark idempotent create/delete, paginated current-user bookmark list, and `AllowBookmarks=false`.
+- Test bookmark create/update/delete, per-video bookmark list ordering, and paginated current-user bookmark list.
 - Test playlist create/update/delete, public/private visibility, add/remove/reorder videos, and non-owner mutation rejection.
 - Test notification creation for comments, replies, and likes.
 - Test notification list pagination, `isRead` filter, unread count, mark-read, mark-unread, and mark-all-read.
