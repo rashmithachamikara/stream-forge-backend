@@ -14,7 +14,6 @@ public sealed class PlaylistRepository : BaseRepository<Playlist>, IPlaylistRepo
 
     public Task<Playlist?> GetWithDetailsAsync(Guid playlistId, CancellationToken cancellationToken = default) =>
         DbSet
-            .AsNoTracking()
             .Include(playlist => playlist.Owner)
             .Include(playlist => playlist.PlaylistVideos)
                 .ThenInclude(playlistVideo => playlistVideo.Video)
