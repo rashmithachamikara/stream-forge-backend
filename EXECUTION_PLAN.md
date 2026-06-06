@@ -84,10 +84,13 @@
 - [X] Add notifications
 
 ### Phase 9: Analytics (Week 10-11)
-- [ ] Track video views
-- [ ] Track watch time
-- [ ] Create analytics dashboard
-- [ ] Generate reports
+- [ ] Add configurable playback analytics ingestion
+- [ ] Track thresholded video views and watch time
+- [ ] Add owner analytics dashboards and rankings
+- [ ] Add admin analytics dashboards and platform trends
+- [ ] Add engagement analytics such as most liked/commented/engaged videos
+- [ ] Add active-viewer, peak-watch-time, and device-breakdown metrics
+- [ ] Add downloadable analytics reports
 
 ### Phase 10: Testing (Week 11-12)
 - [ ] Add unit tests for domain
