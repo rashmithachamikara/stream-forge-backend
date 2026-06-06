@@ -76,12 +76,12 @@
 - [X] Add shared pagination request/response DTOs for unbounded collection endpoints
 - [X] Keep content controllers thin and enforce existing video authorization rules
 
-### Phase 8: Engagement Features (Week 8-10)
-- [ ] Implement likes/dislikes
-- [ ] Add comments system
-- [ ] Create bookmarks feature
-- [ ] Build playlists functionality
-- [ ] Add notifications
+### Phase 8: Engagement Features (Week 8-10) [X]
+- [X] Implement likes/dislikes
+- [X] Add comments system
+- [X] Create bookmarks feature
+- [X] Build playlists functionality
+- [X] Add notifications
 
 ### Phase 9: Analytics (Week 10-11)
 - [ ] Track video views
