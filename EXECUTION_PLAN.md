@@ -121,6 +121,15 @@
 - [ ] Preserve a migration path to direct external bearer-token validation if enterprise OIDC requires it later
 - [ ] Follow detailed implementation notes in `documentation/plans/phase-13-external-identity-provider-integration.md`
 
+### Phase 14: Real-Time Processing Progress
+- [ ] Capture FFmpeg progress using `-progress pipe:1` during HLS generation
+- [ ] Estimate HLS generation percentage from processed timestamp versus probed media duration
+- [ ] Add a live processing-progress store using memory cache or Redis to avoid frequent database writes
+- [ ] Merge persisted job state with live progress in the processing-status endpoint
+- [ ] Throttle any optional database progress writes by percentage or time interval
+- [ ] Keep milestone-based DB progress as the durable fallback after restarts
+- [ ] Add tests for progress parsing, throttling, and fallback behavior
+
 ## Notes
 
 - Detailed implementation notes for each phase will be maintained under `documentation/plans/`.

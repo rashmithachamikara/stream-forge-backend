@@ -71,7 +71,7 @@ Expose the core content APIs needed for frontend browsing, library views, video 
 
 ### Sharing And Access
 
-- `GET /api/v1/videos/{videoId}/access` for owner/admin access grants and share links. Paginated if user grants can grow.
+- `GET /api/v1/videos/{videoId}/access` for owner/admin access grants and share links. Paginated with optional `isActive` filter.
 - `POST /api/v1/videos/{videoId}/access` to grant user access or create a share token.
 - `DELETE /api/v1/videos/{videoId}/access/{accessControlId}` to revoke a grant or share token.
 
