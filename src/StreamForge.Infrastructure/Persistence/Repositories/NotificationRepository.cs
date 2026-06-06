@@ -11,6 +11,36 @@ public sealed class NotificationRepository : BaseRepository<Notification>, INoti
     {
     }
 
+    public Task<Notification?> GetByIdForUserAsync(Guid notificationId, Guid userId, CancellationToken cancellationToken = default) =>
+        DbSet.FirstOrDefaultAsync(notification => notification.Id == notificationId && notification.UserId == userId, cancellationToken);
+
+    public async Task<PagedQueryResult<Notification>> GetPagedByUserIdAsync(
+        Guid userId,
+        bool? isRead,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = DbSet
+            .AsNoTracking()
+            .Where(notification => notification.UserId == userId);
+
+        if (isRead.HasValue)
+        {
+            query = query.Where(notification => notification.IsRead == isRead.Value);
+        }
+
+        query = query.OrderByDescending(notification => notification.CreatedAt).ThenByDescending(notification => notification.Id);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return new PagedQueryResult<Notification>(items, totalCount, page, pageSize);
+    }
+
     public async Task<IEnumerable<Notification>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default) =>
         await DbSet.Where(notification => notification.UserId == userId).OrderByDescending(notification => notification.CreatedAt).ToListAsync(cancellationToken);
 

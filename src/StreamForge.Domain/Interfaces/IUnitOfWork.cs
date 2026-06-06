@@ -31,6 +31,12 @@ public interface IUnitOfWork : IDisposable
 
     IVideoProcessingJobRepository VideoProcessingJobs { get; }
 
+    IVideoReactionRepository VideoReactions { get; }
+
+    IVideoCommentRepository VideoComments { get; }
+
+    IBookmarkRepository Bookmarks { get; }
+
     /// <summary>
     /// Video tag repository
     /// </summary>
@@ -55,6 +61,8 @@ public interface IUnitOfWork : IDisposable
     /// Playlist repository
     /// </summary>
     IPlaylistRepository Playlists { get; }
+
+    IPlaylistVideoRepository PlaylistVideos { get; }
 
     /// <summary>
     /// Notification repository

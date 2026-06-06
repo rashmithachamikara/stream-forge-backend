@@ -19,11 +19,15 @@ public sealed class UnitOfWork : IUnitOfWork
         VideoFiles = new VideoFileRepository(dbContext);
         VideoThumbnails = new VideoThumbnailRepository(dbContext);
         VideoProcessingJobs = new VideoProcessingJobRepository(dbContext);
+        VideoReactions = new VideoReactionRepository(dbContext);
+        VideoComments = new VideoCommentRepository(dbContext);
+        Bookmarks = new BookmarkRepository(dbContext);
         VideoTags = new VideoTagRepository(dbContext);
         StorageProviders = new StorageProviderRepository(dbContext);
         Categories = new CategoryRepository(dbContext);
         Tags = new TagRepository(dbContext);
         Playlists = new PlaylistRepository(dbContext);
+        PlaylistVideos = new PlaylistVideoRepository(dbContext);
         Notifications = new NotificationRepository(dbContext);
         AnalyticsEvents = new AnalyticsEventRepository(dbContext);
         AccessControls = new AccessControlRepository(dbContext);
@@ -37,11 +41,15 @@ public sealed class UnitOfWork : IUnitOfWork
     public IVideoFileRepository VideoFiles { get; }
     public IVideoThumbnailRepository VideoThumbnails { get; }
     public IVideoProcessingJobRepository VideoProcessingJobs { get; }
+    public IVideoReactionRepository VideoReactions { get; }
+    public IVideoCommentRepository VideoComments { get; }
+    public IBookmarkRepository Bookmarks { get; }
     public IVideoTagRepository VideoTags { get; }
     public IStorageProviderRepository StorageProviders { get; }
     public ICategoryRepository Categories { get; }
     public ITagRepository Tags { get; }
     public IPlaylistRepository Playlists { get; }
+    public IPlaylistVideoRepository PlaylistVideos { get; }
     public INotificationRepository Notifications { get; }
     public IAnalyticsEventRepository AnalyticsEvents { get; }
     public IAccessControlRepository AccessControls { get; }

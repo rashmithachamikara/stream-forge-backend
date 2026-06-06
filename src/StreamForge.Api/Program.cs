@@ -16,6 +16,7 @@ using RateLimiterConfigOptions = StreamForge.Application.Common.RateLimiterOptio
 using StreamForge.Application.Common;
 using StreamForge.Application.Interfaces;
 using StreamForge.Application.UseCases.Content;
+using StreamForge.Application.UseCases.Engagement;
 using StreamForge.Application.UseCases.Uploads;
 using StreamForge.Application.UseCases.Uploads.CreateSession;
 using StreamForge.Application.UseCases.Processing;
@@ -207,6 +208,30 @@ builder.Services.AddScoped<ListMyUploadSessionsService>();
 builder.Services.AddScoped<ListVideoAccessGrantsService>();
 builder.Services.AddScoped<CreateVideoAccessGrantService>();
 builder.Services.AddScoped<RevokeVideoAccessGrantService>();
+builder.Services.AddScoped<GetReactionSummaryService>();
+builder.Services.AddScoped<SetReactionService>();
+builder.Services.AddScoped<RemoveReactionService>();
+builder.Services.AddScoped<ListCommentsService>();
+builder.Services.AddScoped<CreateCommentService>();
+builder.Services.AddScoped<UpdateCommentService>();
+builder.Services.AddScoped<DeleteCommentService>();
+builder.Services.AddScoped<ListBookmarksService>();
+builder.Services.AddScoped<SetBookmarkService>();
+builder.Services.AddScoped<RemoveBookmarkService>();
+builder.Services.AddScoped<ListPlaylistsService>();
+builder.Services.AddScoped<ListMyPlaylistsService>();
+builder.Services.AddScoped<CreatePlaylistService>();
+builder.Services.AddScoped<GetPlaylistService>();
+builder.Services.AddScoped<UpdatePlaylistService>();
+builder.Services.AddScoped<DeletePlaylistService>();
+builder.Services.AddScoped<GetPlaylistVideosService>();
+builder.Services.AddScoped<AddPlaylistVideoService>();
+builder.Services.AddScoped<RemovePlaylistVideoService>();
+builder.Services.AddScoped<ReorderPlaylistVideosService>();
+builder.Services.AddScoped<ListNotificationsService>();
+builder.Services.AddScoped<GetUnreadNotificationCountService>();
+builder.Services.AddScoped<MarkNotificationReadStateService>();
+builder.Services.AddScoped<MarkAllNotificationsReadService>();
 
 builder.Services.AddHangfire(configuration =>
 {

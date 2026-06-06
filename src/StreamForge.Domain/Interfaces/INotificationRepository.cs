@@ -7,6 +7,15 @@ namespace StreamForge.Domain.Interfaces;
 /// </summary>
 public interface INotificationRepository : IRepository<Notification>
 {
+    Task<Notification?> GetByIdForUserAsync(Guid notificationId, Guid userId, CancellationToken cancellationToken = default);
+
+    Task<PagedQueryResult<Notification>> GetPagedByUserIdAsync(
+        Guid userId,
+        bool? isRead,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Gets notifications by user ID
     /// </summary>

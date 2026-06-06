@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StreamForge.Application.DTOs.Content;
+using StreamForge.Application.DTOs.Engagement;
 using StreamForge.Application.UseCases.Content;
+using StreamForge.Application.UseCases.Engagement;
 using StreamForge.Domain.Enums;
 
 namespace StreamForge.Api.Controllers;
@@ -13,13 +15,31 @@ public sealed class MeController : ControllerBase
 {
     private readonly ListMyVideosService _listMyVideos;
     private readonly ListMyUploadSessionsService _listMyUploadSessions;
+    private readonly ListBookmarksService _listBookmarks;
+    private readonly ListMyPlaylistsService _listMyPlaylists;
+    private readonly ListNotificationsService _listNotifications;
+    private readonly GetUnreadNotificationCountService _getUnreadNotificationCount;
+    private readonly MarkNotificationReadStateService _markNotificationReadState;
+    private readonly MarkAllNotificationsReadService _markAllNotificationsRead;
 
     public MeController(
         ListMyVideosService listMyVideos,
-        ListMyUploadSessionsService listMyUploadSessions)
+        ListMyUploadSessionsService listMyUploadSessions,
+        ListBookmarksService listBookmarks,
+        ListMyPlaylistsService listMyPlaylists,
+        ListNotificationsService listNotifications,
+        GetUnreadNotificationCountService getUnreadNotificationCount,
+        MarkNotificationReadStateService markNotificationReadState,
+        MarkAllNotificationsReadService markAllNotificationsRead)
     {
         _listMyVideos = listMyVideos;
         _listMyUploadSessions = listMyUploadSessions;
+        _listBookmarks = listBookmarks;
+        _listMyPlaylists = listMyPlaylists;
+        _listNotifications = listNotifications;
+        _getUnreadNotificationCount = getUnreadNotificationCount;
+        _markNotificationReadState = markNotificationReadState;
+        _markAllNotificationsRead = markAllNotificationsRead;
     }
 
     [HttpGet("videos")]
@@ -45,5 +65,60 @@ public sealed class MeController : ControllerBase
     {
         var query = new ListMyUploadSessionsQuery(status, page, pageSize);
         return Ok(await _listMyUploadSessions.Handle(query, cancellationToken));
+    }
+
+    [HttpGet("bookmarks")]
+    public async Task<ActionResult<PagedResponseDto<VideoSummaryDto>>> ListBookmarks(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 24,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await _listBookmarks.Handle(page, pageSize, cancellationToken));
+    }
+
+    [HttpGet("playlists")]
+    public async Task<ActionResult<PagedResponseDto<PlaylistDto>>> ListPlaylists(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 24,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await _listMyPlaylists.Handle(page, pageSize, cancellationToken));
+    }
+
+    [HttpGet("notifications")]
+    public async Task<ActionResult<PagedResponseDto<NotificationDto>>> ListNotifications(
+        [FromQuery] bool? isRead,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 24,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await _listNotifications.Handle(new ListNotificationsQuery(isRead, page, pageSize), cancellationToken));
+    }
+
+    [HttpGet("notifications/unread-count")]
+    public async Task<ActionResult<UnreadNotificationCountDto>> GetUnreadCount(CancellationToken cancellationToken)
+    {
+        return Ok(await _getUnreadNotificationCount.Handle(cancellationToken));
+    }
+
+    [HttpPost("notifications/{notificationId:guid}/read")]
+    public async Task<IActionResult> MarkRead(Guid notificationId, CancellationToken cancellationToken)
+    {
+        await _markNotificationReadState.Handle(notificationId, isRead: true, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPost("notifications/{notificationId:guid}/unread")]
+    public async Task<IActionResult> MarkUnread(Guid notificationId, CancellationToken cancellationToken)
+    {
+        await _markNotificationReadState.Handle(notificationId, isRead: false, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPost("notifications/mark-all-read")]
+    public async Task<IActionResult> MarkAllRead(CancellationToken cancellationToken)
+    {
+        await _markAllNotificationsRead.Handle(cancellationToken);
+        return NoContent();
     }
 }
