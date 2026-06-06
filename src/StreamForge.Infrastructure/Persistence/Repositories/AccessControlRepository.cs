@@ -13,6 +13,7 @@ public sealed class AccessControlRepository : BaseRepository<AccessControl>, IAc
 
     public async Task<PagedQueryResult<AccessControl>> GetByVideoIdPagedAsync(
         Guid videoId,
+        bool? isActive,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
@@ -20,7 +21,14 @@ public sealed class AccessControlRepository : BaseRepository<AccessControl>, IAc
         var query = DbSet
             .AsNoTracking()
             .Include(accessControl => accessControl.User)
-            .Where(accessControl => accessControl.VideoId == videoId)
+            .Where(accessControl => accessControl.VideoId == videoId);
+
+        if (isActive.HasValue)
+        {
+            query = query.Where(accessControl => accessControl.IsActive == isActive.Value);
+        }
+
+        query = query
             .OrderByDescending(accessControl => accessControl.CreatedAt)
             .ThenByDescending(accessControl => accessControl.Id);
 

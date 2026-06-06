@@ -106,11 +106,12 @@ public sealed class VideosController : ControllerBase
     [Authorize]
     public async Task<ActionResult<PagedResponseDto<AccessGrantDto>>> ListAccessGrants(
         Guid videoId,
+        [FromQuery] bool? isActive,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 24,
         CancellationToken cancellationToken = default)
     {
-        var query = new ListVideoAccessGrantsQuery(videoId, page, pageSize);
+        var query = new ListVideoAccessGrantsQuery(videoId, isActive, page, pageSize);
         return Ok(await _listAccessGrants.Handle(query, cancellationToken));
     }
 

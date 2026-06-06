@@ -36,7 +36,7 @@ public sealed record ListTagsQuery(string? Search, int Page, int PageSize);
 
 public sealed record ListUsersQuery(string? Search, UserRole? Role, bool? IsActive, int Page, int PageSize);
 
-public sealed record ListVideoAccessGrantsQuery(Guid VideoId, int Page, int PageSize);
+public sealed record ListVideoAccessGrantsQuery(Guid VideoId, bool? IsActive, int Page, int PageSize);
 
 public sealed class ListVideosService
 {
@@ -478,7 +478,7 @@ public sealed class ListVideoAccessGrantsService
         await EnsureCanManageAsync(query.VideoId, cancellationToken);
         var page = Pagination.NormalizePage(query.Page);
         var pageSize = Pagination.NormalizePageSize(query.PageSize);
-        var result = await _unitOfWork.AccessControls.GetByVideoIdPagedAsync(query.VideoId, page, pageSize, cancellationToken);
+        var result = await _unitOfWork.AccessControls.GetByVideoIdPagedAsync(query.VideoId, query.IsActive, page, pageSize, cancellationToken);
         return Pagination.Map(result, ContentMapper.ToAccessGrant);
     }
 
