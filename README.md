@@ -146,7 +146,7 @@ stream-forge-backend/
 ### 7. Engagement
 - Likes and dislikes
 - Comments system
-- Video bookmarks
+- In-video personal bookmarks with notes
 - User playlists
 - Notifications
 
@@ -172,7 +172,7 @@ stream-forge-backend/
 - **Playlists** - User playlists
 - **Comments** - Video comments
 - **Likes** - Video likes/dislikes
-- **Bookmarks** - User bookmarks
+- **Bookmarks** - User-owned timestamp markers within videos
 - **Notifications** - User notifications
 - **AnalyticsEvents** - Tracking events
 

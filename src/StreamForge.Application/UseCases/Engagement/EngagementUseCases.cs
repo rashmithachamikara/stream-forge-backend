@@ -10,6 +10,7 @@ using StreamForge.Domain.Interfaces;
 namespace StreamForge.Application.UseCases.Engagement;
 
 public sealed record ListCommentsQuery(Guid VideoId, Guid? ParentCommentId, int Page, int PageSize);
+public sealed record ListBookmarksQuery(Guid? VideoId, int Page, int PageSize);
 public sealed record ListPlaylistsQuery(Guid? OwnerId, int Page, int PageSize);
 public sealed record ListNotificationsQuery(bool? IsRead, int Page, int PageSize);
 
@@ -68,7 +69,6 @@ public sealed class SetReactionService
             videoId,
             allowComments: false,
             allowLikes: true,
-            allowBookmarks: false,
             cancellationToken);
 
         var existing = await _unitOfWork.VideoReactions.GetByUserAndVideoAsync(userId, videoId, cancellationToken);
@@ -152,7 +152,8 @@ public sealed class ListCommentsService
         var page = Pagination.NormalizePage(query.Page);
         var pageSize = Pagination.NormalizePageSize(query.PageSize);
         var result = await _unitOfWork.VideoComments.GetPagedByVideoIdAsync(query.VideoId, query.ParentCommentId, page, pageSize, cancellationToken);
-        return Pagination.Map(result, EngagementMapper.ToComment);
+        var replyCounts = await _unitOfWork.VideoComments.GetReplyCountsAsync(result.Items.Select(comment => comment.Id).ToArray(), cancellationToken);
+        return Pagination.Map(result, comment => EngagementMapper.ToComment(comment, replyCounts));
     }
 }
 
@@ -182,7 +183,6 @@ public sealed class CreateCommentService
             videoId,
             allowComments: true,
             allowLikes: false,
-            allowBookmarks: false,
             cancellationToken);
 
         VideoComment? parentComment = null;
@@ -218,7 +218,7 @@ public sealed class CreateCommentService
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         var created = await _unitOfWork.VideoComments.GetByIdWithUserAsync(comment.Id, cancellationToken)
             ?? throw new EntityNotFoundException("VideoComment", comment.Id);
-        return EngagementMapper.ToComment(created);
+        return EngagementMapper.ToComment(created, replyCounts: null);
     }
 }
 
@@ -253,7 +253,7 @@ public sealed class UpdateCommentService
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         var updated = await _unitOfWork.VideoComments.GetByIdWithUserAsync(commentId, cancellationToken)
             ?? throw new EntityNotFoundException("VideoComment", commentId);
-        return EngagementMapper.ToComment(updated);
+        return EngagementMapper.ToComment(updated, replyCounts: null);
     }
 }
 
@@ -304,36 +304,56 @@ public sealed class ListBookmarksService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
-
-    public ListBookmarksService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
-    {
-        _unitOfWork = unitOfWork;
-        _currentUserService = currentUserService;
-    }
-
-    public async Task<PagedResponseDto<VideoSummaryDto>> Handle(int page, int pageSize, CancellationToken cancellationToken)
-    {
-        var userId = _currentUserService.UserId
-            ?? throw new System.UnauthorizedAccessException("User must be authenticated");
-        var result = await _unitOfWork.Bookmarks.GetPagedByUserIdAsync(userId, Pagination.NormalizePage(page), Pagination.NormalizePageSize(pageSize), cancellationToken);
-        return Pagination.Map(result, bookmark => ContentMapper.ToSummary(bookmark.Video));
-    }
-}
-
-public sealed class SetBookmarkService
-{
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ICurrentUserService _currentUserService;
     private readonly IAuthorizationService _authorizationService;
 
-    public SetBookmarkService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService, IAuthorizationService authorizationService)
+    public ListBookmarksService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService, IAuthorizationService authorizationService)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
         _authorizationService = authorizationService;
     }
 
-    public async Task Handle(Guid videoId, CancellationToken cancellationToken)
+    public async Task<PagedResponseDto<BookmarkDto>> Handle(ListBookmarksQuery query, CancellationToken cancellationToken)
+    {
+        var userId = _currentUserService.UserId
+            ?? throw new System.UnauthorizedAccessException("User must be authenticated");
+
+        if (query.VideoId.HasValue)
+        {
+            await EngagementGuards.EnsureCanViewReadyVideoAsync(
+                _unitOfWork,
+                _authorizationService,
+                _currentUserService.UserId,
+                _currentUserService.Role,
+                query.VideoId.Value,
+                shareToken: null,
+                cancellationToken);
+        }
+
+        var result = await _unitOfWork.Bookmarks.GetPagedByUserIdAsync(
+            userId,
+            query.VideoId,
+            Pagination.NormalizePage(query.Page),
+            Pagination.NormalizePageSize(query.PageSize),
+            cancellationToken);
+        return Pagination.Map(result, bookmark => EngagementMapper.ToBookmark(bookmark, includeVideo: true));
+    }
+}
+
+public sealed class ListVideoBookmarksService
+{
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly IAuthorizationService _authorizationService;
+
+    public ListVideoBookmarksService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService, IAuthorizationService authorizationService)
+    {
+        _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
+        _authorizationService = authorizationService;
+    }
+
+    public async Task<PagedResponseDto<BookmarkDto>> Handle(Guid videoId, int page, int pageSize, CancellationToken cancellationToken)
     {
         var userId = _currentUserService.UserId
             ?? throw new System.UnauthorizedAccessException("User must be authenticated");
@@ -346,39 +366,121 @@ public sealed class SetBookmarkService
             videoId,
             allowComments: false,
             allowLikes: false,
-            allowBookmarks: true,
             cancellationToken);
 
-        var existing = await _unitOfWork.Bookmarks.GetByUserAndVideoAsync(userId, videoId, cancellationToken);
-        if (existing is null)
-        {
-            await _unitOfWork.Bookmarks.AddAsync(Bookmark.Create(userId, videoId), cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-        }
+        var result = await _unitOfWork.Bookmarks.GetPagedByVideoIdAsync(
+            userId,
+            videoId,
+            Pagination.NormalizePage(page),
+            Pagination.NormalizePageSize(pageSize),
+            cancellationToken);
+        return Pagination.Map(result, bookmark => EngagementMapper.ToBookmark(bookmark, includeVideo: false));
     }
 }
 
-public sealed class RemoveBookmarkService
+public sealed class CreateBookmarkService
+{
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly IAuthorizationService _authorizationService;
+
+    public CreateBookmarkService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService, IAuthorizationService authorizationService)
+    {
+        _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
+        _authorizationService = authorizationService;
+    }
+
+    public async Task<BookmarkDto> Handle(Guid videoId, CreateBookmarkRequestDto request, CancellationToken cancellationToken)
+    {
+        var userId = _currentUserService.UserId
+            ?? throw new System.UnauthorizedAccessException("User must be authenticated");
+
+        await EngagementGuards.EnsureCanEngageWithVideoAsync(
+            _unitOfWork,
+            _authorizationService,
+            _currentUserService.UserId,
+            _currentUserService.Role,
+            videoId,
+            allowComments: false,
+            allowLikes: false,
+            cancellationToken);
+
+        var bookmark = Bookmark.Create(userId, videoId, request.TimestampSeconds, request.Note);
+        await _unitOfWork.Bookmarks.AddAsync(bookmark, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        var created = await _unitOfWork.Bookmarks.GetByIdForUserAsync(bookmark.Id, userId, cancellationToken)
+            ?? throw new EntityNotFoundException("Bookmark", bookmark.Id);
+        return EngagementMapper.ToBookmark(created, includeVideo: true);
+    }
+}
+
+public sealed class UpdateBookmarkService
+{
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly IAuthorizationService _authorizationService;
+
+    public UpdateBookmarkService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService, IAuthorizationService authorizationService)
+    {
+        _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
+        _authorizationService = authorizationService;
+    }
+
+    public async Task<BookmarkDto> Handle(Guid videoId, Guid bookmarkId, UpdateBookmarkRequestDto request, CancellationToken cancellationToken)
+    {
+        var userId = _currentUserService.UserId
+            ?? throw new System.UnauthorizedAccessException("User must be authenticated");
+
+        await EngagementGuards.EnsureCanEngageWithVideoAsync(
+            _unitOfWork,
+            _authorizationService,
+            _currentUserService.UserId,
+            _currentUserService.Role,
+            videoId,
+            allowComments: false,
+            allowLikes: false,
+            cancellationToken);
+
+        var bookmark = await _unitOfWork.Bookmarks.GetByIdForUserAsync(bookmarkId, userId, cancellationToken)
+            ?? throw new EntityNotFoundException("Bookmark", bookmarkId);
+        if (bookmark.VideoId != videoId)
+        {
+            throw new EntityNotFoundException("Bookmark", bookmarkId);
+        }
+
+        bookmark.Update(request.TimestampSeconds, request.Note);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return EngagementMapper.ToBookmark(bookmark, includeVideo: true);
+    }
+}
+
+public sealed class DeleteBookmarkService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
 
-    public RemoveBookmarkService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
+    public DeleteBookmarkService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
     }
 
-    public async Task Handle(Guid videoId, CancellationToken cancellationToken)
+    public async Task Handle(Guid videoId, Guid bookmarkId, CancellationToken cancellationToken)
     {
         var userId = _currentUserService.UserId
             ?? throw new System.UnauthorizedAccessException("User must be authenticated");
-        var existing = await _unitOfWork.Bookmarks.GetByUserAndVideoAsync(userId, videoId, cancellationToken);
-        if (existing is not null)
+        var bookmark = await _unitOfWork.Bookmarks.GetByIdForUserAsync(bookmarkId, userId, cancellationToken)
+            ?? throw new EntityNotFoundException("Bookmark", bookmarkId);
+        if (bookmark.VideoId != videoId)
         {
-            await _unitOfWork.Bookmarks.DeleteAsync(existing, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            throw new EntityNotFoundException("Bookmark", bookmarkId);
         }
+
+        await _unitOfWork.Bookmarks.DeleteAsync(bookmark, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }
 
@@ -812,6 +914,49 @@ public sealed class MarkAllNotificationsReadService
     }
 }
 
+public sealed class DeleteNotificationService
+{
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUserService;
+
+    public DeleteNotificationService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
+    {
+        _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
+    }
+
+    public async Task Handle(Guid notificationId, CancellationToken cancellationToken)
+    {
+        var userId = _currentUserService.UserId
+            ?? throw new System.UnauthorizedAccessException("User must be authenticated");
+        var notification = await _unitOfWork.Notifications.GetByIdForUserAsync(notificationId, userId, cancellationToken)
+            ?? throw new EntityNotFoundException("Notification", notificationId);
+
+        await _unitOfWork.Notifications.DeleteAsync(notification, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+}
+
+public sealed class DeleteReadNotificationsService
+{
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUserService;
+
+    public DeleteReadNotificationsService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
+    {
+        _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
+    }
+
+    public async Task Handle(CancellationToken cancellationToken)
+    {
+        var userId = _currentUserService.UserId
+            ?? throw new System.UnauthorizedAccessException("User must be authenticated");
+        await _unitOfWork.Notifications.DeleteReadAsync(userId, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+}
+
 internal static class EngagementGuards
 {
     public static async Task<Video> EnsureCanEngageWithVideoAsync(
@@ -822,7 +967,6 @@ internal static class EngagementGuards
         Guid videoId,
         bool allowComments,
         bool allowLikes,
-        bool allowBookmarks,
         CancellationToken cancellationToken)
     {
         var video = await EnsureCanViewReadyVideoAsync(unitOfWork, authorizationService, currentUserId, currentUserRole, videoId, null, cancellationToken);
@@ -835,11 +979,6 @@ internal static class EngagementGuards
         if (allowLikes && !video.AllowLikes)
         {
             throw new InvalidOperationException("Reactions are disabled for this video");
-        }
-
-        if (allowBookmarks && !video.AllowBookmarks)
-        {
-            throw new InvalidOperationException("Bookmarks are disabled for this video");
         }
 
         return video;
@@ -903,7 +1042,7 @@ internal static class EngagementGuards
 
 internal static class EngagementMapper
 {
-    public static CommentDto ToComment(VideoComment comment)
+    public static CommentDto ToComment(VideoComment comment, IReadOnlyDictionary<Guid, int>? replyCounts)
     {
         return new CommentDto(
             comment.Id,
@@ -912,6 +1051,7 @@ internal static class EngagementMapper
             comment.User?.Name ?? string.Empty,
             comment.ParentCommentId,
             comment.Comment,
+            replyCounts is not null && replyCounts.TryGetValue(comment.Id, out var replyCount) ? replyCount : 0,
             comment.IsEdited,
             comment.CreatedAt,
             comment.UpdatedAt);
@@ -929,6 +1069,18 @@ internal static class EngagementMapper
             playlist.VideoCount,
             playlist.CreatedAt,
             playlist.UpdatedAt);
+    }
+
+    public static BookmarkDto ToBookmark(Bookmark bookmark, bool includeVideo)
+    {
+        return new BookmarkDto(
+            bookmark.Id,
+            bookmark.VideoId,
+            bookmark.TimestampSeconds,
+            bookmark.Note,
+            bookmark.CreatedAt,
+            bookmark.UpdatedAt,
+            includeVideo && bookmark.Video is not null ? ContentMapper.ToSummary(bookmark.Video) : null);
     }
 
     public static NotificationDto ToNotification(Notification notification)

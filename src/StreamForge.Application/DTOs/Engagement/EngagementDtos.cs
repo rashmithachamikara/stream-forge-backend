@@ -18,6 +18,7 @@ public sealed record CommentDto(
     string UserName,
     Guid? ParentCommentId,
     string Comment,
+    int ReplyCount,
     bool IsEdited,
     DateTime CreatedAt,
     DateTime UpdatedAt);
@@ -27,6 +28,23 @@ public sealed record CreateCommentRequestDto(
     Guid? ParentCommentId);
 
 public sealed record UpdateCommentRequestDto(string Comment);
+
+public sealed record BookmarkDto(
+    Guid Id,
+    Guid VideoId,
+    int TimestampSeconds,
+    string? Note,
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+    VideoSummaryDto? Video);
+
+public sealed record CreateBookmarkRequestDto(
+    int TimestampSeconds,
+    string? Note);
+
+public sealed record UpdateBookmarkRequestDto(
+    int TimestampSeconds,
+    string? Note);
 
 public sealed record PlaylistDto(
     Guid Id,

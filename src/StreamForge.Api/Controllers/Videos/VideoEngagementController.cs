@@ -17,8 +17,10 @@ public sealed class VideoEngagementController : ControllerBase
     private readonly CreateCommentService _createComment;
     private readonly UpdateCommentService _updateComment;
     private readonly DeleteCommentService _deleteComment;
-    private readonly SetBookmarkService _setBookmark;
-    private readonly RemoveBookmarkService _removeBookmark;
+    private readonly ListVideoBookmarksService _listBookmarks;
+    private readonly CreateBookmarkService _createBookmark;
+    private readonly UpdateBookmarkService _updateBookmark;
+    private readonly DeleteBookmarkService _deleteBookmark;
 
     public VideoEngagementController(
         GetReactionSummaryService getReactionSummary,
@@ -28,8 +30,10 @@ public sealed class VideoEngagementController : ControllerBase
         CreateCommentService createComment,
         UpdateCommentService updateComment,
         DeleteCommentService deleteComment,
-        SetBookmarkService setBookmark,
-        RemoveBookmarkService removeBookmark)
+        ListVideoBookmarksService listBookmarks,
+        CreateBookmarkService createBookmark,
+        UpdateBookmarkService updateBookmark,
+        DeleteBookmarkService deleteBookmark)
     {
         _getReactionSummary = getReactionSummary;
         _setReaction = setReaction;
@@ -38,8 +42,10 @@ public sealed class VideoEngagementController : ControllerBase
         _createComment = createComment;
         _updateComment = updateComment;
         _deleteComment = deleteComment;
-        _setBookmark = setBookmark;
-        _removeBookmark = removeBookmark;
+        _listBookmarks = listBookmarks;
+        _createBookmark = createBookmark;
+        _updateBookmark = updateBookmark;
+        _deleteBookmark = deleteBookmark;
     }
 
     [HttpGet("reactions/summary")]
@@ -111,19 +117,43 @@ public sealed class VideoEngagementController : ControllerBase
         return NoContent();
     }
 
-    [HttpPut("bookmark")]
+    [HttpGet("bookmarks")]
     [Authorize]
-    public async Task<IActionResult> SetBookmark(Guid videoId, CancellationToken cancellationToken)
+    public async Task<ActionResult<PagedResponseDto<BookmarkDto>>> ListBookmarks(
+        Guid videoId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 24,
+        CancellationToken cancellationToken = default)
     {
-        await _setBookmark.Handle(videoId, cancellationToken);
-        return NoContent();
+        return Ok(await _listBookmarks.Handle(videoId, page, pageSize, cancellationToken));
     }
 
-    [HttpDelete("bookmark")]
+    [HttpPost("bookmarks")]
     [Authorize]
-    public async Task<IActionResult> RemoveBookmark(Guid videoId, CancellationToken cancellationToken)
+    public async Task<ActionResult<BookmarkDto>> CreateBookmark(
+        Guid videoId,
+        [FromBody] CreateBookmarkRequestDto request,
+        CancellationToken cancellationToken)
     {
-        await _removeBookmark.Handle(videoId, cancellationToken);
+        return Ok(await _createBookmark.Handle(videoId, request, cancellationToken));
+    }
+
+    [HttpPatch("bookmarks/{bookmarkId:guid}")]
+    [Authorize]
+    public async Task<ActionResult<BookmarkDto>> UpdateBookmark(
+        Guid videoId,
+        Guid bookmarkId,
+        [FromBody] UpdateBookmarkRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _updateBookmark.Handle(videoId, bookmarkId, request, cancellationToken));
+    }
+
+    [HttpDelete("bookmarks/{bookmarkId:guid}")]
+    [Authorize]
+    public async Task<IActionResult> DeleteBookmark(Guid videoId, Guid bookmarkId, CancellationToken cancellationToken)
+    {
+        await _deleteBookmark.Handle(videoId, bookmarkId, cancellationToken);
         return NoContent();
     }
 }

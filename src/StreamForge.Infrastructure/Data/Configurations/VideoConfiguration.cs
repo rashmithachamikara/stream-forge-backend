@@ -42,10 +42,6 @@ public class VideoConfiguration : IEntityTypeConfiguration<Video>
             .IsRequired()
             .HasDefaultValue(true);
 
-        builder.Property(v => v.AllowBookmarks)
-            .IsRequired()
-            .HasDefaultValue(true);
-
         builder.Property(v => v.Autoplay)
             .IsRequired()
             .HasDefaultValue(false);

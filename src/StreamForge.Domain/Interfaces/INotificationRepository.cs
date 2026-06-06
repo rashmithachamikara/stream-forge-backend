@@ -32,6 +32,11 @@ public interface INotificationRepository : IRepository<Notification>
     Task MarkAllAsReadAsync(Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Deletes all read notifications for a user.
+    /// </summary>
+    Task DeleteReadAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets notification count for user
     /// </summary>
     Task<int> GetUnreadCountAsync(Guid userId, CancellationToken cancellationToken = default);

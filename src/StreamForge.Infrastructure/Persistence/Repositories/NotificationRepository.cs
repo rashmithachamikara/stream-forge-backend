@@ -56,6 +56,15 @@ public sealed class NotificationRepository : BaseRepository<Notification>, INoti
         }
     }
 
+    public async Task DeleteReadAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var notifications = await DbSet
+            .Where(notification => notification.UserId == userId && notification.IsRead)
+            .ToListAsync(cancellationToken);
+
+        DbSet.RemoveRange(notifications);
+    }
+
     public Task<int> GetUnreadCountAsync(Guid userId, CancellationToken cancellationToken = default) =>
         DbSet.CountAsync(notification => notification.UserId == userId && !notification.IsRead, cancellationToken);
 }

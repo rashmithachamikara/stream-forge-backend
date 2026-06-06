@@ -21,6 +21,8 @@ public sealed class MeController : ControllerBase
     private readonly GetUnreadNotificationCountService _getUnreadNotificationCount;
     private readonly MarkNotificationReadStateService _markNotificationReadState;
     private readonly MarkAllNotificationsReadService _markAllNotificationsRead;
+    private readonly DeleteNotificationService _deleteNotification;
+    private readonly DeleteReadNotificationsService _deleteReadNotifications;
 
     public MeController(
         ListMyVideosService listMyVideos,
@@ -30,7 +32,9 @@ public sealed class MeController : ControllerBase
         ListNotificationsService listNotifications,
         GetUnreadNotificationCountService getUnreadNotificationCount,
         MarkNotificationReadStateService markNotificationReadState,
-        MarkAllNotificationsReadService markAllNotificationsRead)
+        MarkAllNotificationsReadService markAllNotificationsRead,
+        DeleteNotificationService deleteNotification,
+        DeleteReadNotificationsService deleteReadNotifications)
     {
         _listMyVideos = listMyVideos;
         _listMyUploadSessions = listMyUploadSessions;
@@ -40,6 +44,8 @@ public sealed class MeController : ControllerBase
         _getUnreadNotificationCount = getUnreadNotificationCount;
         _markNotificationReadState = markNotificationReadState;
         _markAllNotificationsRead = markAllNotificationsRead;
+        _deleteNotification = deleteNotification;
+        _deleteReadNotifications = deleteReadNotifications;
     }
 
     [HttpGet("videos")]
@@ -68,12 +74,13 @@ public sealed class MeController : ControllerBase
     }
 
     [HttpGet("bookmarks")]
-    public async Task<ActionResult<PagedResponseDto<VideoSummaryDto>>> ListBookmarks(
+    public async Task<ActionResult<PagedResponseDto<BookmarkDto>>> ListBookmarks(
+        [FromQuery] Guid? videoId,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 24,
         CancellationToken cancellationToken = default)
     {
-        return Ok(await _listBookmarks.Handle(page, pageSize, cancellationToken));
+        return Ok(await _listBookmarks.Handle(new ListBookmarksQuery(videoId, page, pageSize), cancellationToken));
     }
 
     [HttpGet("playlists")]
@@ -119,6 +126,20 @@ public sealed class MeController : ControllerBase
     public async Task<IActionResult> MarkAllRead(CancellationToken cancellationToken)
     {
         await _markAllNotificationsRead.Handle(cancellationToken);
+        return NoContent();
+    }
+
+    [HttpDelete("notifications/{notificationId:guid}")]
+    public async Task<IActionResult> DeleteNotification(Guid notificationId, CancellationToken cancellationToken)
+    {
+        await _deleteNotification.Handle(notificationId, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpDelete("notifications/read")]
+    public async Task<IActionResult> DeleteReadNotifications(CancellationToken cancellationToken)
+    {
+        await _deleteReadNotifications.Handle(cancellationToken);
         return NoContent();
     }
 }

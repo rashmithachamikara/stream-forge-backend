@@ -48,11 +48,6 @@ public class Video : BaseEntity
     public bool AllowLikes { get; private set; }
 
     /// <summary>
-    /// Whether bookmarks are allowed
-    /// </summary>
-    public bool AllowBookmarks { get; private set; }
-
-    /// <summary>
     /// Autoplay setting
     /// </summary>
     public bool Autoplay { get; private set; }
@@ -149,7 +144,6 @@ public class Video : BaseEntity
             Status = status,
             AllowComments = true,
             AllowLikes = true,
-            AllowBookmarks = true,
             Autoplay = false,
             Loop = false,
             DefaultVolume = 100,
@@ -233,11 +227,10 @@ public class Video : BaseEntity
     /// <summary>
     /// Updates engagement settings
     /// </summary>
-    public void UpdateEngagementSettings(bool allowComments, bool allowLikes, bool allowBookmarks)
+    public void UpdateEngagementSettings(bool allowComments, bool allowLikes)
     {
         AllowComments = allowComments;
         AllowLikes = allowLikes;
-        AllowBookmarks = allowBookmarks;
         UpdatedAt = DateTime.UtcNow;
     }
 

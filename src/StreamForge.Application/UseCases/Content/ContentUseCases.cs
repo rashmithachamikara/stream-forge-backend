@@ -178,12 +178,11 @@ public sealed class UpdateVideoService
             video.UpdateVisibility(request.Visibility.Value);
         }
 
-        if (request.AllowComments.HasValue || request.AllowLikes.HasValue || request.AllowBookmarks.HasValue)
+        if (request.AllowComments.HasValue || request.AllowLikes.HasValue)
         {
             video.UpdateEngagementSettings(
                 request.AllowComments ?? video.AllowComments,
-                request.AllowLikes ?? video.AllowLikes,
-                request.AllowBookmarks ?? video.AllowBookmarks);
+                request.AllowLikes ?? video.AllowLikes);
         }
 
         if (request.Autoplay.HasValue ||
@@ -681,7 +680,6 @@ internal static class ContentMapper
             video.Status,
             video.AllowComments,
             video.AllowLikes,
-            video.AllowBookmarks,
             video.Autoplay,
             video.Loop,
             video.DefaultVolume,

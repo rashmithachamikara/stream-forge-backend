@@ -216,8 +216,10 @@ builder.Services.AddScoped<CreateCommentService>();
 builder.Services.AddScoped<UpdateCommentService>();
 builder.Services.AddScoped<DeleteCommentService>();
 builder.Services.AddScoped<ListBookmarksService>();
-builder.Services.AddScoped<SetBookmarkService>();
-builder.Services.AddScoped<RemoveBookmarkService>();
+builder.Services.AddScoped<ListVideoBookmarksService>();
+builder.Services.AddScoped<CreateBookmarkService>();
+builder.Services.AddScoped<UpdateBookmarkService>();
+builder.Services.AddScoped<DeleteBookmarkService>();
 builder.Services.AddScoped<ListPlaylistsService>();
 builder.Services.AddScoped<ListMyPlaylistsService>();
 builder.Services.AddScoped<CreatePlaylistService>();
@@ -232,6 +234,8 @@ builder.Services.AddScoped<ListNotificationsService>();
 builder.Services.AddScoped<GetUnreadNotificationCountService>();
 builder.Services.AddScoped<MarkNotificationReadStateService>();
 builder.Services.AddScoped<MarkAllNotificationsReadService>();
+builder.Services.AddScoped<DeleteNotificationService>();
+builder.Services.AddScoped<DeleteReadNotificationsService>();
 
 builder.Services.AddHangfire(configuration =>
 {

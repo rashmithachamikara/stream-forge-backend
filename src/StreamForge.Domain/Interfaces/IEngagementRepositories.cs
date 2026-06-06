@@ -27,14 +27,26 @@ public interface IVideoCommentRepository : IRepository<VideoComment>
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<VideoComment>> GetChildrenAsync(Guid parentCommentId, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyDictionary<Guid, int>> GetReplyCountsAsync(
+        IReadOnlyCollection<Guid> commentIds,
+        CancellationToken cancellationToken = default);
 }
 
 public interface IBookmarkRepository : IRepository<Bookmark>
 {
-    Task<Bookmark?> GetByUserAndVideoAsync(Guid userId, Guid videoId, CancellationToken cancellationToken = default);
+    Task<Bookmark?> GetByIdForUserAsync(Guid bookmarkId, Guid userId, CancellationToken cancellationToken = default);
+
+    Task<PagedQueryResult<Bookmark>> GetPagedByVideoIdAsync(
+        Guid userId,
+        Guid videoId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 
     Task<PagedQueryResult<Bookmark>> GetPagedByUserIdAsync(
         Guid userId,
+        Guid? videoId,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
