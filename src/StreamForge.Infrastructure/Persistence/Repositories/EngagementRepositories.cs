@@ -17,17 +17,26 @@ public sealed class VideoReactionRepository : BaseRepository<VideoReaction>, IVi
 
     public async Task<ReactionSummaryResult> GetSummaryAsync(Guid videoId, Guid? currentUserId, CancellationToken cancellationToken = default)
     {
-        var likeCountTask = DbSet.CountAsync(reaction => reaction.VideoId == videoId && reaction.ReactionType == ReactionType.Like, cancellationToken);
-        var dislikeCountTask = DbSet.CountAsync(reaction => reaction.VideoId == videoId && reaction.ReactionType == ReactionType.Dislike, cancellationToken);
-        Task<ReactionType?> currentTask = currentUserId.HasValue
-            ? DbSet
-                .Where(reaction => reaction.VideoId == videoId && reaction.UserId == currentUserId.Value)
-                .Select(reaction => (ReactionType?)reaction.ReactionType)
-                .FirstOrDefaultAsync(cancellationToken)
-            : Task.FromResult<ReactionType?>(null);
+        var reactions = await DbSet
+            .AsNoTracking()
+            .Where(reaction => reaction.VideoId == videoId)
+            .Select(reaction => new
+            {
+                reaction.UserId,
+                reaction.ReactionType
+            })
+            .ToListAsync(cancellationToken);
 
-        await Task.WhenAll(likeCountTask, dislikeCountTask, currentTask);
-        return new ReactionSummaryResult(likeCountTask.Result, dislikeCountTask.Result, currentTask.Result);
+        var likeCount = reactions.Count(reaction => reaction.ReactionType == ReactionType.Like);
+        var dislikeCount = reactions.Count(reaction => reaction.ReactionType == ReactionType.Dislike);
+        var currentReaction = currentUserId.HasValue
+            ? reactions
+                .Where(reaction => reaction.UserId == currentUserId.Value)
+                .Select(reaction => (ReactionType?)reaction.ReactionType)
+                .FirstOrDefault()
+            : null;
+
+        return new ReactionSummaryResult(likeCount, dislikeCount, currentReaction);
     }
 }
 
