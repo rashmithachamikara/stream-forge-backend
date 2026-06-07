@@ -14,7 +14,9 @@ using StreamForge.Api.Authentication;
 using StreamForge.Api.Middleware;
 using RateLimiterConfigOptions = StreamForge.Application.Common.RateLimiterOptions;
 using StreamForge.Application.Common;
+using StreamForge.Application.DTOs.Analytics;
 using StreamForge.Application.Interfaces;
+using StreamForge.Application.UseCases.Analytics;
 using StreamForge.Application.UseCases.Content;
 using StreamForge.Application.UseCases.Engagement;
 using StreamForge.Application.UseCases.Uploads;
@@ -105,6 +107,12 @@ builder.Services
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+builder.Services
+    .Configure<AnalyticsOptions>(builder.Configuration.GetSection(AnalyticsOptions.SectionName))
+    .AddOptions<AnalyticsOptions>()
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
 builder.Services.Configure<CorsOptions>(builder.Configuration.GetSection(CorsOptions.SectionName));
 
 builder.Services.AddSingleton<IValidateOptions<RateLimiterConfigOptions>, RateLimiterOptionsValidator>();
@@ -161,11 +169,14 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<IRequestMetadataAccessor, RequestMetadataAccessor>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<IAuthorizationService, VideoAuthorizationService>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<UploadOptions>>().Value);
 builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<VideoProcessingOptions>>().Value);
+builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<AnalyticsOptions>>().Value);
+builder.Services.AddScoped<IAnalyticsQueryService, AnalyticsQueryService>();
 builder.Services.AddScoped<IStorageService>(sp =>
 {
     var uploadOptions = sp.GetRequiredService<IOptions<UploadOptions>>().Value;
@@ -236,6 +247,22 @@ builder.Services.AddScoped<MarkNotificationReadStateService>();
 builder.Services.AddScoped<MarkAllNotificationsReadService>();
 builder.Services.AddScoped<DeleteNotificationService>();
 builder.Services.AddScoped<DeleteReadNotificationsService>();
+builder.Services.AddScoped<RecordAnalyticsEventService>();
+builder.Services.AddScoped<GetVideoAnalyticsSummaryService>();
+builder.Services.AddScoped<GetVideoAnalyticsEngagementService>();
+builder.Services.AddScoped<GetVideoAnalyticsTimeSeriesService>();
+builder.Services.AddScoped<GetMyAnalyticsSummaryService>();
+builder.Services.AddScoped<GetRankedVideosAnalyticsService>();
+builder.Services.AddScoped<GetViewsOverTimeAnalyticsService>();
+builder.Services.AddScoped<GetDeviceBreakdownAnalyticsService>();
+builder.Services.AddScoped<GetBrowserBreakdownAnalyticsService>();
+builder.Services.AddScoped<GetAuthBreakdownAnalyticsService>();
+builder.Services.AddScoped<GetCategoryBreakdownAnalyticsService>();
+builder.Services.AddScoped<GetTagBreakdownAnalyticsService>();
+builder.Services.AddScoped<GetActiveViewersAnalyticsService>();
+builder.Services.AddScoped<GetPeakWatchTimeAnalyticsService>();
+builder.Services.AddScoped<ExportAnalyticsReportService>();
+builder.Services.AddScoped<GetAdminAnalyticsSummaryService>();
 
 builder.Services.AddHangfire(configuration =>
 {

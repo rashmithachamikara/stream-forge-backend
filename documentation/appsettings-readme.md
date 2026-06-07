@@ -1,8 +1,8 @@
 # Stream Forge App Settings README
 
-**Date:** June 2, 2026
+**Date:** June 7, 2026
 
-This document describes application-level configuration values used by Stream Forge. These settings are not database schema, but they affect runtime behavior such as upload limits, chunk handling, rate limiting, storage location, authentication, and CORS.
+This document describes application-level configuration values used by Stream Forge. These settings are not database schema, but they affect runtime behavior such as upload limits, chunk handling, rate limiting, storage location, authentication, analytics, and CORS.
 
 ---
 
@@ -69,6 +69,41 @@ The `VideoProcessing` section controls local FFmpeg/ffprobe processing for gener
 
 ---
 
+## Analytics
+
+The `Analytics` section controls playback analytics ingestion, reporting availability, and high-write collection paths.
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `Enabled` | `true` | Master switch for analytics ingestion and reporting |
+| `IngestionEnabled` | `true` | Enables `POST /api/v1/videos/{videoId}/analytics/events` |
+| `ReportingEnabled` | `true` | Enables owner and current-user analytics/reporting endpoints |
+| `AdminReportingEnabled` | `true` | Enables admin analytics/reporting endpoints |
+| `CollectRawEvents` | `true` | Persists playback analytics events to the analytics event store |
+| `CollectAnonymousEvents` | `true` | Allows anonymous viewers to send playback analytics |
+| `CollectUserAgent` | `true` | Stores request user-agent values for analytics use |
+| `CollectIpAddress` | `true` | Stores request IP address values for analytics use |
+| `CollectPauseEvents` | `true` | Accepts `Pause` analytics events |
+| `CollectSeekEvents` | `true` | Accepts `Seek` analytics events |
+| `CollectCloseEvents` | `true` | Accepts `Close` analytics events |
+| `EnableDeviceBreakdown` | `true` | Enables device-type breakdown reporting |
+| `EnableBrowserBreakdown` | `true` | Enables browser-family breakdown reporting |
+| `EnableActiveViewerMetrics` | `true` | Enables active-viewer reporting |
+| `EnablePeakWatchTimeMetrics` | `true` | Enables hour-of-day peak watch-time reporting |
+| `MinimumViewWatchSeconds` | `30` | Counted-view threshold in seconds for one `VideoId + SessionId` |
+| `ActiveViewerWindowMinutes` | `5` | Time window used for "active viewers" metrics |
+
+**Notes:**
+- Analytics views are derived from client-sent playback events, not from HLS manifest or segment fetches.
+- When `CollectRawEvents=false`, the ingestion endpoint returns successfully but does not persist raw events.
+- When `CollectAnonymousEvents=false`, anonymous playback requests are ignored for analytics even if the video is publicly viewable.
+- When event toggles such as `CollectSeekEvents=false` are disabled, those event types are rejected by analytics ingestion.
+- `MinimumViewWatchSeconds` controls when a session becomes a counted view; it is not the same thing as a raw playback request count.
+- Device and browser breakdown endpoints depend on the related feature toggles being enabled.
+- See [ANALYTICS.md](/c:/Files/Shared/Software%20Projects/Stream%20Forge/stream-forge-backend/documentation/ANALYTICS.md) for the full analytics model and frontend integration guidance.
+
+---
+
 ## Jwt
 
 The `Jwt` section controls access-token and refresh-token behavior.
@@ -108,4 +143,34 @@ The `Cors` section controls allowed browser origins.
 **Notes:**
 - Development can allow local frontend origins.
 - Production should list only trusted domains.
+
+---
+
+## Logging
+
+The `Logging` section controls ASP.NET Core and framework log verbosity.
+
+| Setting | Description |
+|---------|-------------|
+| `LogLevel.Default` | Default application log level |
+| `LogLevel.Microsoft.AspNetCore` | ASP.NET Core framework log level |
+| `LogLevel.Microsoft.EntityFrameworkCore.Database.Command` | EF Core SQL command log level when configured |
+
+**Notes:**
+- `appsettings.Development.json` can override logging more aggressively than the base `appsettings.json`.
+- EF Core SQL logging is useful when debugging queries, but can get noisy in normal development and production.
+
+---
+
+## AllowedHosts
+
+`AllowedHosts` is the standard ASP.NET Core host-filtering setting.
+
+| Setting | Description |
+|---------|-------------|
+| `AllowedHosts` | Controls which host headers the app accepts |
+
+**Notes:**
+- The current base configuration uses `*`.
+- Tighten this in production when you want stricter host filtering.
 
