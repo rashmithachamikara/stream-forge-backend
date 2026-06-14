@@ -23,6 +23,7 @@ Phase 10 starts by adding the first real test infrastructure to the solution, th
 - [X] `tests/StreamForge.Infrastructure.Tests`
 - [X] `tests/StreamForge.Api.Tests`
 - [X] `tests/StreamForge.Infrastructure.IntegrationTests` for opt-in PostgreSQL/Testcontainers coverage
+- [X] `tests/StreamForge.Api.IntegrationTests` for opt-in API/Testcontainers coverage
 - [X] Add test projects to `StreamForge.sln`
 - [X] Keep PostgreSQL integration tests outside the main solution test run so editor test panels stay focused on fast tests
 
@@ -39,6 +40,13 @@ $env:STREAMFORGE_RUN_POSTGRES_TESTS='true'
 dotnet test tests/StreamForge.Infrastructure.IntegrationTests/StreamForge.Infrastructure.IntegrationTests.csproj --filter "Category=PostgresIntegration"
 ```
 
+API integration tests are also opt-in:
+
+```powershell
+$env:STREAMFORGE_RUN_API_INTEGRATION_TESTS='true'
+dotnet test tests/StreamForge.Api.IntegrationTests/StreamForge.Api.IntegrationTests.csproj --filter "Category=ApiIntegration"
+```
+
 Use `dotnet restore StreamForge.sln` first after cloning or after test package changes.
 
 ## Current Coverage
@@ -53,6 +61,7 @@ Use `dotnet restore StreamForge.sln` first after cloning or after test package c
 - [X] PostgreSQL-backed repository tests for video visibility/search, bookmark pagination, category/tag guard queries, playlist ordering/uniqueness, playlist `VideoCount`, and analytics aggregations
 - [X] Docker-backed PostgreSQL smoke-test scaffold for future integration tests, isolated in the integration test project
 - [X] API `WebApplicationFactory` smoke-test scaffold for future host tests
+- [X] API integration tests for auth lifecycle, protected auth endpoints, category/tag admin CRUD, video list/detail/processing-status, engagement endpoints, and analytics ingestion
 
 ## Planned Domain Coverage
 
@@ -93,14 +102,16 @@ Use `dotnet restore StreamForge.sln` first after cloning or after test package c
 
 ## Planned API Coverage
 
-- [ ] Auth happy paths, invalid credentials, refresh, and `/auth/me`
-- [ ] Unauthorized/forbidden behavior for protected endpoints
+- [X] Auth happy paths, refresh, and `/auth/me`
+- [X] Unauthorized/forbidden behavior for representative protected endpoints
 - [ ] Upload create/target/part/complete flow
 - [ ] Playback manifest, segment, and thumbnail access rules
-- [ ] Video list/detail/update/archive/processing-status endpoints
-- [ ] Category/tag read and admin mutation endpoints
-- [ ] Reactions, comments, bookmarks, playlists, notifications, and notification delete endpoints
-- [ ] Analytics ingestion plus owner/admin reporting endpoints
+- [X] Video list/detail/processing-status endpoints
+- [X] Category/tag read and admin mutation endpoints
+- [X] Reactions, comments, and bookmarks endpoints
+- [ ] Playlists, notifications, and notification delete endpoints
+- [X] Analytics ingestion endpoint
+- [ ] Analytics owner/admin reporting endpoints
 
 ## Local End-To-End Smoke Path
 

@@ -103,7 +103,8 @@
 - [X] Add upload success-path application tests
 - [X] Add processing, video update/archive, engagement, and analytics application tests
 - [X] Add repository and PostgreSQL integration tests
-- [ ] Add API tests for endpoints
+- [X] Add first API integration tests for auth, category/tag, video, engagement, and analytics endpoints
+- [ ] Add remaining API tests for upload, playback, playlists, notifications, and analytics reporting endpoints
 - [ ] Add local/backend upload API tests
 - [ ] Add end-to-end tests
 

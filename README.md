@@ -264,6 +264,9 @@ Test projects live under `tests/` and are included in `StreamForge.sln`:
 PostgreSQL-backed integration tests live in a separate opt-in project:
   - `StreamForge.Infrastructure.IntegrationTests`
 
+API integration tests also live in a separate opt-in project:
+  - `StreamForge.Api.IntegrationTests`
+
 Run the default test suite:
 
 ```bash
@@ -277,6 +280,13 @@ Run the PostgreSQL-backed integration suite with Docker/Testcontainers enabled:
 ```powershell
 $env:STREAMFORGE_RUN_POSTGRES_TESTS='true'
 dotnet test tests/StreamForge.Infrastructure.IntegrationTests/StreamForge.Infrastructure.IntegrationTests.csproj --filter "Category=PostgresIntegration"
+```
+
+Run the API integration suite with Docker/Testcontainers enabled:
+
+```powershell
+$env:STREAMFORGE_RUN_API_INTEGRATION_TESTS='true'
+dotnet test tests/StreamForge.Api.IntegrationTests/StreamForge.Api.IntegrationTests.csproj --filter "Category=ApiIntegration"
 ```
 
 After cloning or after package changes, restore first:
