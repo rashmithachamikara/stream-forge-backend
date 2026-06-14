@@ -37,7 +37,9 @@ Use `dotnet restore StreamForge.sln` first after cloning or after test package c
 - [X] Domain tests for timestamp bookmarks, playlist video counts, playlist items, tags, video reactions, comments/replies, notifications, access controls, and video processing jobs
 - [X] Application tests for analytics ingestion config gating
 - [X] Application tests for upload validation failure paths: authentication, file size, MIME type, missing category, invalid part number, missing checksum, and blank completion file name
+- [X] Application tests for upload happy paths: session creation, upload target generation, part upload/checksum success, completion, source record creation, and processing queue enqueue
 - [X] Application tests for category/tag admin create and delete guard behavior
+- [X] Application tests for video metadata, engagement settings, player settings, tag replacement, archive, engagement flows, processing success/failure, and analytics reporting/query guards
 - [X] Infrastructure EF model tests for bookmark/reaction/tag/playlist index behavior
 - [X] Docker-backed PostgreSQL smoke-test scaffold for future integration tests
 - [X] API `WebApplicationFactory` smoke-test scaffold for future host tests
@@ -57,13 +59,16 @@ Use `dotnet restore StreamForge.sln` first after cloning or after test package c
 
 - [ ] Authentication register/login/refresh flows
 - [X] Upload validation failure paths
-- [ ] Upload session happy path, target generation, part upload, completion, and checksum success paths
-- [ ] Processing use cases with fake media processing and fake storage
-- [ ] Video metadata/category/tag update flows
+- [X] Upload session happy path, target generation, part upload, completion, and checksum success paths
+- [X] Processing use cases with fake media processing
+- [X] Video metadata/category/tag update flows
 - [X] Category/tag admin create and delete guards
-- [ ] Category/tag patch and update flow coverage
-- [ ] Engagement flows for reactions, comments, bookmarks, playlists, and notifications
-- [ ] Analytics thresholded view counting, rankings, segmentation, CSV reports, and disabled-feature behavior
+- [ ] Category patch coverage
+- [X] Tag patch/update flow coverage
+- [X] Engagement flows for reactions, comments, bookmarks, and notifications
+- [ ] Playlist application use-case coverage
+- [X] Analytics thresholded view counting, rankings, and disabled-feature behavior
+- [ ] Analytics segmentation service forwarding and CSV report coverage
 
 ## Planned Infrastructure Coverage
 

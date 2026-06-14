@@ -53,6 +53,22 @@ public sealed class TagUseCaseTests
             .WithMessage("Cannot delete a tag that is assigned to videos");
     }
 
+    [Fact]
+    public async Task UpdateTag_ShouldRenameTagForAdmin()
+    {
+        var tagId = Guid.NewGuid();
+        var tag = Tag.Create("backend");
+        var tags = Substitute.For<ITagRepository>();
+        tags.GetByIdAsync(tagId, Arg.Any<CancellationToken>()).Returns(tag);
+        tags.NameExistsAsync("api", tagId, Arg.Any<CancellationToken>()).Returns(false);
+        var service = new UpdateTagService(CreateUnitOfWork(tags: tags), CreateCurrentUser(UserRole.Admin));
+
+        var result = await service.Handle(tagId, new UpdateTagRequestDto(" API "), CancellationToken.None);
+
+        result.Name.Should().Be("api");
+        tag.Name.Should().Be("api");
+    }
+
     private static IUnitOfWork CreateUnitOfWork(ITagRepository? tags = null)
     {
         var unitOfWork = Substitute.For<IUnitOfWork>();

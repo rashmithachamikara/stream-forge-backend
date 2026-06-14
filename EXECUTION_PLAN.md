@@ -100,6 +100,8 @@
 - [X] Add expanded domain tests for access controls, comments, notifications, playlists, processing jobs, bookmarks, tags, and reactions
 - [X] Add category/tag admin guard tests
 - [X] Add upload validation use-case tests deferred from Phase 5
+- [X] Add upload success-path application tests
+- [X] Add processing, video update/archive, engagement, and analytics application tests
 - [ ] Add repository and PostgreSQL integration tests
 - [ ] Add API tests for endpoints
 - [ ] Add local/backend upload API tests
