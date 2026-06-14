@@ -5,7 +5,8 @@ namespace StreamForge.Infrastructure.Tests.Support;
 
 public sealed class PostgresContainerSmokeTests
 {
-    [Fact(Skip = "Docker-backed integration smoke test. Enable when running the full integration suite locally or in CI.")]
+    [IntegrationFact]
+    [Trait("Category", "PostgresIntegration")]
     public async Task PostgreSqlContainer_ShouldStart()
     {
         await using var container = new PostgreSqlBuilder()

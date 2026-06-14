@@ -261,13 +261,23 @@ Test projects live under `tests/` and are included in `StreamForge.sln`:
   - `StreamForge.Infrastructure.Tests`
   - `StreamForge.Api.Tests`
 
+PostgreSQL-backed integration tests live in a separate opt-in project:
+  - `StreamForge.Infrastructure.IntegrationTests`
+
 Run the default test suite:
 
 ```bash
 dotnet test StreamForge.sln --no-restore
 ```
 
-The default suite includes domain, application, and EF model configuration tests. Docker-backed PostgreSQL and API host smoke tests are scaffolded, but skipped by default until the local/CI environment opts into those heavier integration paths.
+The default suite includes domain, application, EF model configuration, and non-Docker tests.
+
+Run the PostgreSQL-backed integration suite with Docker/Testcontainers enabled:
+
+```powershell
+$env:STREAMFORGE_RUN_POSTGRES_TESTS='true'
+dotnet test tests/StreamForge.Infrastructure.IntegrationTests/StreamForge.Infrastructure.IntegrationTests.csproj --filter "Category=PostgresIntegration"
+```
 
 After cloning or after package changes, restore first:
 

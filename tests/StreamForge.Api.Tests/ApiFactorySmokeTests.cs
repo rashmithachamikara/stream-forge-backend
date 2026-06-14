@@ -5,9 +5,17 @@ namespace StreamForge.Api.Tests;
 
 public sealed class ApiFactorySmokeTests
 {
-    [Fact(Skip = "Requires a test database override before booting the full API host.")]
+    [Fact]
     public void WebApplicationFactory_ShouldBeCreatable()
     {
+        if (!string.Equals(
+                Environment.GetEnvironmentVariable("STREAMFORGE_RUN_API_HOST_TESTS"),
+                "true",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
         using var factory = new WebApplicationFactory<Program>();
 
         factory.Should().NotBeNull();

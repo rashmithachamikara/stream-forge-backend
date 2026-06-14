@@ -22,12 +22,21 @@ Phase 10 starts by adding the first real test infrastructure to the solution, th
 - [X] `tests/StreamForge.Application.Tests`
 - [X] `tests/StreamForge.Infrastructure.Tests`
 - [X] `tests/StreamForge.Api.Tests`
+- [X] `tests/StreamForge.Infrastructure.IntegrationTests` for opt-in PostgreSQL/Testcontainers coverage
 - [X] Add test projects to `StreamForge.sln`
+- [X] Keep PostgreSQL integration tests outside the main solution test run so editor test panels stay focused on fast tests
 
 Repeatable command:
 
 ```bash
 dotnet test StreamForge.sln --no-restore
+```
+
+PostgreSQL-backed integration tests are opt-in because they require Docker/Testcontainers:
+
+```powershell
+$env:STREAMFORGE_RUN_POSTGRES_TESTS='true'
+dotnet test tests/StreamForge.Infrastructure.IntegrationTests/StreamForge.Infrastructure.IntegrationTests.csproj --filter "Category=PostgresIntegration"
 ```
 
 Use `dotnet restore StreamForge.sln` first after cloning or after test package changes.
@@ -41,7 +50,8 @@ Use `dotnet restore StreamForge.sln` first after cloning or after test package c
 - [X] Application tests for category/tag admin create and delete guard behavior
 - [X] Application tests for video metadata, engagement settings, player settings, tag replacement, archive, engagement flows, processing success/failure, and analytics reporting/query guards
 - [X] Infrastructure EF model tests for bookmark/reaction/tag/playlist index behavior
-- [X] Docker-backed PostgreSQL smoke-test scaffold for future integration tests
+- [X] PostgreSQL-backed repository tests for video visibility/search, bookmark pagination, category/tag guard queries, playlist ordering/uniqueness, playlist `VideoCount`, and analytics aggregations
+- [X] Docker-backed PostgreSQL smoke-test scaffold for future integration tests, isolated in the integration test project
 - [X] API `WebApplicationFactory` smoke-test scaffold for future host tests
 
 ## Planned Domain Coverage
@@ -73,13 +83,13 @@ Use `dotnet restore StreamForge.sln` first after cloning or after test package c
 ## Planned Infrastructure Coverage
 
 - [ ] EF migrations apply cleanly to PostgreSQL
-- [ ] Repository pagination, filtering, search, and deterministic ordering
-- [ ] Video visibility/search queries
-- [ ] Category/tag in-use guard queries
+- [X] Repository pagination, filtering, search, and deterministic ordering
+- [X] Video visibility/search queries
+- [X] Category/tag in-use guard queries
 - [X] EF model configuration checks for key uniqueness/index rules
 - [ ] Reaction summary regression: no parallel EF operations on a single `DbContext`
-- [ ] Playlist `VideoCount` persistence after add/remove
-- [ ] Analytics aggregation queries for views, watch time, auth/category/tag/browser/device breakdowns
+- [X] Playlist `VideoCount` persistence after add/remove
+- [X] Analytics aggregation queries for views, watch time, auth/category/tag/browser/device breakdowns
 
 ## Planned API Coverage
 
@@ -114,4 +124,4 @@ Use `dotnet restore StreamForge.sln` first after cloning or after test package c
 
 - Frontend/player tests are outside Phase 10.
 - EF InMemory should not be used for repository behavior that depends on relational/PostgreSQL semantics.
-- Docker-backed tests may stay skipped until CI has Docker/Testcontainers support configured.
+- Docker-backed tests should stay categorized as `PostgresIntegration` until CI has Docker/Testcontainers support configured.
