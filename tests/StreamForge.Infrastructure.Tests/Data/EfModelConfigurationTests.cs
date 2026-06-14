@@ -37,6 +37,34 @@ public sealed class EfModelConfigurationTests
         uniqueIndex!.IsUnique.Should().BeTrue();
     }
 
+    [Fact]
+    public void TagConfiguration_ShouldKeepTagNamesUnique()
+    {
+        using var context = CreateContext();
+
+        var tagEntity = context.Model.FindEntityType(typeof(Tag));
+        var nameIndex = tagEntity!.GetIndexes()
+            .FirstOrDefault(index => index.Properties.Select(property => property.Name)
+                .SequenceEqual(new[] { nameof(Tag.Name) }));
+
+        nameIndex.Should().NotBeNull();
+        nameIndex!.IsUnique.Should().BeTrue();
+    }
+
+    [Fact]
+    public void PlaylistVideoConfiguration_ShouldKeepOneVideoPerPlaylist()
+    {
+        using var context = CreateContext();
+
+        var playlistVideoEntity = context.Model.FindEntityType(typeof(PlaylistVideo));
+        var uniqueIndex = playlistVideoEntity!.GetIndexes()
+            .FirstOrDefault(index => index.Properties.Select(property => property.Name)
+                .SequenceEqual(new[] { nameof(PlaylistVideo.PlaylistId), nameof(PlaylistVideo.VideoId) }));
+
+        uniqueIndex.Should().NotBeNull();
+        uniqueIndex!.IsUnique.Should().BeTrue();
+    }
+
     private static StreamForgeDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<StreamForgeDbContext>()

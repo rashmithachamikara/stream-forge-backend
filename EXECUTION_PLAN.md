@@ -97,7 +97,9 @@
 - [X] Add starter unit tests for domain
 - [X] Add starter Application tests for analytics config gating
 - [X] Add starter Infrastructure/API test scaffolds
-- [ ] Add upload use-case tests deferred from Phase 5
+- [X] Add expanded domain tests for access controls, comments, notifications, playlists, processing jobs, bookmarks, tags, and reactions
+- [X] Add category/tag admin guard tests
+- [X] Add upload validation use-case tests deferred from Phase 5
 - [ ] Add repository and PostgreSQL integration tests
 - [ ] Add API tests for endpoints
 - [ ] Add local/backend upload API tests

@@ -267,6 +267,8 @@ Run the default test suite:
 dotnet test StreamForge.sln --no-restore
 ```
 
+The default suite includes domain, application, and EF model configuration tests. Docker-backed PostgreSQL and API host smoke tests are scaffolded, but skipped by default until the local/CI environment opts into those heavier integration paths.
+
 After cloning or after package changes, restore first:
 
 ```bash
