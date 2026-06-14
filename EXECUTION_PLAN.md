@@ -93,9 +93,12 @@
 - [X] Add downloadable analytics reports
 
 ### Phase 10: Testing (Week 11-12)
-- [ ] Add unit tests for domain
+- [X] Add test projects and baseline test infrastructure
+- [X] Add starter unit tests for domain
+- [X] Add starter Application tests for analytics config gating
+- [X] Add starter Infrastructure/API test scaffolds
 - [ ] Add upload use-case tests deferred from Phase 5
-- [ ] Add integration tests for repositories
+- [ ] Add repository and PostgreSQL integration tests
 - [ ] Add API tests for endpoints
 - [ ] Add local/backend upload API tests
 - [ ] Add end-to-end tests

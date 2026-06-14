@@ -43,6 +43,7 @@ This project follows **Clean Architecture** principles with strict dependency ru
 ```
 
 ### Dependency Rules
+
 - **Domain** has no dependencies on other layers
 - **Application** depends only on Domain
 - **Infrastructure** depends on Application and Domain
@@ -89,17 +90,20 @@ stream-forge-backend/
 ## User Roles
 
 ### Administrator
+
 - Manage users, videos, and system settings
 - Access analytics and reports
 - Configure storage providers
 
 ### Editor
+
 - Upload and manage videos
 - Edit metadata (title, description, tags, categories)
 - Configure video permissions and visibility
 - Generate embed codes and share links
 
 ### Viewer
+
 - Watch videos
 - Like/dislike content
 - Comment on videos
@@ -109,11 +113,13 @@ stream-forge-backend/
 ## Core Features
 
 ### 1. Authentication & Authorization
+
 - JWT-based authentication
 - Role-based access control (RBAC)
 - Token refresh mechanism
 
 ### 2. Video Management
+
 - Video upload with chunked support
 - Metadata management (title, description, tags, categories)
 - Multiple video versions (resolutions, formats, bitrates)
@@ -121,12 +127,14 @@ stream-forge-backend/
 - Video settings (autoplay, visibility, comments)
 
 ### 3. Storage Abstraction
+
 - `IStorageService` interface
 - Local filesystem storage
 - Future: S3-compatible storage
 - Future: Azure Blob Storage
 
 ### 4. Video Processing
+
 - Background job processing
 - FFmpeg-based transcoding
 - Automatic thumbnail generation
@@ -134,16 +142,19 @@ stream-forge-backend/
 - HLS playlist generation
 
 ### 5. AI Features
+
 - Video transcription
 - Searchable text indexing
 - Optional AI summarization
 
 ### 6. Sharing & Embedding
+
 - Secure watch URLs
 - Embeddable iframe codes
 - Access control enforcement
 
 ### 7. Engagement
+
 - Likes and dislikes
 - Comments system
 - In-video personal bookmarks with notes
@@ -151,6 +162,7 @@ stream-forge-backend/
 - Notifications
 
 ### 8. Analytics
+
 - View tracking
 - Watch time metrics
 - Per-video statistics
@@ -159,6 +171,7 @@ stream-forge-backend/
 ## Database Schema
 
 ### Core Tables
+
 - **Users** - User accounts
 - **Roles** - User roles (Admin, Editor, Viewer)
 - **Videos** - Video metadata
@@ -179,6 +192,7 @@ stream-forge-backend/
 ## Getting Started
 
 ### Prerequisites
+
 - .NET 9 SDK
 - PostgreSQL 14+
 - FFmpeg (for video processing)
@@ -186,31 +200,36 @@ stream-forge-backend/
 ### Setup
 
 1. Clone the repository
+
 ```bash
 git clone <repository-url>
 cd stream-forge-backend
 ```
 
 2. Restore dependencies
+
 ```bash
 dotnet restore
 ```
 
 3. Update connection string in `appsettings.json`
+
 ```json
 {
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Database=streamforge;Username=postgres;Password=yourpassword"
-  }
+    "ConnectionStrings": {
+        "DefaultConnection": "Host=localhost;Database=streamforge;Username=postgres;Password=yourpassword"
+    }
 }
 ```
 
 4. Run migrations
+
 ```bash
 dotnet ef database update --project src/StreamForge.Infrastructure --startup-project src/StreamForge.Api
 ```
 
 5. Run the application
+
 ```bash
 dotnet run --project src/StreamForge.Api
 ```
@@ -218,6 +237,7 @@ dotnet run --project src/StreamForge.Api
 ## Development Guidelines
 
 ### SOLID Principles
+
 - **Single Responsibility**: Each class has one reason to change
 - **Open/Closed**: Open for extension, closed for modification
 - **Liskov Substitution**: Derived classes must be substitutable
@@ -225,6 +245,7 @@ dotnet run --project src/StreamForge.Api
 - **Dependency Inversion**: Depend on abstractions, not concretions
 
 ### Code Standards
+
 - Use `async`/`await` for all I/O operations
 - Use strongly-typed enums
 - Use MediatR for use cases (CQRS pattern)
@@ -233,11 +254,28 @@ dotnet run --project src/StreamForge.Api
 - Add XML documentation comments for public APIs
 
 ### Testing
-- Unit tests for domain logic
-- Integration tests for repositories
-- API tests for endpoints
+
+Test projects live under `tests/` and are included in `StreamForge.sln`:
+  - `StreamForge.Domain.Tests`
+  - `StreamForge.Application.Tests`
+  - `StreamForge.Infrastructure.Tests`
+  - `StreamForge.Api.Tests`
+
+Run the default test suite:
+
+```bash
+dotnet test StreamForge.sln --no-restore
+```
+
+After cloning or after package changes, restore first:
+
+```bash
+dotnet restore StreamForge.sln
+dotnet test StreamForge.sln --no-restore
+```
 
 ## Future Enhancements
+
 - Real-time streaming (RTMP)
 - Live streaming support
 - CDN integration
@@ -246,7 +284,9 @@ dotnet run --project src/StreamForge.Api
 - Video editing capabilities
 
 ## License
+
 [Your License]
 
 ## Contact
+
 [Your Contact Information]
