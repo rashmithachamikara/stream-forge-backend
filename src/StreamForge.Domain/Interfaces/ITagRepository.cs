@@ -31,5 +31,7 @@ public interface ITagRepository : IRepository<Tag>
     /// <summary>
     /// Checks if tag name exists
     /// </summary>
-    Task<bool> NameExistsAsync(string name, CancellationToken cancellationToken = default);
+    Task<bool> NameExistsAsync(string name, Guid? excludeTagId = null, CancellationToken cancellationToken = default);
+
+    Task<bool> IsInUseAsync(Guid tagId, CancellationToken cancellationToken = default);
 }

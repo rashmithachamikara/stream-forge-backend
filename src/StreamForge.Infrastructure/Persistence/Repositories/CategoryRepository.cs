@@ -22,4 +22,22 @@ public sealed class CategoryRepository : BaseRepository<Category>, ICategoryRepo
 
     public Task<bool> SlugExistsAsync(string slug, CancellationToken cancellationToken = default) =>
         DbSet.AnyAsync(category => category.Name == slug, cancellationToken);
+
+    public Task<bool> NameExistsAsync(string name, Guid? excludeCategoryId = null, CancellationToken cancellationToken = default)
+    {
+        var trimmedName = name.Trim();
+        var query = DbSet.Where(category => category.Name == trimmedName);
+        if (excludeCategoryId.HasValue)
+        {
+            query = query.Where(category => category.Id != excludeCategoryId.Value);
+        }
+
+        return query.AnyAsync(cancellationToken);
+    }
+
+    public Task<bool> HasVideosAsync(Guid categoryId, CancellationToken cancellationToken = default) =>
+        DbContext.Videos.AnyAsync(video => video.CategoryId == categoryId, cancellationToken);
+
+    public Task<bool> HasSubcategoriesAsync(Guid categoryId, CancellationToken cancellationToken = default) =>
+        DbSet.AnyAsync(category => category.ParentCategoryId == categoryId, cancellationToken);
 }

@@ -355,6 +355,135 @@ public sealed class GetCategoryService
     }
 }
 
+public sealed class CreateCategoryService
+{
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUserService;
+
+    public CreateCategoryService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
+    {
+        _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
+    }
+
+    public async Task<CategoryDto> Handle(CreateCategoryRequestDto request, CancellationToken cancellationToken)
+    {
+        ContentGuards.EnsureAdmin(_currentUserService);
+
+        if (await _unitOfWork.Categories.NameExistsAsync(request.Name, cancellationToken: cancellationToken))
+        {
+            throw new InvalidOperationException("A category with this name already exists");
+        }
+
+        if (request.ParentCategoryId.HasValue)
+        {
+            if (!await _unitOfWork.Categories.ExistsAsync(request.ParentCategoryId.Value, cancellationToken))
+            {
+                throw new EntityNotFoundException("Category", request.ParentCategoryId.Value);
+            }
+        }
+
+        var category = Category.Create(
+            request.Name.Trim(),
+            string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+            request.ParentCategoryId,
+            request.DisplayOrder);
+
+        await _unitOfWork.Categories.AddAsync(category, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return ContentMapper.ToCategory(category);
+    }
+}
+
+public sealed class UpdateCategoryService
+{
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUserService;
+
+    public UpdateCategoryService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
+    {
+        _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
+    }
+
+    public async Task<CategoryDto> Handle(Guid categoryId, UpdateCategoryRequestDto request, CancellationToken cancellationToken)
+    {
+        ContentGuards.EnsureAdmin(_currentUserService);
+
+        var category = await _unitOfWork.Categories.GetByIdAsync(categoryId, cancellationToken)
+            ?? throw new EntityNotFoundException("Category", categoryId);
+
+        var updatedName = request.Name is not null ? request.Name.Trim() : category.Name;
+        var updatedDescription = request.ClearDescription
+            ? null
+            : request.Description is not null
+                ? string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim()
+                : category.Description;
+        var updatedDisplayOrder = request.DisplayOrder ?? category.DisplayOrder;
+        var updatedParentCategoryId = request.ClearParentCategory
+            ? null
+            : request.ParentCategoryId.HasValue
+                ? request.ParentCategoryId.Value
+                : category.ParentCategoryId;
+
+        if (await _unitOfWork.Categories.NameExistsAsync(updatedName, categoryId, cancellationToken))
+        {
+            throw new InvalidOperationException("A category with this name already exists");
+        }
+
+        if (updatedParentCategoryId.HasValue)
+        {
+            if (updatedParentCategoryId.Value == categoryId)
+            {
+                throw new InvalidOperationException("Category cannot be its own parent");
+            }
+
+            if (!await _unitOfWork.Categories.ExistsAsync(updatedParentCategoryId.Value, cancellationToken))
+            {
+                throw new EntityNotFoundException("Category", updatedParentCategoryId.Value);
+            }
+        }
+
+        category.Update(updatedName, updatedDescription, updatedDisplayOrder);
+        category.SetParent(updatedParentCategoryId);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return ContentMapper.ToCategory(category);
+    }
+}
+
+public sealed class DeleteCategoryService
+{
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUserService;
+
+    public DeleteCategoryService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
+    {
+        _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
+    }
+
+    public async Task Handle(Guid categoryId, CancellationToken cancellationToken)
+    {
+        ContentGuards.EnsureAdmin(_currentUserService);
+
+        var category = await _unitOfWork.Categories.GetByIdAsync(categoryId, cancellationToken)
+            ?? throw new EntityNotFoundException("Category", categoryId);
+
+        if (await _unitOfWork.Categories.HasSubcategoriesAsync(categoryId, cancellationToken))
+        {
+            throw new InvalidOperationException("Cannot delete a category that still has subcategories");
+        }
+
+        if (await _unitOfWork.Categories.HasVideosAsync(categoryId, cancellationToken))
+        {
+            throw new InvalidOperationException("Cannot delete a category that is assigned to videos");
+        }
+
+        await _unitOfWork.Categories.DeleteAsync(category, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+}
+
 public sealed class ListTagsService
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -387,6 +516,91 @@ public sealed class GetTagService
         var tag = await _unitOfWork.Tags.GetByIdAsync(tagId, cancellationToken)
             ?? throw new EntityNotFoundException("Tag", tagId);
         return ContentMapper.ToTag(tag);
+    }
+}
+
+public sealed class CreateTagService
+{
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUserService;
+
+    public CreateTagService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
+    {
+        _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
+    }
+
+    public async Task<TagSummaryDto> Handle(CreateTagRequestDto request, CancellationToken cancellationToken)
+    {
+        ContentGuards.EnsureAdmin(_currentUserService);
+
+        if (await _unitOfWork.Tags.NameExistsAsync(request.Name, cancellationToken: cancellationToken))
+        {
+            throw new InvalidOperationException("A tag with this name already exists");
+        }
+
+        var tag = Tag.Create(request.Name);
+        await _unitOfWork.Tags.AddAsync(tag, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return ContentMapper.ToTag(tag);
+    }
+}
+
+public sealed class UpdateTagService
+{
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUserService;
+
+    public UpdateTagService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
+    {
+        _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
+    }
+
+    public async Task<TagSummaryDto> Handle(Guid tagId, UpdateTagRequestDto request, CancellationToken cancellationToken)
+    {
+        ContentGuards.EnsureAdmin(_currentUserService);
+
+        var tag = await _unitOfWork.Tags.GetByIdAsync(tagId, cancellationToken)
+            ?? throw new EntityNotFoundException("Tag", tagId);
+
+        var updatedName = request.Name is not null ? request.Name.Trim() : tag.Name;
+        if (await _unitOfWork.Tags.NameExistsAsync(updatedName, tagId, cancellationToken))
+        {
+            throw new InvalidOperationException("A tag with this name already exists");
+        }
+
+        tag.UpdateName(updatedName);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return ContentMapper.ToTag(tag);
+    }
+}
+
+public sealed class DeleteTagService
+{
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUserService;
+
+    public DeleteTagService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
+    {
+        _unitOfWork = unitOfWork;
+        _currentUserService = currentUserService;
+    }
+
+    public async Task Handle(Guid tagId, CancellationToken cancellationToken)
+    {
+        ContentGuards.EnsureAdmin(_currentUserService);
+
+        var tag = await _unitOfWork.Tags.GetByIdAsync(tagId, cancellationToken)
+            ?? throw new EntityNotFoundException("Tag", tagId);
+
+        if (tag.UsageCount > 0 || await _unitOfWork.Tags.IsInUseAsync(tagId, cancellationToken))
+        {
+            throw new InvalidOperationException("Cannot delete a tag that is assigned to videos");
+        }
+
+        await _unitOfWork.Tags.DeleteAsync(tag, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }
 
@@ -641,6 +855,17 @@ internal static class Pagination
             totalPages,
             result.Page < totalPages,
             result.Page > 1 && totalPages > 0);
+    }
+}
+
+internal static class ContentGuards
+{
+    public static void EnsureAdmin(ICurrentUserService currentUserService)
+    {
+        if (currentUserService.Role != UserRole.Admin)
+        {
+            throw new System.UnauthorizedAccessException("Only administrators can perform this action");
+        }
     }
 }
 

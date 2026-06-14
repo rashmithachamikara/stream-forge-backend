@@ -26,4 +26,10 @@ public interface ICategoryRepository : IRepository<Category>
     /// Checks if slug exists
     /// </summary>
     Task<bool> SlugExistsAsync(string slug, CancellationToken cancellationToken = default);
+
+    Task<bool> NameExistsAsync(string name, Guid? excludeCategoryId = null, CancellationToken cancellationToken = default);
+
+    Task<bool> HasVideosAsync(Guid categoryId, CancellationToken cancellationToken = default);
+
+    Task<bool> HasSubcategoriesAsync(Guid categoryId, CancellationToken cancellationToken = default);
 }

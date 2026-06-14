@@ -85,10 +85,28 @@ public sealed record CategoryDto(
     int DisplayOrder,
     DateTime CreatedAt);
 
+public sealed record CreateCategoryRequestDto(
+    string Name,
+    string? Description,
+    Guid? ParentCategoryId,
+    int DisplayOrder);
+
+public sealed record UpdateCategoryRequestDto(
+    string? Name,
+    string? Description,
+    Guid? ParentCategoryId,
+    bool ClearParentCategory,
+    int? DisplayOrder,
+    bool ClearDescription);
+
 public sealed record TagSummaryDto(
     Guid Id,
     string Name,
     int UsageCount);
+
+public sealed record CreateTagRequestDto(string Name);
+
+public sealed record UpdateTagRequestDto(string? Name);
 
 public sealed record UserProfileDto(
     Guid Id,

@@ -48,6 +48,18 @@ public sealed class TagRepository : BaseRepository<Tag>, ITagRepository
     public async Task<IEnumerable<Tag>> GetMostUsedAsync(int count, CancellationToken cancellationToken = default) =>
         await DbSet.OrderByDescending(tag => tag.UsageCount).Take(count).ToListAsync(cancellationToken);
 
-    public Task<bool> NameExistsAsync(string name, CancellationToken cancellationToken = default) =>
-        DbSet.AnyAsync(tag => tag.Name == name.Trim().ToLowerInvariant(), cancellationToken);
+    public Task<bool> NameExistsAsync(string name, Guid? excludeTagId = null, CancellationToken cancellationToken = default)
+    {
+        var normalizedName = name.Trim().ToLowerInvariant();
+        var query = DbSet.Where(tag => tag.Name == normalizedName);
+        if (excludeTagId.HasValue)
+        {
+            query = query.Where(tag => tag.Id != excludeTagId.Value);
+        }
+
+        return query.AnyAsync(cancellationToken);
+    }
+
+    public Task<bool> IsInUseAsync(Guid tagId, CancellationToken cancellationToken = default) =>
+        DbContext.VideoTags.AnyAsync(videoTag => videoTag.TagId == tagId, cancellationToken);
 }

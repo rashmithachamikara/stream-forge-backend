@@ -7,24 +7,33 @@ namespace StreamForge.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/tags")]
-[AllowAnonymous]
 public sealed class TagsController : ControllerBase
 {
     private readonly ListTagsService _listTags;
     private readonly GetTagService _getTag;
+    private readonly CreateTagService _createTag;
+    private readonly UpdateTagService _updateTag;
+    private readonly DeleteTagService _deleteTag;
     private readonly ListVideosService _listVideos;
 
     public TagsController(
         ListTagsService listTags,
         GetTagService getTag,
+        CreateTagService createTag,
+        UpdateTagService updateTag,
+        DeleteTagService deleteTag,
         ListVideosService listVideos)
     {
         _listTags = listTags;
         _getTag = getTag;
+        _createTag = createTag;
+        _updateTag = updateTag;
+        _deleteTag = deleteTag;
         _listVideos = listVideos;
     }
 
     [HttpGet]
+    [AllowAnonymous]
     public async Task<ActionResult<PagedResponseDto<TagSummaryDto>>> List(
         [FromQuery] string? search,
         [FromQuery] int page = 1,
@@ -36,12 +45,42 @@ public sealed class TagsController : ControllerBase
     }
 
     [HttpGet("{tagId:guid}")]
+    [AllowAnonymous]
     public async Task<ActionResult<TagSummaryDto>> Get(Guid tagId, CancellationToken cancellationToken)
     {
         return Ok(await _getTag.Handle(tagId, cancellationToken));
     }
 
+    [HttpPost]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<TagSummaryDto>> Create(
+        [FromBody] CreateTagRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var created = await _createTag.Handle(request, cancellationToken);
+        return CreatedAtAction(nameof(Get), new { tagId = created.Id }, created);
+    }
+
+    [HttpPatch("{tagId:guid}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<TagSummaryDto>> Update(
+        Guid tagId,
+        [FromBody] UpdateTagRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _updateTag.Handle(tagId, request, cancellationToken));
+    }
+
+    [HttpDelete("{tagId:guid}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(Guid tagId, CancellationToken cancellationToken)
+    {
+        await _deleteTag.Handle(tagId, cancellationToken);
+        return NoContent();
+    }
+
     [HttpGet("{tagId:guid}/videos")]
+    [AllowAnonymous]
     public async Task<ActionResult<PagedResponseDto<VideoSummaryDto>>> ListVideos(
         Guid tagId,
         [FromQuery] string? search,
