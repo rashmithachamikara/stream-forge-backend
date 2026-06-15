@@ -6,6 +6,24 @@ This document describes application-level configuration values used by Stream Fo
 
 ---
 
+## Database
+
+The `Database` section controls startup-time migration and seeding behavior.
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `ApplyMigrationsOnStartup` | `false` | Applies pending EF Core migrations during application startup |
+| `SeedOnStartup` | `true` | Runs the app's idempotent baseline seeding when the schema is current |
+| `WarnOnPendingMigrations` | `true` | Logs a warning when pending migrations exist and auto-migration is disabled |
+
+**Notes:**
+- Keep `ApplyMigrationsOnStartup=false` by default for safer production behavior.
+- When `ApplyMigrationsOnStartup=true`, the app applies migrations before running startup seeding.
+- When `SeedOnStartup=true` but pending migrations still exist, seeding is skipped until the schema is current.
+- This section is a runtime behavior toggle set, not a replacement for a deliberate migration step in CI/CD.
+
+---
+
 ## Upload
 
 The `Upload` section controls video upload behavior and interacts with the `UploadSessions` and `UploadSessionParts` tables.
@@ -129,6 +147,10 @@ The `ConnectionStrings` section stores database connection strings.
 | Setting | Description |
 |---------|-------------|
 | `DefaultConnection` | PostgreSQL connection string used by the API |
+
+**Notes:**
+- Both EF Core application data and Hangfire durable job storage use `DefaultConnection`.
+- In Docker Compose, this is typically passed as `ConnectionStrings__DefaultConnection`.
 
 ---
 

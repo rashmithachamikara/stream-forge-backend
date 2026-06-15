@@ -4,6 +4,7 @@ using System.Threading.RateLimiting;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using StreamForge.Api.Options;
@@ -11,6 +12,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.Options;
 using StreamForge.Api.Authentication;
+using StreamForge.Api.Health;
 using StreamForge.Api.Middleware;
 using RateLimiterConfigOptions = StreamForge.Application.Common.RateLimiterOptions;
 using StreamForge.Application.Common;
@@ -76,6 +78,9 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddHealthChecks()
+    .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"])
+    .AddCheck<StoragePathHealthCheck>("storage", tags: ["ready"]);
 
 builder.Services
     .Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName))
@@ -113,6 +118,11 @@ builder.Services
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+builder.Services
+    .Configure<DatabaseOptions>(builder.Configuration.GetSection(DatabaseOptions.SectionName))
+    .AddOptions<DatabaseOptions>()
+    .ValidateOnStart();
+
 builder.Services.Configure<CorsOptions>(builder.Configuration.GetSection(CorsOptions.SectionName));
 
 builder.Services.AddSingleton<IValidateOptions<RateLimiterConfigOptions>, RateLimiterOptionsValidator>();
@@ -127,6 +137,10 @@ var connectionStrings = builder.Configuration.GetSection(ConnectionStringsOption
 var rateLimiterOptions = builder.Configuration.GetSection(RateLimiterConfigOptions.SectionName)
     .Get<RateLimiterConfigOptions>()
     ?? throw new InvalidOperationException("RateLimiter configuration is missing.");
+
+var databaseOptions = builder.Configuration.GetSection(DatabaseOptions.SectionName)
+    .Get<DatabaseOptions>()
+    ?? new DatabaseOptions();
 
 var corsOptions = builder.Configuration.GetSection(CorsOptions.SectionName)
     .Get<CorsOptions>()
@@ -354,6 +368,22 @@ static string ResolveRateLimitTrafficClass(HttpContext httpContext)
     return "api";
 }
 
+static bool ShouldUseHttpsRedirection(IConfiguration configuration)
+{
+    var applicationUrls = configuration["ASPNETCORE_URLS"];
+    if (!string.IsNullOrWhiteSpace(applicationUrls))
+    {
+        return applicationUrls
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(url => url.StartsWith("https://", StringComparison.OrdinalIgnoreCase));
+    }
+
+    return configuration
+        .GetSection("Kestrel:Endpoints")
+        .GetChildren()
+        .Any(endpoint => endpoint["Url"]?.StartsWith("https://", StringComparison.OrdinalIgnoreCase) == true);
+}
+
 // Configure database
 builder.Services.AddDbContext<StreamForgeDbContext>(options =>
     options.UseNpgsql(connectionStrings.DefaultConnection));
@@ -365,19 +395,35 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<StreamForgeDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseStartup");
-    var pendingMigrations = (await context.Database.GetPendingMigrationsAsync()).ToArray();
+    string[] pendingMigrations = [];
 
-    if (pendingMigrations.Length > 0)
+    if (databaseOptions.ApplyMigrationsOnStartup)
     {
-        logger.LogWarning(
-            "Database has {MigrationCount} pending migration(s): {PendingMigrations}. Run database migrations before starting the application in this environment.",
-            pendingMigrations.Length,
-            string.Join(", ", pendingMigrations));
+        logger.LogInformation("Applying pending database migrations on startup.");
+        await context.Database.MigrateAsync();
     }
-    else
+    else if (databaseOptions.WarnOnPendingMigrations || databaseOptions.SeedOnStartup)
+    {
+        pendingMigrations = (await context.Database.GetPendingMigrationsAsync()).ToArray();
+
+        if (databaseOptions.WarnOnPendingMigrations && pendingMigrations.Length > 0)
+        {
+            logger.LogWarning(
+                "Database has {MigrationCount} pending migration(s): {PendingMigrations}. Run database migrations before starting the application in this environment.",
+                pendingMigrations.Length,
+                string.Join(", ", pendingMigrations));
+        }
+    }
+
+    var schemaIsCurrent = databaseOptions.ApplyMigrationsOnStartup || pendingMigrations.Length == 0;
+    if (databaseOptions.SeedOnStartup && schemaIsCurrent)
     {
         var seedLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(DataSeeder).FullName!);
         await DataSeeder.SeedAsync(context, seedLogger);
+    }
+    else if (databaseOptions.SeedOnStartup && !schemaIsCurrent)
+    {
+        logger.LogInformation("Skipping data seeding because pending migrations exist and startup auto-migration is disabled.");
     }
 }
 
@@ -401,9 +447,20 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseHttpsRedirection();
+if (ShouldUseHttpsRedirection(builder.Configuration))
+{
+    app.UseHttpsRedirection();
+}
 
 app.MapControllers();
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = _ => false
+});
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = registration => registration.Tags.Contains("ready")
+});
 
 var summaries = new[]
 {

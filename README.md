@@ -234,6 +234,75 @@ dotnet ef database update --project src/StreamForge.Infrastructure --startup-pro
 dotnet run --project src/StreamForge.Api
 ```
 
+6. Health endpoints
+
+```text
+GET /health/live
+GET /health/ready
+```
+
+`/health/live` confirms the process is up. `/health/ready` checks PostgreSQL connectivity and that the configured upload storage path is writable.
+
+## Docker Deployment
+
+The repo includes:
+
+- `Dockerfile` for the API runtime
+- `compose.yaml` with `api` and `postgres` services
+- `.env.example` for deployment-time environment values
+
+### Quick Start
+
+1. Create a deployment env file
+
+```bash
+cp .env.example .env
+```
+
+2. Set at least a real `STREAMFORGE_JWT_SIGNING_KEY` and PostgreSQL password in `.env`
+
+3. Start PostgreSQL
+
+```bash
+docker compose up -d postgres
+```
+
+4. Choose a migration strategy
+
+Default, explicit migration step:
+
+```bash
+dotnet ef database update --project src/StreamForge.Infrastructure --startup-project src/StreamForge.Api
+```
+
+Optional startup auto-migration:
+
+- Set `STREAMFORGE_DB_APPLY_MIGRATIONS_ON_STARTUP=true` in `.env`
+- Then the API container can apply migrations itself on startup
+
+5. Start the API container
+
+```bash
+docker compose up -d api
+```
+
+6. Verify readiness
+
+```bash
+curl http://localhost:8080/health/ready
+```
+
+### Notes
+
+- The container image includes `ffmpeg`, `ffprobe`, and `curl`.
+- Media files are stored in the named Docker volume mounted at `/app/data/uploads`.
+- The current deployment model uses local filesystem media storage, so horizontal scaling is limited until a shared or remote storage provider is added.
+- The app now supports startup migration behavior through the `Database` settings, but the default remains conservative:
+  - `ApplyMigrationsOnStartup=false`
+  - `SeedOnStartup=true`
+  - `WarnOnPendingMigrations=true`
+- Production deployments should usually keep auto-migration off and run migrations explicitly.
+
 ## Development Guidelines
 
 ### SOLID Principles
