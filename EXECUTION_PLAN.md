@@ -141,6 +141,17 @@
 - [ ] Keep milestone-based DB progress as the durable fallback after restarts
 - [ ] Add tests for progress parsing, throttling, and fallback behavior
 
+### Phase 15: AI Transcription and Captions
+- [ ] Add transcription configuration and provider abstraction for Whisper-based transcription
+- [ ] Queue transcription after upload/processing completes and source media is ready
+- [ ] Implement Infrastructure adapter for local Whisper execution
+- [ ] Generate and persist transcript/caption outputs such as `VTT`, `SRT`, and optional plain text
+- [ ] Track transcription job state, language, provider, and failure details in `VideoTranscriptions`
+- [ ] Add APIs for listing, retrieving, and downloading video transcriptions/captions
+- [ ] Add player-facing caption endpoint support using existing video authorization rules
+- [ ] Add optional auto-transcription toggle and language/model settings
+- [ ] Add tests for transcription orchestration, storage, authorization, and failure handling
+
 ## Notes
 
 - Detailed implementation notes for each phase will be maintained under `documentation/plans/`.
