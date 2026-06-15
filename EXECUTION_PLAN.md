@@ -149,6 +149,9 @@
 - [ ] Track transcription job state, language, provider, and failure details in `VideoTranscriptions`
 - [ ] Add APIs for listing, retrieving, and downloading video transcriptions/captions
 - [ ] Add player-facing caption endpoint support using existing video authorization rules
+- [ ] Chunk transcripts with timestamps for transcript search and grounded Q&A
+- [ ] Add transcript search using full-text search and optional semantic/vector retrieval
+- [ ] Add video Q&A endpoints over retrieved transcript passages with cited time ranges
 - [ ] Add optional auto-transcription toggle and language/model settings
 - [ ] Add tests for transcription orchestration, storage, authorization, and failure handling
 
