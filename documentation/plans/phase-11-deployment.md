@@ -83,6 +83,7 @@ The first production deployment can remain a single API container with persisten
   - `streamforge-api`
   - `postgres`
   - named volumes for PostgreSQL data and media storage
+- Add an opt-in host-path override for operators who want explicit filesystem mounts instead of named Docker volumes
 - Provide environment-variable-driven configuration instead of hard-coded secrets.
 - Mount persistent media storage to the configured upload path.
 

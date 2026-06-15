@@ -394,6 +394,7 @@ appsettings.Local.json
 /storage/
 /uploads/
 /temp/
+/docker-data/
 /src/StreamForge.Api/uploads/
 
 # FFmpeg outputs

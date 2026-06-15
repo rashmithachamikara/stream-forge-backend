@@ -249,6 +249,7 @@ The repo includes:
 
 - `Dockerfile` for the API runtime
 - `compose.yaml` with `api` and `postgres` services
+- `compose.host-paths.yaml` for optional bind mounts to host folders
 - `.env.example` for deployment-time environment values
 
 ### Quick Start
@@ -295,13 +296,35 @@ curl http://localhost:8080/health/ready
 ### Notes
 
 - The container image includes `ffmpeg`, `ffprobe`, and `curl`.
-- Media files are stored in the named Docker volume mounted at `/app/data/uploads`.
+- By default, PostgreSQL and media files are stored in named Docker volumes.
 - The current deployment model uses local filesystem media storage, so horizontal scaling is limited until a shared or remote storage provider is added.
 - The app now supports startup migration behavior through the `Database` settings, but the default remains conservative:
   - `ApplyMigrationsOnStartup=false`
   - `SeedOnStartup=true`
   - `WarnOnPendingMigrations=true`
 - Production deployments should usually keep auto-migration off and run migrations explicitly.
+
+### Optional Host Path Mounts
+
+If you want to inspect files directly on your machine instead of using named Docker volumes, start the stack with the host-path override:
+
+```bash
+docker compose -f compose.yaml -f compose.host-paths.yaml up -d
+```
+
+By default, the override maps:
+
+- `./docker-data/postgres` -> PostgreSQL data directory
+- `./docker-data/uploads` -> uploaded and generated media
+
+You can change those paths through `.env`:
+
+```text
+STREAMFORGE_POSTGRES_HOST_PATH=./docker-data/postgres
+STREAMFORGE_MEDIA_HOST_PATH=./docker-data/uploads
+```
+
+Use the base `compose.yaml` alone when you want the default named-volume setup.
 
 ## Development Guidelines
 
