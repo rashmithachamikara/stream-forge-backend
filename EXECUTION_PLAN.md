@@ -109,7 +109,7 @@
 - [ ] Add end-to-end tests
 
 ### Phase 11: Deployment (Week 12+)
-- [ ] Dockerize application
+- [X] Dockerize application
 - [ ] Set up CI/CD pipeline
 - [ ] Configure production database
 - [ ] Deploy to cloud
