@@ -386,6 +386,9 @@ FodyWeavers.xsd
 # Application specific
 appsettings.Development.json
 appsettings.Local.json
+.env
+.env.*
+!.env.example
 
 # Storage folders
 /storage/
