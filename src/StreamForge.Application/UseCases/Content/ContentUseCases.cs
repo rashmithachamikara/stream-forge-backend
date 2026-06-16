@@ -883,12 +883,24 @@ internal static class ContentMapper
             video.Category?.Name,
             video.Visibility,
             video.Status,
+            ResolveDurationSeconds(video),
             video.ViewCount,
             video.CreatedAt,
             video.UpdatedAt,
             $"/api/v1/videos/{video.Id}/thumbnail",
             $"/api/v1/videos/{video.Id}/playback/manifest",
             video.VideoTags.Select(videoTag => ToTag(videoTag.Tag)).OrderBy(tag => tag.Name).ToArray());
+    }
+
+    private static int? ResolveDurationSeconds(Video video)
+    {
+        var duration = video.VideoVersions
+            .Select(version => version.DurationSeconds)
+            .Where(durationSeconds => durationSeconds > 0)
+            .DefaultIfEmpty()
+            .Max();
+
+        return duration > 0 ? duration : null;
     }
 
     public static VideoDetailDto ToDetail(Video video)

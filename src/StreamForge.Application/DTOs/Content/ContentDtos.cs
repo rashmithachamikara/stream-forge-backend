@@ -21,6 +21,7 @@ public sealed record VideoSummaryDto(
     string? CategoryName,
     VideoVisibility Visibility,
     VideoStatus Status,
+    int? DurationSeconds,
     long ViewCount,
     DateTime CreatedAt,
     DateTime UpdatedAt,
