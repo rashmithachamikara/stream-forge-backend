@@ -399,7 +399,8 @@ dotnet test StreamForge.sln --no-restore
 
 ## License
 
-[Your License]
+This repository is proprietary and not licensed for public use, redistribution, or modification without prior written permission.
+See [LICENSE](C:/Files/Shared/Software%20Projects/Stream%20Forge/stream-forge-backend/LICENSE:1).
 
 ## Contact
 
