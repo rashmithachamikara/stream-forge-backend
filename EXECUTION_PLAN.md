@@ -142,9 +142,11 @@
 - [ ] Add tests for progress parsing, throttling, and fallback behavior
 
 ### Phase 15: AI Transcription and Captions
-- [ ] Add transcription configuration and provider abstraction for Whisper-based transcription
+- [ ] Add transcription configuration and provider abstraction for local and hosted transcription providers
 - [ ] Queue transcription after upload/processing completes and source media is ready
-- [ ] Implement Infrastructure adapter for local Whisper execution
+- [ ] Implement .NET transcription adapter that submits jobs to a local Python Faster-Whisper worker
+- [ ] Add Python transcription worker project under `services/transcription-worker/`
+- [ ] Define internal job handoff, polling, callback, and retry contract between Hangfire and the Python worker
 - [ ] Generate and persist transcript/caption outputs such as `VTT`, `SRT`, and optional plain text
 - [ ] Track transcription job state, language, provider, and failure details in `VideoTranscriptions`
 - [ ] Add APIs for listing, retrieving, and downloading video transcriptions/captions
@@ -152,7 +154,7 @@
 - [ ] Chunk transcripts with timestamps for transcript search and grounded Q&A
 - [ ] Add transcript search using full-text search and optional semantic/vector retrieval
 - [ ] Add video Q&A endpoints over retrieved transcript passages with cited time ranges
-- [ ] Add optional auto-transcription toggle and language/model settings
+- [ ] Add optional auto-transcription toggle and admin-managed provider/language/model settings
 - [ ] Add tests for transcription orchestration, storage, authorization, and failure handling
 
 ## Notes

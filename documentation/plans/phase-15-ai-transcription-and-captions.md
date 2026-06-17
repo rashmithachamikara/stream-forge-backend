@@ -6,7 +6,7 @@ Status: [ ] Planned
 
 Automatically transcribe uploaded videos and turn those transcripts into usable caption assets and transcript outputs.
 
-The initial target is Whisper-based transcription triggered after a video upload has completed and the source media is ready. This phase should keep the AI provider behind an application abstraction so the system is not tightly coupled to one Whisper runtime forever.
+The initial target is Whisper-based transcription triggered after a video upload has completed and the source media is ready. This phase should keep the transcription provider behind an application abstraction so the system is not tightly coupled to one local model runtime or one hosted AI vendor.
 
 This phase should also lay the foundation for transcript-based search and user Q&A over videos.
 
@@ -17,12 +17,26 @@ The repo already has:
 - `VideoTranscription` domain entity
 - `TranscriptionStatus` enum
 - `ProcessingJobType.Transcription`
-- local process execution patterns already used for FFmpeg/ffprobe
 - Hangfire-based background processing
+- existing media storage and authorization patterns
 
-That means the transcription feature should be implemented as another background-processing capability, not as synchronous request-time work.
+That means transcription should be implemented as another asynchronous processing capability, not as request-time work.
 
-## Recommended Approach
+## Recommended Architecture
+
+Use a hybrid design:
+
+- `.NET API + Application` remain the source of truth for product workflows and persistence
+- Hangfire remains the orchestrator on the Stream Forge side
+- a separate Python worker handles local `faster-whisper` execution
+- future hosted transcription providers plug into the same .NET provider abstraction
+
+The key boundary is:
+
+- `.NET` owns product state, permissions, APIs, and stored metadata
+- Python owns local AI execution
+
+Do not make the Python worker the owner of application tables or public product APIs.
 
 ## 1. Trigger Point
 
@@ -32,49 +46,135 @@ Preferred flow:
 
 1. upload completes
 2. video processing finishes and the source/original file is known
-3. transcription job is queued
-4. Whisper produces transcript/caption outputs
-5. `VideoTranscriptions` records are updated
+3. transcription job is queued from `.NET`
+4. `.NET` submits work to the configured transcription provider
+5. provider returns transcript/caption outputs
+6. `VideoTranscriptions` and related search artifacts are updated
 
 This keeps large model inference out of the request path and avoids mixing upload reliability with AI runtime cost.
 
 ## 2. Provider Shape
 
-Add an Application abstraction such as:
+Add Application abstractions such as:
 
-- `ITranscriptionService`
+- `ITranscriptionProvider`
+- optional `ITranscriptSearchProvider` later if transcript retrieval grows beyond the first implementation
 
-Suggested responsibilities:
+Suggested transcription-provider responsibilities:
 
-- accept a source media path
+- accept a source media reference
 - accept requested output formats
 - accept optional language hint
 - accept model/runtime options
-- return generated files plus metadata
+- return generated transcript artifacts plus metadata
 
-That keeps controllers and use cases decoupled from the underlying Whisper runtime.
+This keeps controllers and use cases decoupled from:
 
-## 3. Whisper Runtime Choice
+- local Python `faster-whisper`
+- future hosted providers
+- future provider-specific auth/secrets
 
-Whisper can be integrated a few ways:
+## 3. First Provider Strategy
 
-- `whisper` Python package
-- `faster-whisper`
-- `whisper.cpp`
-- external transcription microservice that uses Whisper internally
+### Local Provider
 
-### Recommended First Implementation
+The first local provider should be:
 
-Use a local Infrastructure adapter that shells out to a Whisper-compatible runtime, following the same style already used for FFmpeg.
+- `.NET` transcription adapter
+- internal Python worker using `faster-whisper`
 
-Best practical options:
+The worker should live under:
 
-- `faster-whisper` if GPU/CPU performance matters and Python is acceptable
-- `whisper.cpp` if you want a simpler local binary dependency without Python
+- `services/transcription-worker/`
 
-For this backend, `whisper.cpp` or `faster-whisper` both fit well. If the goal is the simplest operational shape alongside FFmpeg-style binaries, `whisper.cpp` is especially attractive. If the goal is better speed/quality tradeoffs and easier model choice, `faster-whisper` is a strong default.
+The Python worker should:
 
-## 4. Configuration
+- expose an internal control API
+- accept job submission requests
+- process jobs in the background
+- expose job-status polling
+- call back `.NET` when work completes or fails
+
+### Hosted Providers Later
+
+The same `.NET` abstraction should later support hosted providers such as:
+
+- OpenAI-compatible transcription APIs
+- AssemblyAI
+- other vendor transcription services
+
+Those hosted providers should not require changes to the application use-case flow, only new provider adapters and configuration.
+
+## 4. Hangfire And Python Handoff
+
+Hangfire should stay in charge of the Stream Forge job lifecycle.
+
+Recommended flow:
+
+1. Hangfire job starts in `.NET`
+2. `.NET` resolves video/storage metadata and active transcription settings
+3. `.NET` calls Python worker `POST /jobs/transcriptions`
+4. Python returns a worker `jobId`
+5. Python processes the job in the background
+6. `.NET` can poll status if needed
+7. Python calls a `.NET` callback endpoint on completion/failure
+8. `.NET` persists canonical transcript records and final state
+
+Recommended completion strategy:
+
+- callback is the primary success/failure notification path
+- polling is the fallback/reconciliation path
+
+This avoids a long synchronous HTTP call while still keeping Hangfire as the orchestrator.
+
+### Planned End-To-End Flow
+
+The current planned pipeline is:
+
+1. user uploads video
+2. Stream Forge completes upload and processing
+3. video becomes ready
+4. `.NET` checks whether auto-transcription is enabled
+5. Hangfire starts the transcription orchestration job
+6. `.NET` resolves the active transcription provider and settings
+7. `.NET` submits a transcription job to the Python worker
+8. Python returns a worker `jobId`
+9. `.NET` stores that worker `jobId` in transcription job state for polling, reconciliation, and callback matching
+10. Python reads source media from shared storage/path
+11. Python runs `faster-whisper`
+12. Python generates timestamped transcript segments
+13. Python derives `VTT` and `SRT` outputs
+14. Python writes transcript artifacts to a shared staging/output location
+15. Python calls back `.NET` with completion metadata and output references
+16. `.NET` ingests the caption artifacts into Stream Forge canonical storage
+17. `.NET` creates or updates `VideoTranscriptions`
+18. `.NET` persists normalized transcript chunks in the database
+19. embedding generation runs as the next stage
+20. the configured embedding provider generates vectors for transcript chunks
+21. `.NET` stores chunk embeddings
+22. transcript search becomes available
+23. video Q&A retrieves matching chunks
+24. answer generation uses retrieved chunks with cited timestamps
+
+Operationally:
+
+- callback is the primary completion signal
+- polling is the fallback if callback delivery fails
+- `.NET` remains the source of truth for canonical product state
+- Python remains the execution worker for local AI tasks
+
+## 5. Media Access Strategy
+
+The Python worker should usually process media by storage path or shared-storage reference rather than by receiving large uploaded video bytes through HTTP.
+
+Preferred approaches:
+
+- shared local mount/path for self-hosted local storage
+- object-storage URL or provider reference for remote storage later
+
+Avoid using the Python control API as a giant file-transfer channel for media files.
+
+## 6. Configuration
 
 Add a new configuration section such as `Transcription`.
 
@@ -83,28 +183,59 @@ Suggested options:
 - `Enabled`
 - `AutoTranscribeOnReady`
 - `Provider`
-- `Model`
 - `Language`
 - `OutputFormats`
-- `Device` (`cpu`, `cuda`, etc.)
-- `BeamSize`
-- `Prompt`
-- `WordTimestampsEnabled`
 - `MaxConcurrentJobs`
 - `StorePlainTextTranscript`
+- `WorkerBaseUrl`
+- `WorkerCallbackSecret`
+- `PollIntervalSeconds`
+- `JobTimeoutMinutes`
+
+For the local Python `faster-whisper` worker, model/runtime options should be represented cleanly and kept provider-specific, for example:
+
+- provider type = `local-faster-whisper`
+- provider settings include:
+  - model
+  - device (`cpu`, `cuda`)
+  - compute type
+  - beam size
+  - word timestamps
+  - VAD settings
 
 Suggested conservative defaults:
 
 - `Enabled = false`
 - `AutoTranscribeOnReady = false`
-- `Provider = whispercpp` or `faster-whisper`
-- `Model = base`
+- `Provider = local-faster-whisper`
 - `Language = auto`
 - `OutputFormats = [ "vtt", "srt" ]`
 
-Keep this off by default because model downloads, CPU load, and storage growth are deployment concerns.
+Keep this off by default because model downloads, CPU load, GPU usage, and storage growth are deployment concerns.
 
-## 5. Storage Model
+## 7. Settings And Admin UX Direction
+
+Phase 15 should assume that transcription settings may later be managed from an admin UI.
+
+That means the design should support:
+
+- provider selection
+- local vs hosted provider choice
+- model selection
+- optional language hints
+- enable/disable toggles
+- secure storage of hosted-provider secrets
+
+The frontend should never hold hosted provider API keys for runtime transcription calls.
+
+The likely future data shape is:
+
+- provider-specific integration records for configured providers
+- system-level settings for active provider selection and feature toggles
+
+This phase does not need to finalize that schema, but it should stay compatible with it.
+
+## 8. Storage Model
 
 Use `VideoTranscriptions` as the metadata record and store generated files in the existing storage system.
 
@@ -127,17 +258,13 @@ Each `VideoTranscription` row should track:
 - `Format`
 - `StoragePath`
 - `Status`
-- `Source`
+- `Source` or provider type
+- provider/model metadata where useful
 - timestamps
-
-If supporting multiple formats, either:
-
-- keep one row per `language + format`, or
-- evolve the model later to group outputs under one transcription job and child files
 
 For the first iteration, one row per output format is fine and fits the current schema well.
 
-## 6. Transcript Search And Q&A Model
+## 9. Transcript Search And Q&A Model
 
 Transcription should not stop at caption files. To support search and user questions about videos, the system should also derive searchable transcript chunks.
 
@@ -155,15 +282,26 @@ Recommended model:
   - full-text search for keyword matching
   - semantic/vector retrieval for natural-language questions
 
+The plan is to use PostgreSQL full-text search plus `pgvector` for semantic retrieval.
+
+That means:
+
+- transcript chunks should be stored as regular relational rows
+- chunk text should support full-text indexing for keyword search
+- embedding vectors should be stored in PostgreSQL using `pgvector`
+- semantic retrieval should use vector similarity over those stored chunk embeddings
+
 ### Recommended Retrieval Strategy
 
 Start with a focused transcript-based retrieval approach rather than a large, generic RAG platform.
 
 Suggested rollout:
 
-1. transcript storage + full-text search
-2. transcript chunking + embeddings
-3. grounded Q&A over retrieved chunks
+1. transcript persistence
+2. transcript chunk persistence
+3. full-text transcript search
+4. `pgvector`-backed embeddings and semantic retrieval
+5. grounded Q&A over retrieved chunks
 
 This gives:
 
@@ -171,58 +309,7 @@ This gives:
 - semantic search for concept-level retrieval
 - Q&A that cites the relevant transcript time ranges
 
-### Why This Is Better Than Simpler Alternatives
-
-- full transcript prompt stuffing does not scale for long videos
-- summary-only approaches do not support grounded detail retrieval
-- fine-tuning is the wrong tool for per-video factual answering
-- transcript retrieval keeps answers explainable and timestamp-linked
-
-### Suggested Data Shape
-
-Add a transcript-chunk persistence model in a later implementation step, for example:
-
-- `VideoTranscriptChunks`
-
-Suggested fields:
-
-- `Id`
-- `VideoId`
-- `TranscriptionId`
-- `Language`
-- `StartSeconds`
-- `EndSeconds`
-- `Content`
-- optional `Embedding`
-- `CreatedAt`
-
-If PostgreSQL vector search is desired, this can later integrate with `pgvector`. If not, the first iteration can still provide value with full-text indexing alone.
-
-## 7. Background Job Flow
-
-Add a transcription use-case/service that:
-
-- validates transcription is enabled
-- resolves the source media path
-- creates or reuses pending `VideoTranscription` records
-- marks them `Processing`
-- invokes the Whisper adapter
-- writes generated files through storage/local filesystem
-- marks records `Completed` or `Failed`
-
-Recommended Hangfire behavior:
-
-- queue transcription only after core video processing succeeds
-- retry transient runtime failures
-- persist failure details in logs and, if needed later, in job error metadata
-
-Transcription completion can also trigger:
-
-- transcript chunk generation
-- optional embedding generation
-- search index updates
-
-## 8. API Surface
+## 10. API Surface
 
 Add endpoints for:
 
@@ -242,34 +329,15 @@ Suggested examples:
 - `GET /api/v1/videos/{videoId}/transcript-search?q=...`
 - `POST /api/v1/videos/{videoId}/questions`
 
+Internal endpoints may also be needed for the Python worker callback, for example:
+
+- `POST /internal/transcriptions/callback`
+
 Playback-related caption access should reuse existing video authorization rules so private videos do not expose captions publicly.
 
-For Q&A responses, return:
+## 11. Failure And Operational Considerations
 
-- answer text
-- supporting transcript snippets
-- cited time ranges
-- optional confidence or retrieval metadata
-
-## 9. Player Support
-
-Player-facing support should include:
-
-- caption file retrieval with existing playback authorization
-- lightweight metadata telling the frontend which languages/formats are available
-- preference for `VTT` for HTML5 players
-
-The React app can then attach caption tracks directly to the player.
-
-Transcript search support can also let the player:
-
-- jump to matched timestamps
-- show transcript snippets near matches
-- support “search in video” interactions
-
-## 10. Failure And Operational Considerations
-
-Whisper-based transcription can be expensive in CPU, RAM, disk, and time.
+Whisper-based transcription can be expensive in CPU, RAM, disk, GPU, and time.
 
 Plan for:
 
@@ -277,6 +345,9 @@ Plan for:
 - CPU-only vs GPU deployments
 - queue concurrency limits
 - timeout handling
+- worker health checks
+- callback authentication
+- reconciliation when callback fails
 - large-file runtime limits
 - language auto-detection inaccuracies
 - reprocessing strategy when a model changes
@@ -286,13 +357,13 @@ Plan for:
 Do not block upload success on transcription success.
 Transcription should be an asynchronous enhancement, not part of the critical upload contract.
 
-## 11. Testing
+## 12. Testing
 
 Add tests for:
 
 - transcription auto-queue orchestration after video readiness
 - disabled-feature behavior
-- successful completion and file persistence
+- successful provider handoff and callback completion
 - failure transitions to `Failed`
 - authorization for transcript/caption retrieval
 - storage path generation
@@ -301,12 +372,13 @@ Add tests for:
 - transcript search ranking/filtering
 - Q&A retrieval grounding and cited time ranges
 
-Use a fake transcription adapter for most tests.
-Any real Whisper smoke test should remain optional/manual because runtime dependencies are heavy.
+Use a fake transcription provider for most `.NET` tests.
+Python worker smoke tests can be separate and lighter-weight.
 
 ## Acceptance Criteria
 
-- A ready video can automatically queue a Whisper-based transcription job when enabled.
+- A ready video can automatically queue a transcription job when enabled.
+- `.NET` can hand work to a local Python `faster-whisper` worker through an internal provider adapter.
 - Generated caption files are stored and linked through `VideoTranscriptions`.
 - Transcription status is queryable through the API.
 - Caption retrieval respects existing video authorization rules.
@@ -317,6 +389,7 @@ Any real Whisper smoke test should remain optional/manual because runtime depend
 
 ## Notes
 
-- This phase should follow Phase 6 processing patterns closely instead of inventing a separate AI pipeline.
-- Start with one provider/runtime and keep the abstraction clean enough to support future alternatives.
+- Keep project-level implementation tracking in `EXECUTION_PLAN.md`.
+- Keep Python-worker-specific implementation details in `services/transcription-worker/EXECUTION_PLAN.md`.
+- Start with one local provider/runtime and keep the abstraction clean enough to support future hosted alternatives.
 - `VTT` should be the primary player-facing output format, even if `SRT` and plain text are also stored.
