@@ -66,7 +66,7 @@ Suggested transcription-provider responsibilities:
 - accept requested output formats
 - accept optional language hint
 - accept model/runtime options
-- return generated transcript artifacts plus metadata
+- return generated transcript artifacts, structured segment data, and metadata
 
 This keeps controllers and use cases decoupled from:
 
@@ -147,14 +147,15 @@ The current planned pipeline is:
 14. Python writes transcript artifacts to a shared staging/output location
 15. Python calls back `.NET` with completion metadata and output references
 16. `.NET` ingests the caption artifacts into Stream Forge canonical storage
-17. `.NET` creates or updates `VideoTranscriptions`
-18. `.NET` persists normalized transcript chunks in the database
-19. embedding generation runs as the next stage
-20. the configured embedding provider generates vectors for transcript chunks
-21. `.NET` stores chunk embeddings
-22. transcript search becomes available
-23. video Q&A retrieves matching chunks
-24. answer generation uses retrieved chunks with cited timestamps
+17. `.NET` ingests staged transcript segment JSON
+18. `.NET` creates or updates `VideoTranscriptions`
+19. `.NET` persists normalized transcript chunks in the database
+20. embedding generation runs as the next stage
+21. the configured embedding provider generates vectors for transcript chunks
+22. `.NET` stores chunk embeddings
+23. transcript search becomes available
+24. video Q&A retrieves matching chunks
+25. answer generation uses retrieved chunks with cited timestamps
 
 Operationally:
 
@@ -162,17 +163,21 @@ Operationally:
 - polling is the fallback if callback delivery fails
 - `.NET` remains the source of truth for canonical product state
 - Python remains the execution worker for local AI tasks
+- live progress can be fetched on demand from the Python worker status endpoint without frequent database writes
 
 ## 5. Media Access Strategy
 
-The Python worker should usually process media by storage path or shared-storage reference rather than by receiving large uploaded video bytes through HTTP.
+The Python worker should usually process media by storage reference rather than by receiving large uploaded video bytes through HTTP.
 
 Preferred approaches:
 
 - shared local mount/path for self-hosted local storage
-- object-storage URL or provider reference for remote storage later
+- S3/object-storage bucket+key or presigned URL for remote storage
+- provider-specific storage reference models later if needed
 
 Avoid using the Python control API as a giant file-transfer channel for media files.
+
+Local filesystem paths should be treated as only one kind of storage reference, not as the universal contract.
 
 ## 6. Configuration
 
@@ -186,7 +191,6 @@ Suggested options:
 - `Language`
 - `OutputFormats`
 - `MaxConcurrentJobs`
-- `StorePlainTextTranscript`
 - `WorkerBaseUrl`
 - `WorkerCallbackSecret`
 - `PollIntervalSeconds`
@@ -243,13 +247,13 @@ Recommended stored artifacts:
 
 - `captions.vtt`
 - `captions.srt`
-- optional `transcript.txt`
+- `segments.json`
 
 Recommended storage path pattern:
 
 - `videos/{videoId}/transcriptions/{language}/captions.vtt`
 - `videos/{videoId}/transcriptions/{language}/captions.srt`
-- `videos/{videoId}/transcriptions/{language}/transcript.txt`
+- `videos/{videoId}/transcriptions/{language}/segments.json`
 
 Each `VideoTranscription` row should track:
 
@@ -263,6 +267,104 @@ Each `VideoTranscription` row should track:
 - timestamps
 
 For the first iteration, one row per output format is fine and fits the current schema well.
+
+Structured transcript text should cross from Python to `.NET` as staged JSON segment data, for example:
+
+- `startSeconds`
+- `endSeconds`
+- `text`
+
+That segment data should be written by the Python worker as `segments.json` and then ingested by `.NET`.
+
+That staged JSON is the preferred source for normalized transcript chunk persistence.
+
+`VTT` and `SRT` remain the stored caption artifacts for playback and download.
+
+Artifact references should not be limited to local file paths. Depending on deployment, they may be:
+
+- shared local paths
+- S3 bucket/key references
+- presigned URLs
+- other provider-specific storage references
+
+### Planned Schema Changes
+
+Before the schema change, it is necessary to add a new schema version indocumentation\schema\
+
+The expected schema work for this phase is:
+
+1. expand `VideoTranscriptions`
+2. add transcript-chunk persistence
+3. enable `pgvector` for semantic retrieval support
+
+#### `VideoTranscriptions`
+
+Keep subtitle and caption artifact paths here.
+
+Each row should continue to represent one stored transcription/caption artifact, such as:
+
+- one `vtt` output
+- one `srt` output
+
+Planned fields and metadata include:
+
+- `VideoId`
+- `Language`
+- `Format`
+- `StoragePath`
+- `Status`
+- `Provider`
+- `Model`
+- `WorkerJobId`
+- failure/error details
+- timestamps such as created/completed/updated
+
+`SourcePath` does not need to be stored again here because the transcription input can be resolved from the existing video/file model.
+
+#### `VideoTranscriptChunks`
+
+Add a transcript chunk table for searchable normalized transcript content.
+
+Suggested fields:
+
+- `Id`
+- `VideoId`
+- `TranscriptionId`
+- `Language`
+- `StartSeconds`
+- `EndSeconds`
+- `Content`
+- optional `Embedding`
+- `CreatedAt`
+- `UpdatedAt`
+
+#### Indexing
+
+Add indexes for:
+
+- `IX_VideoTranscriptions_VideoId`
+- `IX_VideoTranscriptions_Status`
+- `IX_VideoTranscriptions_WorkerJobId`
+- `IX_VideoTranscriptChunks_VideoId`
+- `IX_VideoTranscriptChunks_TranscriptionId`
+- `IX_VideoTranscriptChunks_VideoId_StartSeconds`
+
+Also plan for:
+
+- PostgreSQL full-text indexing on chunk content
+- `pgvector` indexing for embedding similarity search
+
+#### Progress State
+
+For transcription progress, keep only durable coarse state in the database, such as:
+
+- queued
+- running
+- completed
+- failed
+- worker job id
+
+Live `progressPercent` should come from the Python worker status endpoint on demand rather than from frequent database writes.
 
 ## 9. Transcript Search And Q&A Model
 
