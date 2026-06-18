@@ -64,5 +64,6 @@ class JobStatusResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
+    sharedRoot: str
     outputRoot: str
-    sharedMediaRoot: str | None = None
+    sharedMediaRoot: str

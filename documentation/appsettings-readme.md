@@ -22,6 +22,22 @@ The `Database` section controls startup-time migration and seeding behavior.
 - When `SeedOnStartup=true` but pending migrations still exist, seeding is skipped until the schema is current.
 - This section is a runtime behavior toggle set, not a replacement for a deliberate migration step in CI/CD.
 
+## Storage
+
+The `Storage` section controls the active storage provider and provider-specific local defaults shared across Stream Forge components such as the `.NET` app and the Python transcription worker.
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `ProviderType` | `local` | Active storage provider used for upload-session creation |
+| `Local.RootPath` | empty | Optional shared local root override; when empty, Stream Forge computes a repo-root-anchored default under `data` |
+| `Local.UploadsRelativePath` | `uploads` | Relative uploads/media directory under the local shared root |
+| `Local.TranscriptionOutputRelativePath` | `transcription-output` | Relative staged transcription output directory under the local shared root |
+
+**Notes:**
+- With no override, the effective local shared root becomes `<repoRoot>/data`.
+- That yields `<repoRoot>/data/uploads` for uploads/media and `<repoRoot>/data/transcription-output` for local worker staging.
+- Explicit absolute paths are supported when an environment needs a custom shared root.
+
 ---
 
 ## Upload
@@ -30,18 +46,16 @@ The `Upload` section controls video upload behavior and interacts with the `Uplo
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `StoragePath` | `./uploads` | Root path for local upload sessions, permanent source files, and generated processing assets |
 | `MaxFileSize` | `5368709120` | Maximum upload size in bytes, currently 5 GiB |
 | `ChunkSize` | `5242880` | Maximum chunk size in bytes, currently 5 MiB |
 | `AllowedMimeTypes` | video MIME allow-list | MIME types accepted for video uploads |
 | `SessionExpirationMinutes` | `1440` | Time before incomplete upload sessions expire |
-| `StorageProviderType` | `local` | Upload target provider used when creating sessions |
 
 **Notes:**
 - With 5 MiB chunks, a 1.6 GiB upload requires roughly 328 part uploads.
 - If the client requests an upload target per chunk, the same upload may also make roughly 328 target requests.
 - Keep `MaxFileSize`, `ChunkSize`, reverse-proxy body limits, and client upload concurrency aligned.
-- Local upload session files are staged under `sessions/{sessionId}` inside `StoragePath`; completed source files are promoted to `videos/{videoId}/original`.
+- Local upload session files are staged under `sessions/{sessionId}` inside the effective local uploads root; completed source files are promoted to `videos/{videoId}/original`.
 
 ---
 
@@ -82,7 +96,7 @@ The `VideoProcessing` section controls local FFmpeg/ffprobe processing for gener
 
 **Notes:**
 - FFmpeg and ffprobe must be installed in the runtime environment or configured with absolute paths.
-- Generated HLS and thumbnail assets are stored under the configured `Upload.StoragePath`.
+- Generated HLS and thumbnail assets are stored under the effective local uploads root from `Storage.Local`.
 - Hangfire uses `ConnectionStrings.DefaultConnection` for durable processing jobs.
 
 ---

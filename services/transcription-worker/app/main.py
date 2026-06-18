@@ -43,8 +43,9 @@ app = FastAPI(title="Stream Forge Transcription Worker", lifespan=lifespan)
 async def get_health() -> HealthResponse:
     return HealthResponse(
         status="ok",
+        sharedRoot=str(settings.shared_root),
         outputRoot=str(settings.output_root),
-        sharedMediaRoot=str(settings.shared_media_root) if settings.shared_media_root else None,
+        sharedMediaRoot=str(settings.shared_media_root),
     )
 
 

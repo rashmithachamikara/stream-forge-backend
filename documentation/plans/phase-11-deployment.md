@@ -52,7 +52,7 @@ Those can build on top of this phase once a stable single-environment deployment
 ### Runtime Behavior
 
 - The API serves HTTP requests and also runs Hangfire processing jobs.
-- Uploaded source files, generated HLS assets, and thumbnails live under the configured `Upload:StoragePath`.
+- Uploaded source files, generated HLS assets, and thumbnails live under the effective local uploads root from `Storage:Local`.
 - FFmpeg and ffprobe must be installed in the container image or host environment.
 
 ### Production Assumption
@@ -67,7 +67,7 @@ The first production deployment can remain a single API container with persisten
 - Use a multi-stage .NET publish build.
 - Install FFmpeg in the runtime image.
 - Expose the API over a fixed container port.
-- Ensure writable directories exist for `Upload:StoragePath`.
+- Ensure writable directories exist for the configured `Storage:Local` paths used in the deployment.
 - Add `.dockerignore` to keep build context small and avoid shipping test outputs, uploads, and temp artifacts.
 
 ### Acceptance Notes
@@ -99,7 +99,10 @@ The first production deployment can remain a single API container with persisten
   - `Jwt__Issuer`
   - `Jwt__Audience`
   - `Jwt__SigningKey`
-  - `Upload__StoragePath`
+  - `Storage__ProviderType`
+  - `Storage__Local__RootPath`
+  - `Storage__Local__UploadsRelativePath`
+  - `Storage__Local__TranscriptionOutputRelativePath`
   - `VideoProcessing__FfmpegPath`
   - `VideoProcessing__FfprobePath`
   - `Cors__AllowedOrigins__0...n`

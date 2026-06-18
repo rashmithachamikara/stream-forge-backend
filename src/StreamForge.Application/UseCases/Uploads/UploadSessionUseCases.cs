@@ -27,15 +27,18 @@ public sealed class CreateUploadSessionService
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
     private readonly UploadOptions _uploadOptions;
+    private readonly StorageOptions _storageOptions;
 
     public CreateUploadSessionService(
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService,
-        UploadOptions uploadOptions)
+        UploadOptions uploadOptions,
+        StorageOptions storageOptions)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
         _uploadOptions = uploadOptions;
+        _storageOptions = storageOptions;
     }
 
     public async Task<CreateUploadSessionResponseDto> Handle(
@@ -84,7 +87,7 @@ public sealed class CreateUploadSessionService
             }
         }
 
-        var storageProviderType = Enum.TryParse<StorageProviderType>(_uploadOptions.StorageProviderType, true, out var parsedProvider)
+        var storageProviderType = Enum.TryParse<StorageProviderType>(_storageOptions.ProviderType, true, out var parsedProvider)
             ? parsedProvider
             : StorageProviderType.Local;
 

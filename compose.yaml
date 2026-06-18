@@ -37,7 +37,8 @@ services:
       Jwt__SigningKey: ${STREAMFORGE_JWT_SIGNING_KEY}
       Jwt__AccessTokenMinutes: ${STREAMFORGE_JWT_ACCESS_TOKEN_MINUTES:-15}
       Jwt__RefreshTokenDays: ${STREAMFORGE_JWT_REFRESH_TOKEN_DAYS:-30}
-      Upload__StoragePath: /app/data/uploads
+      Storage__ProviderType: local
+      Storage__Local__RootPath: /app/data
       VideoProcessing__FfmpegPath: /usr/bin/ffmpeg
       VideoProcessing__FfprobePath: /usr/bin/ffprobe
       Cors__AllowedOrigins__0: ${STREAMFORGE_CORS_ORIGIN:-http://localhost:3000}

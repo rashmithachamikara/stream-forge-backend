@@ -103,7 +103,11 @@ builder.Services
 builder.Services
     .Configure<UploadOptions>(builder.Configuration.GetSection(UploadOptions.SectionName))
     .AddOptions<UploadOptions>()
-    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services
+    .Configure<StorageOptions>(builder.Configuration.GetSection(StorageOptions.SectionName))
+    .AddOptions<StorageOptions>()
     .ValidateOnStart();
 
 builder.Services
@@ -188,24 +192,29 @@ builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<IAuthorizationService, VideoAuthorizationService>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<UploadOptions>>().Value);
+builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<StorageOptions>>().Value);
 builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<VideoProcessingOptions>>().Value);
 builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<AnalyticsOptions>>().Value);
 builder.Services.AddScoped<IAnalyticsQueryService, AnalyticsQueryService>();
 builder.Services.AddScoped<IStorageService>(sp =>
 {
-    var uploadOptions = sp.GetRequiredService<IOptions<UploadOptions>>().Value;
+    var storageOptions = sp.GetRequiredService<IOptions<StorageOptions>>().Value;
     var environment = sp.GetRequiredService<IWebHostEnvironment>();
     var logger = sp.GetRequiredService<ILogger<LocalFileStorageService>>();
-    var storagePath = Path.GetFullPath(Path.Combine(environment.ContentRootPath, uploadOptions.StoragePath));
+    var storagePath = LocalStoragePathResolver.ResolveEffectiveUploadStorageRoot(
+        environment.ContentRootPath,
+        storageOptions.Local);
     return new LocalFileStorageService(storagePath, logger);
 });
 builder.Services.AddScoped<IMediaProcessingService>(sp =>
 {
-    var uploadOptions = sp.GetRequiredService<IOptions<UploadOptions>>().Value;
+    var storageOptions = sp.GetRequiredService<IOptions<StorageOptions>>().Value;
     var processingOptions = sp.GetRequiredService<IOptions<VideoProcessingOptions>>().Value;
     var environment = sp.GetRequiredService<IWebHostEnvironment>();
     var logger = sp.GetRequiredService<ILogger<LocalFfmpegMediaProcessingService>>();
-    var storagePath = Path.GetFullPath(Path.Combine(environment.ContentRootPath, uploadOptions.StoragePath));
+    var storagePath = LocalStoragePathResolver.ResolveEffectiveUploadStorageRoot(
+        environment.ContentRootPath,
+        storageOptions.Local);
     return new LocalFfmpegMediaProcessingService(storagePath, processingOptions, logger);
 });
 builder.Services.AddScoped<IVideoProcessingQueue, HangfireVideoProcessingQueue>();

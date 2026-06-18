@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace StreamForge.Application.Common;
 
 /// <summary>
@@ -8,12 +6,6 @@ namespace StreamForge.Application.Common;
 public class UploadOptions
 {
     public const string SectionName = "Upload";
-
-    /// <summary>
-    /// Root directory for storing uploaded files (local filesystem)
-    /// </summary>
-    [Required]
-    public string StoragePath { get; set; } = "./uploads";
 
     /// <summary>
     /// Maximum total file size in bytes (default 5GB)
@@ -42,9 +34,4 @@ public class UploadOptions
     /// Session expiration time in minutes (default: 24 hours)
     /// </summary>
     public int SessionExpirationMinutes { get; set; } = 1440;
-
-    /// <summary>
-    /// Storage provider type: "local" or "s3"
-    /// </summary>
-    public string StorageProviderType { get; set; } = "local";
 }

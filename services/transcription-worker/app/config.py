@@ -14,8 +14,9 @@ def _get_bool(name: str, default: bool) -> bool:
 
 @dataclass(frozen=True)
 class WorkerSettings:
+    shared_root: Path
     output_root: Path
-    shared_media_root: Path | None
+    shared_media_root: Path
     callback_timeout_seconds: int
     callback_auth_header: str
     callback_secret: str | None
@@ -28,18 +29,30 @@ class WorkerSettings:
 
     @staticmethod
     def load() -> "WorkerSettings":
-        output_root = Path(
-            os.getenv("TRANSCRIPTION_WORKER_OUTPUT_ROOT", "./data/transcription-output")
-        ).resolve()
+        repo_root = _find_repo_root(Path(__file__).resolve())
+        default_shared_root = repo_root / "data"
 
-        shared_media_root_value = os.getenv("TRANSCRIPTION_WORKER_SHARED_MEDIA_ROOT")
-        shared_media_root = (
-            Path(shared_media_root_value).resolve()
-            if shared_media_root_value and shared_media_root_value.strip()
-            else None
+        shared_root = _resolve_path_override(
+            os.getenv("STREAMFORGE_LOCAL_STORAGE_ROOT")
+            or os.getenv("TRANSCRIPTION_WORKER_LOCAL_STORAGE_ROOT")
+            or os.getenv("STREAMFORGE_SHARED_ROOT")
+            or os.getenv("TRANSCRIPTION_WORKER_SHARED_ROOT"),
+            default_shared_root,
+            repo_root,
+        )
+        shared_media_root = _resolve_path_override(
+            os.getenv("TRANSCRIPTION_WORKER_SHARED_MEDIA_ROOT"),
+            shared_root / "uploads",
+            repo_root,
+        )
+        output_root = _resolve_path_override(
+            os.getenv("TRANSCRIPTION_WORKER_OUTPUT_ROOT"),
+            shared_root / "transcription-output",
+            repo_root,
         )
 
         return WorkerSettings(
+            shared_root=shared_root,
             output_root=output_root,
             shared_media_root=shared_media_root,
             callback_timeout_seconds=int(
@@ -63,3 +76,23 @@ class WorkerSettings:
                 "TRANSCRIPTION_WORKER_WORD_TIMESTAMPS", False
             ),
         )
+
+
+def _find_repo_root(start_path: Path) -> Path:
+    current = start_path
+    for candidate in (current, *current.parents):
+        if (candidate / "StreamForge.sln").exists():
+            return candidate
+
+    return start_path.parent
+
+
+def _resolve_path_override(value: str | None, default_path: Path, repo_root: Path) -> Path:
+    if value is None or not value.strip():
+        return default_path.resolve()
+
+    configured = Path(value)
+    if configured.is_absolute():
+        return configured.resolve()
+
+    return (repo_root / configured).resolve()

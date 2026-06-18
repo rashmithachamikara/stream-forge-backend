@@ -23,7 +23,8 @@ public sealed class UploadSessionUseCaseTests
         var service = new CreateUploadSessionService(
             CreateUnitOfWork(videos: videos, uploadSessions: uploadSessions),
             CreateCurrentUser(userId),
-            CreateUploadOptions());
+            CreateUploadOptions(),
+            CreateStorageOptions());
 
         var result = await service.Handle(CreateUploadRequest(), CancellationToken.None);
 
@@ -46,7 +47,8 @@ public sealed class UploadSessionUseCaseTests
         var service = new CreateUploadSessionService(
             CreateUnitOfWork(),
             Substitute.For<ICurrentUserService>(),
-            CreateUploadOptions());
+            CreateUploadOptions(),
+            CreateStorageOptions());
 
         var request = CreateUploadRequest();
 
@@ -62,7 +64,8 @@ public sealed class UploadSessionUseCaseTests
         var service = new CreateUploadSessionService(
             CreateUnitOfWork(),
             CreateCurrentUser(),
-            CreateUploadOptions(maxFileSize: 100));
+            CreateUploadOptions(maxFileSize: 100),
+            CreateStorageOptions());
 
         var request = CreateUploadRequest(totalSize: 101);
 
@@ -78,7 +81,8 @@ public sealed class UploadSessionUseCaseTests
         var service = new CreateUploadSessionService(
             CreateUnitOfWork(),
             CreateCurrentUser(),
-            CreateUploadOptions());
+            CreateUploadOptions(),
+            CreateStorageOptions());
 
         var request = CreateUploadRequest(contentType: "application/octet-stream");
 
@@ -96,7 +100,8 @@ public sealed class UploadSessionUseCaseTests
         var service = new CreateUploadSessionService(
             CreateUnitOfWork(categories: categories),
             CreateCurrentUser(),
-            CreateUploadOptions());
+            CreateUploadOptions(),
+            CreateStorageOptions());
 
         var categoryId = Guid.NewGuid();
         var request = CreateUploadRequest(categoryId: categoryId);
@@ -314,8 +319,15 @@ public sealed class UploadSessionUseCaseTests
             MaxFileSize = maxFileSize,
             ChunkSize = chunkSize,
             AllowedMimeTypes = ["video/mp4"],
-            SessionExpirationMinutes = 60,
-            StorageProviderType = "local"
+            SessionExpirationMinutes = 60
+        };
+    }
+
+    private static StorageOptions CreateStorageOptions(string providerType = "local")
+    {
+        return new StorageOptions
+        {
+            ProviderType = providerType
         };
     }
 
