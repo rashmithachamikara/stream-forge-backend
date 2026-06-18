@@ -253,22 +253,22 @@ Recommended protections:
 
 ## Implementation Steps
 
-- [ ] Create Python project scaffold under `services/transcription-worker/`
-- [ ] Add `requirements.txt`
-- [ ] Add FastAPI entry point
-- [ ] Add worker job models and status tracking
-- [ ] Add transcription submission endpoint
-- [ ] Add job-status endpoint
-- [ ] Add stage/progress reporting for polling
-- [ ] Add health endpoint
-- [ ] Add `faster-whisper` integration service
-- [ ] Add `SRT` and `VTT` generation helpers
-- [ ] Add callback client back to Stream Forge
-- [ ] Add local configuration model
-- [ ] Add configurable shared media root and staged artifact output root
-- [ ] Add storage-reference handling for local paths and S3-style inputs
-- [ ] Add Dockerfile
-- [ ] Add worker README with install/run instructions
+- [X] Create Python project scaffold under `services/transcription-worker/`
+- [X] Add `requirements.txt`
+- [X] Add FastAPI entry point
+- [X] Add worker job models and status tracking
+- [X] Add transcription submission endpoint
+- [X] Add job-status endpoint
+- [X] Add stage/progress reporting for polling
+- [X] Add health endpoint
+- [X] Add `faster-whisper` integration service
+- [X] Add `SRT` and `VTT` generation helpers
+- [X] Add callback client back to Stream Forge
+- [X] Add local configuration model
+- [X] Add configurable shared media root and staged artifact output root
+- [X] Add storage-reference handling for local paths and S3-style inputs
+- [X] Add Dockerfile
+- [X] Add worker README with install/run instructions
 - [ ] Add smoke test script or test path
 
 ## Notes

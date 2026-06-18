@@ -1,0 +1,7 @@
+faster-whisper==1.2.1
+fastapi==0.137.1
+pgvector==0.4.2
+psycopg==3.3.4
+python-multipart==0.0.32
+sentence-transformers==5.5.1
+uvicorn==0.49.0
