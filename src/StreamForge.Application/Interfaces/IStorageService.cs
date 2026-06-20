@@ -150,6 +150,11 @@ public interface IStorageService
         string contentType,
         CancellationToken cancellationToken = default);
 
+    Task<string> ImportFileAsync(
+        string sourceFilePath,
+        string destinationStoragePath,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Checks if a file exists
     /// </summary>

@@ -41,9 +41,9 @@ public class VideoTranscriptionConfiguration : IEntityTypeConfiguration<VideoTra
         builder.HasIndex(vt => vt.VideoId)
             .HasDatabaseName("IX_VideoTranscriptions_VideoId");
 
-        builder.HasIndex(vt => new { vt.VideoId, vt.Language })
+        builder.HasIndex(vt => new { vt.VideoId, vt.Language, vt.Format })
             .IsUnique()
-            .HasDatabaseName("IX_VideoTranscriptions_VideoId_Language");
+            .HasDatabaseName("IX_VideoTranscriptions_VideoId_Language_Format");
 
         // Relationships
         builder.HasOne(vt => vt.Video)

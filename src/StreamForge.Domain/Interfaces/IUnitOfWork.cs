@@ -31,6 +31,8 @@ public interface IUnitOfWork : IDisposable
 
     IVideoProcessingJobRepository VideoProcessingJobs { get; }
 
+    IVideoTranscriptionRepository VideoTranscriptions { get; }
+
     IVideoReactionRepository VideoReactions { get; }
 
     IVideoCommentRepository VideoComments { get; }

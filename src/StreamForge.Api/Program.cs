@@ -24,6 +24,7 @@ using StreamForge.Application.UseCases.Engagement;
 using StreamForge.Application.UseCases.Uploads;
 using StreamForge.Application.UseCases.Uploads.CreateSession;
 using StreamForge.Application.UseCases.Processing;
+using StreamForge.Application.UseCases.Transcriptions;
 using StreamForge.Domain.Enums;
 using StreamForge.Domain.Interfaces;
 using StreamForge.Infrastructure.Authentication;
@@ -31,6 +32,7 @@ using StreamForge.Infrastructure.Data;
 using StreamForge.Infrastructure.Persistence;
 using StreamForge.Infrastructure.Processing;
 using StreamForge.Infrastructure.Storage;
+using StreamForge.Infrastructure.Transcription;
 
 var builder = WebApplication.CreateBuilder(args);
 const string CorsPolicyName = "StreamForgeCors";
@@ -117,6 +119,12 @@ builder.Services
     .ValidateOnStart();
 
 builder.Services
+    .Configure<TranscriptionOptions>(builder.Configuration.GetSection(TranscriptionOptions.SectionName))
+    .AddOptions<TranscriptionOptions>()
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services
     .Configure<AnalyticsOptions>(builder.Configuration.GetSection(AnalyticsOptions.SectionName))
     .AddOptions<AnalyticsOptions>()
     .ValidateDataAnnotations()
@@ -194,6 +202,7 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<UploadOptions>>().Value);
 builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<StorageOptions>>().Value);
 builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<VideoProcessingOptions>>().Value);
+builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<TranscriptionOptions>>().Value);
 builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<AnalyticsOptions>>().Value);
 builder.Services.AddScoped<IAnalyticsQueryService, AnalyticsQueryService>();
 builder.Services.AddScoped<IStorageService>(sp =>
@@ -218,6 +227,13 @@ builder.Services.AddScoped<IMediaProcessingService>(sp =>
     return new LocalFfmpegMediaProcessingService(storagePath, processingOptions, logger);
 });
 builder.Services.AddScoped<IVideoProcessingQueue, HangfireVideoProcessingQueue>();
+builder.Services.AddScoped<ITranscriptionQueue, HangfireTranscriptionQueue>();
+builder.Services.AddHttpClient<ITranscriptionProvider, LocalFasterWhisperTranscriptionProvider>((serviceProvider, client) =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<TranscriptionOptions>>().Value;
+    client.BaseAddress = new Uri(options.WorkerBaseUrl.TrimEnd('/'));
+    client.Timeout = TimeSpan.FromMinutes(options.JobTimeoutMinutes);
+});
 builder.Services.AddScoped<CreateUploadSessionService>();
 builder.Services.AddScoped<GetUploadTargetService>();
 builder.Services.AddScoped<UploadPartService>();
@@ -226,6 +242,10 @@ builder.Services.AddScoped<ProcessVideoJobService>();
 builder.Services.AddScoped<GetPlaybackManifestService>();
 builder.Services.AddScoped<GetStreamingAssetService>();
 builder.Services.AddScoped<GetVideoThumbnailService>();
+builder.Services.AddScoped<StartVideoTranscriptionService>();
+builder.Services.AddScoped<ListVideoTranscriptionsService>();
+builder.Services.AddScoped<GetVideoTranscriptionFileService>();
+builder.Services.AddScoped<CompleteVideoTranscriptionCallbackService>();
 builder.Services.AddScoped<ListVideosService>();
 builder.Services.AddScoped<GetVideoDetailsService>();
 builder.Services.AddScoped<ListMyVideosService>();

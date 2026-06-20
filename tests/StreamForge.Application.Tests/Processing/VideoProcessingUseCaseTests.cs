@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
+using StreamForge.Application.Common;
 using StreamForge.Application.Interfaces;
 using StreamForge.Application.UseCases.Processing;
 using StreamForge.Domain.Entities;
@@ -37,6 +38,8 @@ public sealed class VideoProcessingUseCaseTests
         var service = new ProcessVideoJobService(
             CreateUnitOfWork(video, job, provider, videoVersions, videoFiles, thumbnails),
             media,
+            Substitute.For<ITranscriptionQueue>(),
+            new TranscriptionOptions(),
             Substitute.For<ILogger<ProcessVideoJobService>>());
 
         await service.Handle(job.Id, CancellationToken.None);
@@ -73,6 +76,8 @@ public sealed class VideoProcessingUseCaseTests
         var service = new ProcessVideoJobService(
             CreateUnitOfWork(video, job, provider, videoVersions, videoFiles, Substitute.For<IVideoThumbnailRepository>()),
             media,
+            Substitute.For<ITranscriptionQueue>(),
+            new TranscriptionOptions(),
             Substitute.For<ILogger<ProcessVideoJobService>>());
 
         await service.Handle(job.Id, CancellationToken.None);

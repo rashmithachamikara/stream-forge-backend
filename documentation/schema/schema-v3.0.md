@@ -1,8 +1,8 @@
 # Stream Forge Database Schema v3.0
 
 **Version:** 3.0  
-**Date:** June 6, 2026  
-**Status:** Updated - Bookmark Redesign for In-Video Personal Markers
+**Date:** June 20, 2026  
+**Status:** Updated - Bookmark Redesign and Phase 15 Transcription Alignment
 
 ---
 
@@ -290,20 +290,26 @@ AI-generated video transcriptions and subtitles.
 | Id | GUID | PK | Unique transcription identifier |
 | VideoId | GUID | FK -> Videos(Id), NOT NULL | Parent video |
 | Language | VARCHAR(10) | NOT NULL | ISO language code (en, es, fr) |
-| Format | VARCHAR(10) | NOT NULL | SRT, VTT, TXT |
+| Format | VARCHAR(10) | NOT NULL | SRT, VTT |
 | StoragePath | VARCHAR(1000) | NOT NULL | Transcription file path |
 | Status | ENUM | NOT NULL | Pending, Processing, Completed, Failed |
-| Source | VARCHAR(50) | NOT NULL | AI provider (OpenAI, Azure, Manual) |
+| Source | VARCHAR(50) | NOT NULL | Provider/runtime source (local-faster-whisper, OpenAI, Azure, Manual) |
 | CreatedAt | TIMESTAMP | NOT NULL | Creation timestamp |
 | UpdatedAt | TIMESTAMP | NULL | Last update timestamp |
 
 **Indexes:**
 - `IX_VideoTranscriptions_VideoId`
-- `IX_VideoTranscriptions_Language`
+- `UQ_VideoTranscriptions_VideoId_Language_Format` (UNIQUE)
 
 **Notes:**
 - Supports multiple languages per video
-- Status tracks AI processing state
+- Supports multiple stored caption/transcription artifacts per language, such as both `VTT` and `SRT`
+- The current row model is one artifact per `(VideoId, Language, Format)`
+- Canonical storage paths should follow a pattern such as:
+  - `videos/{videoId}/transcriptions/{language}/captions.vtt`
+  - `videos/{videoId}/transcriptions/{language}/captions.srt`
+- `Status` tracks the application-owned transcription lifecycle
+- Near-term Phase 15 implementation may later expand this table with worker/provider metadata such as worker job ids, model, and failure details
 
 ---
 
@@ -784,7 +790,7 @@ Upload behavior depends on application settings such as chunk size, max file siz
 ### Phase 2 - Post-MVP
 - Pending: Upload session cleanup job for expired/incomplete sessions
 - Done: UploadSessions require `VideoId` and enforce `UploadSessions.VideoId -> Videos.Id`
-- Pending: VideoTranscriptions (when AI integration ready)
+- In progress: VideoTranscriptions integration for caption artifacts (`VTT`/`SRT`)
 - Pending: AccessControl enhancements (token lifecycle, revocation UX, auditing)
 - Pending: Notifications (when notification system ready)
 - Pending: AnalyticsEvents (start collecting immediately, analyze later)
@@ -792,6 +798,11 @@ Upload behavior depends on application settings such as chunk size, max file siz
 ---
 
 ## Change Log
+
+### v3.0 (June 20, 2026)
+- Updated `VideoTranscriptions` to document one row per `(VideoId, Language, Format)` artifact
+- Changed transcription uniqueness from per-language to per-language-and-format
+- Clarified canonical caption storage paths for `VTT` and `SRT`
 
 ### v2.0 (June 2, 2026)
 - Added `UploadSessions` table for resumable upload session lifecycle tracking

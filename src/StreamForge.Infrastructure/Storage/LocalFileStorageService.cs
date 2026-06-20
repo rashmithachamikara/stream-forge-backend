@@ -267,6 +267,43 @@ public class LocalFileStorageService : IStorageService
         return Task.FromResult(new StoredFileDescriptor(stream, contentType, Path.GetFileName(fullPath), fileInfo.Length));
     }
 
+    public Task<string> ImportFileAsync(
+        string sourceFilePath,
+        string destinationStoragePath,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(sourceFilePath))
+        {
+            throw new ArgumentException("Source file path is required.", nameof(sourceFilePath));
+        }
+
+        if (string.IsNullOrWhiteSpace(destinationStoragePath))
+        {
+            throw new ArgumentException("Destination storage path is required.", nameof(destinationStoragePath));
+        }
+
+        var sourcePath = Path.IsPathRooted(sourceFilePath)
+            ? Path.GetFullPath(sourceFilePath)
+            : ResolveStoragePath(sourceFilePath);
+        if (!File.Exists(sourcePath))
+        {
+            throw new FileNotFoundException($"Source artifact file not found: {sourcePath}");
+        }
+
+        var destinationPath = ResolveStoragePath(destinationStoragePath);
+        var destinationDirectory = Path.GetDirectoryName(destinationPath)
+            ?? throw new InvalidOperationException("Destination directory could not be determined.");
+        Directory.CreateDirectory(destinationDirectory);
+
+        File.Copy(sourcePath, destinationPath, overwrite: true);
+        _logger.LogInformation(
+            "Imported transcription artifact from {SourcePath} to {DestinationPath}",
+            sourcePath,
+            destinationPath);
+
+        return Task.FromResult(Path.GetRelativePath(_storagePath, destinationPath));
+    }
+
     public async Task<bool> ExistsAsync(string storagePath, CancellationToken cancellationToken = default)
     {
         var fullPath = ResolveStoragePath(storagePath);

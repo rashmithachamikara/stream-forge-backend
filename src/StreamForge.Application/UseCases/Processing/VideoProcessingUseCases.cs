@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using StreamForge.Application.DTOs.Processing;
 using StreamForge.Application.Interfaces;
+using StreamForge.Application.Common;
 using StreamForge.Domain.Entities;
 using StreamForge.Domain.Enums;
 using StreamForge.Domain.Exceptions;
@@ -12,15 +13,21 @@ public sealed class ProcessVideoJobService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMediaProcessingService _mediaProcessingService;
+    private readonly ITranscriptionQueue _transcriptionQueue;
+    private readonly TranscriptionOptions _transcriptionOptions;
     private readonly ILogger<ProcessVideoJobService> _logger;
 
     public ProcessVideoJobService(
         IUnitOfWork unitOfWork,
         IMediaProcessingService mediaProcessingService,
+        ITranscriptionQueue transcriptionQueue,
+        TranscriptionOptions transcriptionOptions,
         ILogger<ProcessVideoJobService> logger)
     {
         _unitOfWork = unitOfWork;
         _mediaProcessingService = mediaProcessingService;
+        _transcriptionQueue = transcriptionQueue;
+        _transcriptionOptions = transcriptionOptions;
         _logger = logger;
     }
 
@@ -94,6 +101,12 @@ public sealed class ProcessVideoJobService
             job.Complete();
             video.MarkAsReady();
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            if (_transcriptionOptions.Enabled && _transcriptionOptions.AutoTranscribeOnReady)
+            {
+                await _transcriptionQueue.EnqueueAsync(video.Id, _transcriptionOptions.DefaultLanguage, cancellationToken);
+            }
+
             _logger.LogInformation(
                 "Video processing job {ProcessingJobId} completed for video {VideoId}",
                 job.Id,

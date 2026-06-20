@@ -19,6 +19,7 @@ public sealed class UnitOfWork : IUnitOfWork
         VideoFiles = new VideoFileRepository(dbContext);
         VideoThumbnails = new VideoThumbnailRepository(dbContext);
         VideoProcessingJobs = new VideoProcessingJobRepository(dbContext);
+        VideoTranscriptions = new VideoTranscriptionRepository(dbContext);
         VideoReactions = new VideoReactionRepository(dbContext);
         VideoComments = new VideoCommentRepository(dbContext);
         Bookmarks = new BookmarkRepository(dbContext);
@@ -41,6 +42,7 @@ public sealed class UnitOfWork : IUnitOfWork
     public IVideoFileRepository VideoFiles { get; }
     public IVideoThumbnailRepository VideoThumbnails { get; }
     public IVideoProcessingJobRepository VideoProcessingJobs { get; }
+    public IVideoTranscriptionRepository VideoTranscriptions { get; }
     public IVideoReactionRepository VideoReactions { get; }
     public IVideoCommentRepository VideoComments { get; }
     public IBookmarkRepository Bookmarks { get; }

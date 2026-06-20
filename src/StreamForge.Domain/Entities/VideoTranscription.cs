@@ -104,10 +104,24 @@ public class VideoTranscription : BaseEntity
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public void QueueForProcessing(string storagePath, string source)
+    {
+        if (string.IsNullOrWhiteSpace(storagePath))
+            throw new ArgumentException("Storage path cannot be empty", nameof(storagePath));
+
+        if (string.IsNullOrWhiteSpace(source))
+            throw new ArgumentException("Source cannot be empty", nameof(source));
+
+        StoragePath = storagePath;
+        Source = source;
+        Status = TranscriptionStatus.Pending;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     /// <summary>
     /// Marks transcription as completed
     /// </summary>
-    public void Complete(string storagePath)
+    public void Complete(string storagePath, string? language = null)
     {
         if (string.IsNullOrWhiteSpace(storagePath))
             throw new ArgumentException("Storage path cannot be empty", nameof(storagePath));
@@ -116,6 +130,11 @@ public class VideoTranscription : BaseEntity
             throw new InvalidOperationException("Can only complete from Processing status");
 
         StoragePath = storagePath;
+        if (!string.IsNullOrWhiteSpace(language))
+        {
+            Language = language.ToLowerInvariant();
+        }
+
         Status = TranscriptionStatus.Completed;
         UpdatedAt = DateTime.UtcNow;
     }
