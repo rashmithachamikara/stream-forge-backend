@@ -3,7 +3,7 @@ $body = @{
   videoId = "video-001"
   sourceReference = @{
     type = "local_path"
-    value = "<absolute-file-path>"
+    value = "D:\Play\The Boys\The.Boys.2019.S03E01.1080p.10bit.WEBRip.6CH.x265.HEVC-PS.mkv"
   }
   language = "en"
   outputFormats = @("vtt", "srt")

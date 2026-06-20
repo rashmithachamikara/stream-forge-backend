@@ -16,7 +16,7 @@ public sealed class HangfireTranscriptionQueue : ITranscriptionQueue
     public Task EnqueueAsync(Guid videoId, string? language = null, CancellationToken cancellationToken = default)
     {
         _backgroundJobClient.Enqueue<StartVideoTranscriptionService>(
-            service => service.Handle(videoId, language, CancellationToken.None));
+            service => service.Handle(videoId, language, null, CancellationToken.None));
         return Task.CompletedTask;
     }
 }

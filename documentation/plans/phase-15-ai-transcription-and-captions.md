@@ -17,12 +17,17 @@ Implemented already:
 
 Still pending for Phase 15 completion:
 
+- transcript chunk persistence, `pgvector`, search, and Q&A APIs
+- admin/configuration UI and automated tests
+
+Implemented in the latest backend pass:
+
 - `.NET` transcription provider abstraction and orchestration
 - queueing transcription automatically after video readiness
 - callback ingestion and canonical persistence into `VideoTranscriptions`
-- transcript chunk persistence, `pgvector`, search, and Q&A APIs
+- durable worker metadata persistence for correlation IDs, worker job IDs, model, and failure reason
+- backend transcription status/read APIs with worker-polled live status for running jobs
 - player-facing caption retrieval APIs
-- admin/configuration UI and automated tests
 
 ## Purpose
 
@@ -346,9 +351,11 @@ Planned fields and metadata include:
 - `Format`
 - `StoragePath`
 - `Status`
+- `CorrelationId`
+- `WorkerJobId`
 - `Provider`
 - `Model`
-- `WorkerJobId`
+- `FailureReason`
 - failure/error details
 - timestamps such as created/completed/updated
 
@@ -525,7 +532,7 @@ Python worker smoke tests can be separate and lighter-weight.
 - A ready video can automatically queue a transcription job when enabled.
 - `.NET` can hand work to a local Python `faster-whisper` worker through an internal provider adapter.
 - Generated caption files are stored and linked through `VideoTranscriptions`.
-- Transcription status is queryable through the API.
+- Transcription status is queryable through the API, with live worker status available while jobs are running.
 - Caption retrieval respects existing video authorization rules.
 - Transcript search can return timestamped matches for a video.
 - Video Q&A uses retrieved transcript passages rather than the full raw transcript.

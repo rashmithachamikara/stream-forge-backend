@@ -29,6 +29,18 @@ public class VideoTranscriptionConfiguration : IEntityTypeConfiguration<VideoTra
         builder.Property(vt => vt.Source)
             .HasMaxLength(100);
 
+        builder.Property(vt => vt.CorrelationId)
+            .HasMaxLength(200);
+
+        builder.Property(vt => vt.WorkerJobId)
+            .HasMaxLength(200);
+
+        builder.Property(vt => vt.Model)
+            .HasMaxLength(200);
+
+        builder.Property(vt => vt.FailureReason)
+            .HasMaxLength(2000);
+
         builder.Property(vt => vt.Status)
             .IsRequired()
             .HasConversion<string>()
@@ -44,6 +56,12 @@ public class VideoTranscriptionConfiguration : IEntityTypeConfiguration<VideoTra
         builder.HasIndex(vt => new { vt.VideoId, vt.Language, vt.Format })
             .IsUnique()
             .HasDatabaseName("IX_VideoTranscriptions_VideoId_Language_Format");
+
+        builder.HasIndex(vt => vt.WorkerJobId)
+            .HasDatabaseName("IX_VideoTranscriptions_WorkerJobId");
+
+        builder.HasIndex(vt => vt.CorrelationId)
+            .HasDatabaseName("IX_VideoTranscriptions_CorrelationId");
 
         // Relationships
         builder.HasOne(vt => vt.Video)

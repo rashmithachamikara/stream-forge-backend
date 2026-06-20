@@ -16,4 +16,19 @@ public interface IVideoTranscriptionRepository : IRepository<VideoTranscription>
         string language,
         string format,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<VideoTranscription>> GetByWorkerJobIdAsync(
+        string workerJobId,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<VideoTranscription>> GetByCorrelationIdAsync(
+        string correlationId,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<VideoTranscription>> GetAllOrderedAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<VideoTranscription>> GetByStatusesAsync(
+        CancellationToken cancellationToken = default,
+        params TranscriptionStatus[] statuses);
 }

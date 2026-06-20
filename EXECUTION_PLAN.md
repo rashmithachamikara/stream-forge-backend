@@ -142,17 +142,17 @@
 - [ ] Add tests for progress parsing, throttling, and fallback behavior
 
 ### Phase 15: AI Transcription and Captions (In Progress)
-- [ ] Add transcription configuration and provider abstraction for local and hosted transcription providers
-- [ ] Queue transcription after upload/processing completes and source media is ready
-- [ ] Implement .NET transcription adapter that submits jobs to a local Python Faster-Whisper worker
+- [X] Add transcription configuration and provider abstraction for local and hosted transcription providers
+- [X] Queue transcription after upload/processing completes and source media is ready
+- [X] Implement .NET transcription adapter that submits jobs to a local Python Faster-Whisper worker
 - [X] Add Python transcription worker project under `services/transcription-worker/`
 - [X] Define the initial internal worker contract for job submission, status polling, callback payloads, and staged artifact references
 - [X] Generate staged transcript/caption outputs such as `VTT`, `SRT`, and `segments.json` in the Python worker
 - [ ] Refine worker progress so active transcription percentage is derived from transcribed time versus media duration
-- [ ] Persist canonical transcript/caption outputs through `.NET` storage and `VideoTranscriptions`
-- [ ] Track transcription job state, language, provider, and failure details in `VideoTranscriptions`
-- [ ] Add APIs for listing, retrieving, and downloading video transcriptions/captions
-- [ ] Add player-facing caption endpoint support using existing video authorization rules
+- [X] Persist canonical transcript/caption outputs through `.NET` storage and `VideoTranscriptions`
+- [X] Track transcription job state, language, provider, and failure details in `VideoTranscriptions`
+- [X] Add APIs for listing, retrieving, and downloading video transcriptions/captions
+- [X] Add player-facing caption endpoint support using existing video authorization rules
 - [ ] Chunk transcripts with timestamps for transcript search and grounded Q&A
 - [ ] Add transcript search using full-text search and optional semantic/vector retrieval
 - [ ] Add video Q&A endpoints over retrieved transcript passages with cited time ranges
@@ -163,4 +163,4 @@
 
 - Detailed implementation notes for each phase will be maintained under `documentation/plans/`.
 - This document tracks phase-level status only.
-- Schema source of truth remains `documentation/schema/schema-v2.0.md`.
+- Schema source of truth remains `documentation/schema/schema-v4.0.md`.

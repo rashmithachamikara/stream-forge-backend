@@ -4,6 +4,8 @@ This directory contains the complete database schema documentation for Stream Fo
 
 ## Files
 
+- **[schema-v4.0.md](schema-v4.0.md)** - Current database schema specification (v4.0)
+- **[schema-v3.0.md](schema-v3.0.md)** - Previous schema version with bookmark redesign and initial Phase 15 alignment
 - **[schema-v1.0.md](schema-v1.0.md)** - Complete database schema specification (v1.0)
 - **[schema-diagram.md](schema-diagram.md)** - Visual entity relationship diagrams
 - **[migration-guide.md](migration-guide.md)** - Database migration guidelines

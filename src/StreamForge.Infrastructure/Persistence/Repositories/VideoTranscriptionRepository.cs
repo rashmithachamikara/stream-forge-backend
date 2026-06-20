@@ -21,6 +21,16 @@ public sealed class VideoTranscriptionRepository : BaseRepository<VideoTranscrip
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<VideoTranscription>> GetAllOrderedAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await DbContext.VideoTranscriptions
+            .OrderByDescending(transcription => transcription.CreatedAt)
+            .ThenBy(transcription => transcription.Language)
+            .ThenBy(transcription => transcription.Format)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<VideoTranscription>> GetByVideoAndStatusAsync(
         Guid videoId,
         params TranscriptionStatus[] statuses)
@@ -29,6 +39,18 @@ public sealed class VideoTranscriptionRepository : BaseRepository<VideoTranscrip
             .Where(transcription => transcription.VideoId == videoId && statuses.Contains(transcription.Status))
             .OrderBy(transcription => transcription.CreatedAt)
             .ToListAsync();
+    }
+
+    public async Task<IReadOnlyList<VideoTranscription>> GetByStatusesAsync(
+        CancellationToken cancellationToken = default,
+        params TranscriptionStatus[] statuses)
+    {
+        return await DbContext.VideoTranscriptions
+            .Where(transcription => statuses.Contains(transcription.Status))
+            .OrderByDescending(transcription => transcription.CreatedAt)
+            .ThenBy(transcription => transcription.Language)
+            .ThenBy(transcription => transcription.Format)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<VideoTranscription?> GetByVideoLanguageAndFormatAsync(
@@ -46,5 +68,29 @@ public sealed class VideoTranscriptionRepository : BaseRepository<VideoTranscrip
                                  transcription.Language == normalizedLanguage &&
                                  transcription.Format == normalizedFormat,
                 cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<VideoTranscription>> GetByWorkerJobIdAsync(
+        string workerJobId,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedWorkerJobId = workerJobId.Trim();
+
+        return await DbContext.VideoTranscriptions
+            .Where(transcription => transcription.WorkerJobId == normalizedWorkerJobId)
+            .OrderBy(transcription => transcription.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<VideoTranscription>> GetByCorrelationIdAsync(
+        string correlationId,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedCorrelationId = correlationId.Trim();
+
+        return await DbContext.VideoTranscriptions
+            .Where(transcription => transcription.CorrelationId == normalizedCorrelationId)
+            .OrderBy(transcription => transcription.CreatedAt)
+            .ToListAsync(cancellationToken);
     }
 }

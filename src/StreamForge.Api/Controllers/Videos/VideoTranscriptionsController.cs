@@ -11,15 +11,21 @@ namespace StreamForge.Api.Controllers.Videos;
 public sealed class VideoTranscriptionsController : ControllerBase
 {
     private readonly ListVideoTranscriptionsService _listVideoTranscriptions;
+    private readonly ListVideoTranscriptionJobsService _listVideoTranscriptionJobs;
+    private readonly GetVideoTranscriptionStatusService _getVideoTranscriptionStatus;
     private readonly GetVideoTranscriptionFileService _getVideoTranscriptionFile;
     private readonly StartVideoTranscriptionService _startVideoTranscription;
 
     public VideoTranscriptionsController(
         ListVideoTranscriptionsService listVideoTranscriptions,
+        ListVideoTranscriptionJobsService listVideoTranscriptionJobs,
+        GetVideoTranscriptionStatusService getVideoTranscriptionStatus,
         GetVideoTranscriptionFileService getVideoTranscriptionFile,
         StartVideoTranscriptionService startVideoTranscription)
     {
         _listVideoTranscriptions = listVideoTranscriptions;
+        _listVideoTranscriptionJobs = listVideoTranscriptionJobs;
+        _getVideoTranscriptionStatus = getVideoTranscriptionStatus;
         _getVideoTranscriptionFile = getVideoTranscriptionFile;
         _startVideoTranscription = startVideoTranscription;
     }
@@ -34,7 +40,29 @@ public sealed class VideoTranscriptionsController : ControllerBase
         return Ok(await _listVideoTranscriptions.Handle(videoId, shareToken, cancellationToken));
     }
 
+    [HttpGet("/api/v1/videos/{videoId:guid}/transcription-jobs")]
+    [AllowAnonymous]
+    public async Task<ActionResult<IReadOnlyList<VideoTranscriptionJobDto>>> ListJobs(
+        Guid videoId,
+        [FromQuery] string? shareToken,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _listVideoTranscriptionJobs.Handle(videoId, shareToken, cancellationToken));
+    }
+
+    [HttpGet("{transcriptionId:guid}/status")]
+    [AllowAnonymous]
+    public async Task<ActionResult<VideoTranscriptionDto>> GetStatus(
+        Guid videoId,
+        Guid transcriptionId,
+        [FromQuery] string? shareToken,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _getVideoTranscriptionStatus.Handle(videoId, transcriptionId, shareToken, cancellationToken));
+    }
+
     [HttpGet("{transcriptionId:guid}")]
+    [HttpGet("{transcriptionId:guid}/content")]
     [AllowAnonymous]
     public async Task<IActionResult> Get(
         Guid videoId,
@@ -58,6 +86,6 @@ public sealed class VideoTranscriptionsController : ControllerBase
         [FromBody] RequestVideoTranscriptionRequestDto request,
         CancellationToken cancellationToken)
     {
-        return Ok(await _startVideoTranscription.Handle(videoId, request.Language, cancellationToken));
+        return Ok(await _startVideoTranscription.Handle(videoId, request.Language, request.OutputFormats, cancellationToken));
     }
 }
