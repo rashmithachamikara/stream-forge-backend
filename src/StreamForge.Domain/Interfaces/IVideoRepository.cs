@@ -15,6 +15,7 @@ public interface IVideoRepository : IRepository<Video>
         Guid? categoryId,
         Guid? tagId,
         Guid? uploaderId,
+        Guid? excludeUploaderId,
         VideoStatus? status,
         VideoVisibility? visibility,
         Guid? currentUserId,

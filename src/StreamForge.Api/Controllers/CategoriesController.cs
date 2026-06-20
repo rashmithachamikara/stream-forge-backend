@@ -87,7 +87,7 @@ public sealed class CategoriesController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         await _getCategory.Handle(categoryId, cancellationToken);
-        var query = new ListVideosQuery(search, categoryId, tagId, uploaderId, null, null, sort, page, pageSize);
+        var query = new ListVideosQuery(search, categoryId, tagId, uploaderId, null, null, null, sort, page, pageSize);
         return Ok(await _listVideos.Handle(query, cancellationToken));
     }
 }

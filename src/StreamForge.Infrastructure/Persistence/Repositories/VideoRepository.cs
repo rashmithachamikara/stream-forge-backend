@@ -28,6 +28,7 @@ public sealed class VideoRepository : BaseRepository<Video>, IVideoRepository
         Guid? categoryId,
         Guid? tagId,
         Guid? uploaderId,
+        Guid? excludeUploaderId,
         VideoStatus? status,
         VideoVisibility? visibility,
         Guid? currentUserId,
@@ -91,6 +92,11 @@ public sealed class VideoRepository : BaseRepository<Video>, IVideoRepository
         if (uploaderId.HasValue)
         {
             query = query.Where(video => video.UploaderId == uploaderId.Value);
+        }
+
+        if (excludeUploaderId.HasValue)
+        {
+            query = query.Where(video => video.UploaderId != excludeUploaderId.Value);
         }
 
         if (!string.IsNullOrWhiteSpace(searchTerm))

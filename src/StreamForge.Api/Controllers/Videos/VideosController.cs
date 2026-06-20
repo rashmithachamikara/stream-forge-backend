@@ -46,6 +46,7 @@ public sealed class VideosController : ControllerBase
         [FromQuery] Guid? categoryId,
         [FromQuery] Guid? tagId,
         [FromQuery] Guid? uploaderId,
+        [FromQuery] Guid? excludeUploaderId,
         [FromQuery] VideoStatus? status,
         [FromQuery] VideoVisibility? visibility,
         [FromQuery] string? sort,
@@ -53,7 +54,7 @@ public sealed class VideosController : ControllerBase
         [FromQuery] int pageSize = 24,
         CancellationToken cancellationToken = default)
     {
-        var query = new ListVideosQuery(search, categoryId, tagId, uploaderId, status, visibility, sort, page, pageSize);
+        var query = new ListVideosQuery(search, categoryId, tagId, uploaderId, excludeUploaderId, status, visibility, sort, page, pageSize);
         return Ok(await _listVideos.Handle(query, cancellationToken));
     }
 

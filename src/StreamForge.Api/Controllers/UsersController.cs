@@ -57,7 +57,7 @@ public sealed class UsersController : ControllerBase
         [FromQuery] int pageSize = 24,
         CancellationToken cancellationToken = default)
     {
-        var query = new ListVideosQuery(search, categoryId, tagId, userId, null, null, sort, page, pageSize);
+        var query = new ListVideosQuery(search, categoryId, tagId, userId, null, null, null, sort, page, pageSize);
         return Ok(await _listVideos.Handle(query, cancellationToken));
     }
 }
