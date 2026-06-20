@@ -1,6 +1,28 @@
 # Phase 15 - AI Transcription and Captions
 
-Status: [ ] Planned
+Status: [~] In Progress
+
+## Current Progress Snapshot
+
+Implemented already:
+
+- Python transcription worker scaffold under `services/transcription-worker/`
+- internal worker endpoints for submit, status, health, and result retrieval
+- local `faster-whisper` execution path
+- staged artifact generation for `VTT`, `SRT`, and `segments.json`
+- callback client from Python back to Stream Forge
+- configurable shared local storage roots for uploads/transcription output
+- source-reference handling that can support local paths, S3-style references, and presigned URLs
+- worker Dockerfile, README, `.env.example`, and manual smoke-test script
+
+Still pending for Phase 15 completion:
+
+- `.NET` transcription provider abstraction and orchestration
+- queueing transcription automatically after video readiness
+- callback ingestion and canonical persistence into `VideoTranscriptions`
+- transcript chunk persistence, `pgvector`, search, and Q&A APIs
+- player-facing caption retrieval APIs
+- admin/configuration UI and automated tests
 
 ## Purpose
 
@@ -109,7 +131,7 @@ Those hosted providers should not require changes to the application use-case fl
 
 Hangfire should stay in charge of the Stream Forge job lifecycle.
 
-Recommended flow:
+Recommended target flow:
 
 1. Hangfire job starts in `.NET`
 2. `.NET` resolves video/storage metadata and active transcription settings
@@ -128,6 +150,11 @@ Recommended completion strategy:
 This avoids a long synchronous HTTP call while still keeping Hangfire as the orchestrator.
 
 ### Planned End-To-End Flow
+
+Current implementation status:
+
+- Steps 7, 8, 10, 11, 12, 13, 14, and the worker side of 15 exist in the Python worker today.
+- The `.NET` orchestration, persistence, and public API pieces around those steps are still pending.
 
 The current planned pipeline is:
 
@@ -182,6 +209,11 @@ Local filesystem paths should be treated as only one kind of storage reference, 
 ## 6. Configuration
 
 Add a new configuration section such as `Transcription`.
+
+Current status:
+
+- the worker already has its own local runtime configuration and `.env.example`
+- Stream Forge `.NET` does not yet have the full Phase 15 `Transcription` settings section wired in
 
 Suggested options:
 

@@ -141,13 +141,14 @@
 - [ ] Keep milestone-based DB progress as the durable fallback after restarts
 - [ ] Add tests for progress parsing, throttling, and fallback behavior
 
-### Phase 15: AI Transcription and Captions
+### Phase 15: AI Transcription and Captions (In Progress)
 - [ ] Add transcription configuration and provider abstraction for local and hosted transcription providers
 - [ ] Queue transcription after upload/processing completes and source media is ready
 - [ ] Implement .NET transcription adapter that submits jobs to a local Python Faster-Whisper worker
-- [ ] Add Python transcription worker project under `services/transcription-worker/`
-- [ ] Define internal job handoff, polling, callback, and retry contract between Hangfire and the Python worker
-- [ ] Generate and persist transcript/caption outputs such as `VTT`, `SRT`, and optional plain text
+- [X] Add Python transcription worker project under `services/transcription-worker/`
+- [X] Define the initial internal worker contract for job submission, status polling, callback payloads, and staged artifact references
+- [X] Generate staged transcript/caption outputs such as `VTT`, `SRT`, and `segments.json` in the Python worker
+- [ ] Persist canonical transcript/caption outputs through `.NET` storage and `VideoTranscriptions`
 - [ ] Track transcription job state, language, provider, and failure details in `VideoTranscriptions`
 - [ ] Add APIs for listing, retrieving, and downloading video transcriptions/captions
 - [ ] Add player-facing caption endpoint support using existing video authorization rules

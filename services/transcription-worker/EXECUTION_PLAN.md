@@ -1,5 +1,7 @@
 # Transcription Worker - Local Execution Plan
 
+Status: [~] In Progress
+
 ## Purpose
 
 This plan covers the Python worker that runs local transcription jobs for Stream Forge.
@@ -269,7 +271,7 @@ Recommended protections:
 - [X] Add storage-reference handling for local paths and S3-style inputs
 - [X] Add Dockerfile
 - [X] Add worker README with install/run instructions
-- [ ] Add smoke test script or test path
+- [X] Add smoke test script or test path
 
 ## Notes
 
@@ -277,3 +279,26 @@ Recommended protections:
 - This worker should stay focused on local AI execution and job coordination.
 - Live progress should be exposed from the worker on demand rather than treated as a high-frequency persisted database field.
 - If a future broker-based architecture replaces the current handoff model, this worker can evolve without forcing a redesign of transcript storage or public APIs.
+
+## Current Progress Snapshot
+
+Implemented in this repo already:
+
+- FastAPI worker scaffold under `services/transcription-worker/`
+- `POST /jobs/transcriptions`
+- `GET /jobs/transcriptions/{jobId}`
+- `GET /jobs/transcriptions/{jobId}/result`
+- background job execution with in-memory worker-side status tracking
+- `faster-whisper` integration
+- staged `captions.vtt`, `captions.srt`, and `segments.json` generation
+- callback client for notifying Stream Forge `.NET`
+- configurable local/shared storage roots
+- support for local path, S3-style, and presigned-URL-style source references
+- Dockerfile, README, `.env.example`, and `tester.ps1` smoke-test path
+
+Still pending on the worker side or at the integration boundary:
+
+- full end-to-end `.NET` orchestration and callback ingestion
+- durable worker job state beyond in-memory runtime tracking
+- stronger retry/reconciliation behavior once `.NET` orchestration is implemented
+- automated worker tests beyond the manual smoke-test path
