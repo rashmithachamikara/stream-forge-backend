@@ -6,3 +6,10 @@ services:
   api:
     volumes:
       - ${STREAMFORGE_MEDIA_HOST_PATH:-./docker-data/uploads}:/app/data/uploads
+      - ${STREAMFORGE_TRANSCRIPTION_OUTPUT_HOST_PATH:-./docker-data/transcription-output}:/app/data/transcription-output
+
+  transcription-worker:
+    volumes:
+      - ${STREAMFORGE_MEDIA_HOST_PATH:-./docker-data/uploads}:/app/data/uploads
+      - ${STREAMFORGE_TRANSCRIPTION_OUTPUT_HOST_PATH:-./docker-data/transcription-output}:/app/data/transcription-output
+      - ${STREAMFORGE_TRANSCRIPTION_MODEL_CACHE_HOST_PATH:-./docker-data/transcription-models}:/root/.cache

@@ -3,6 +3,8 @@
 .vs
 .vscode
 .idea
+.agents
+.verify-build
 
 **/bin
 **/obj
@@ -20,8 +22,12 @@
 documentation
 sdk
 tests
+/services
 
-storage
-temp
-uploads
-src/StreamForge.Api/uploads
+/data
+/docker-data
+/storage
+/temp
+/uploads
+/src/StreamForge.Api/uploads
+/transcription-output

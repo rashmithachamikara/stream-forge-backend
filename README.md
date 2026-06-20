@@ -249,6 +249,7 @@ The repo includes:
 
 - `Dockerfile` for the API runtime
 - `compose.yaml` with `api` and `postgres` services
+- `compose.transcription.yaml` for the optional Python transcription worker
 - `compose.host-paths.yaml` for optional bind mounts to host folders
 - `.env.example` for deployment-time environment values
 
@@ -293,6 +294,28 @@ docker compose up -d api
 curl http://localhost:8080/health/ready
 ```
 
+### Optional Transcription Worker
+
+To run the local Python transcription worker alongside the core stack, add the transcription compose layer:
+
+```bash
+docker compose -f compose.yaml -f compose.transcription.yaml up -d
+```
+
+This adds:
+
+- `transcription-worker` on port `8090`
+- shared media and transcription-output volumes between the API and worker
+- API overrides so transcription submission uses `http://transcription-worker:8090`
+- API callback override so the worker calls back to `http://api:8080`
+
+If you want transcription enabled in Docker, keep these env values set appropriately in `.env`:
+
+```text
+STREAMFORGE_TRANSCRIPTION_ENABLED=true
+STREAMFORGE_TRANSCRIPTION_AUTO_ON_READY=true
+```
+
 ### Notes
 
 - The container image includes `ffmpeg`, `ffprobe`, and `curl`.
@@ -312,16 +335,26 @@ If you want to inspect files directly on your machine instead of using named Doc
 docker compose -f compose.yaml -f compose.host-paths.yaml up -d
 ```
 
+If you want both host-path mounts and the transcription worker:
+
+```bash
+docker compose -f compose.yaml -f compose.transcription.yaml -f compose.host-paths.yaml up -d
+```
+
 By default, the override maps:
 
 - `./docker-data/postgres` -> PostgreSQL data directory
 - `./docker-data/uploads` -> uploaded and generated media
+- `./docker-data/transcription-output` -> staged worker transcription artifacts
+- `./docker-data/transcription-models` -> downloaded Whisper/model cache
 
 You can change those paths through `.env`:
 
 ```text
 STREAMFORGE_POSTGRES_HOST_PATH=./docker-data/postgres
 STREAMFORGE_MEDIA_HOST_PATH=./docker-data/uploads
+STREAMFORGE_TRANSCRIPTION_OUTPUT_HOST_PATH=./docker-data/transcription-output
+STREAMFORGE_TRANSCRIPTION_MODEL_CACHE_HOST_PATH=./docker-data/transcription-models
 ```
 
 Use the base `compose.yaml` alone when you want the default named-volume setup.
