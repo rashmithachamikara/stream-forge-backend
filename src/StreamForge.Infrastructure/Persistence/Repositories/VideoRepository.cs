@@ -74,7 +74,7 @@ public sealed class VideoRepository : BaseRepository<Video>, IVideoRepository
             query = query.Where(video => video.Status != VideoStatus.Deleted);
         }
 
-        if (currentUserRole == UserRole.Admin && visibility.HasValue)
+        if (visibility.HasValue)
         {
             query = query.Where(video => video.Visibility == visibility.Value);
         }
