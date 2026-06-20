@@ -191,6 +191,7 @@ Operationally:
 - `.NET` remains the source of truth for canonical product state
 - Python remains the execution worker for local AI tasks
 - live progress can be fetched on demand from the Python worker status endpoint without frequent database writes
+- admin and owner-facing status views should prefer worker-polled live progress for running transcription jobs and fall back to persisted coarse state when the worker is unavailable
 
 ## 5. Media Access Strategy
 
@@ -397,6 +398,16 @@ For transcription progress, keep only durable coarse state in the database, such
 - worker job id
 
 Live `progressPercent` should come from the Python worker status endpoint on demand rather than from frequent database writes.
+
+During the long-running transcribing stage, that live progress should be derived from actual media progress rather than from coarse stage milestones alone. Once source media duration is known, the worker should calculate the main transcription percentage from `latestSegmentEndSeconds / mediaDurationSeconds` and map that into the transcribing slice of the job.
+
+A practical default split is:
+
+- `0-5%`: source resolution and job setup
+- `5-95%`: active transcription derived from transcribed time versus total duration
+- `95-100%`: artifact generation and callback delivery
+
+That gives the admin UI a meaningful in-flight percentage without turning the database into a high-frequency progress log.
 
 ## 9. Transcript Search And Q&A Model
 

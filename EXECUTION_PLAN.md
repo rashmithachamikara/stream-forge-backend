@@ -148,6 +148,7 @@
 - [X] Add Python transcription worker project under `services/transcription-worker/`
 - [X] Define the initial internal worker contract for job submission, status polling, callback payloads, and staged artifact references
 - [X] Generate staged transcript/caption outputs such as `VTT`, `SRT`, and `segments.json` in the Python worker
+- [ ] Refine worker progress so active transcription percentage is derived from transcribed time versus media duration
 - [ ] Persist canonical transcript/caption outputs through `.NET` storage and `VideoTranscriptions`
 - [ ] Track transcription job state, language, provider, and failure details in `VideoTranscriptions`
 - [ ] Add APIs for listing, retrieving, and downloading video transcriptions/captions

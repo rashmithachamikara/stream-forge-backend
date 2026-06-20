@@ -135,10 +135,10 @@ async def _run_job(job_id: str) -> None:
         return
 
     try:
-        job.mark_running("resolving_source", 10, "Resolving source reference.")
+        job.mark_running("resolving_source", 5, "Resolving source reference.")
         await asyncio.sleep(0)
 
-        job.mark_running("transcribing", 35, "Running faster-whisper transcription.")
+        job.mark_running("transcribing", 5, "Starting faster-whisper transcription.")
         result = await asyncio.to_thread(transcription_service.transcribe, job)
 
         artifacts = [
@@ -146,11 +146,11 @@ async def _run_job(job_id: str) -> None:
             for path in result.artifact_paths.values()
         ]
 
-        job.mark_running("generating_artifacts", 85, "Preparing artifact references.")
+        job.mark_running("generating_artifacts", 96, "Preparing artifact references.")
         await asyncio.sleep(0)
 
         segments_path = result.artifact_paths.get("segments.json")
-        job.mark_running("delivering_callback", 95, "Sending completion callback.")
+        job.mark_running("delivering_callback", 99, "Sending completion callback.")
         job.mark_completed(
             detected_language=result.detected_language,
             artifacts=artifacts,

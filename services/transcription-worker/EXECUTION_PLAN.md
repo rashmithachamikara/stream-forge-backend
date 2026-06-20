@@ -105,6 +105,8 @@ Suggested response fields:
 
 This status endpoint is the primary source for live worker progress. Stream Forge can poll it on demand instead of expecting frequent progress persistence in the application database.
 
+For running transcription jobs, `progressPercent` should not stay purely stage-based. The worker should probe media duration up front, track the latest completed transcription segment end time, and derive the main transcribing percentage from `latestSegmentEndSeconds / mediaDurationSeconds`. Only the brief setup and finalization stages should use fixed milestone percentages.
+
 ### Health
 
 - `GET /health`
@@ -262,6 +264,7 @@ Recommended protections:
 - [X] Add transcription submission endpoint
 - [X] Add job-status endpoint
 - [X] Add stage/progress reporting for polling
+- [ ] Refine progress reporting so the transcribing stage is derived from latest segment end time versus total media duration
 - [X] Add health endpoint
 - [X] Add `faster-whisper` integration service
 - [X] Add `SRT` and `VTT` generation helpers
@@ -278,6 +281,7 @@ Recommended protections:
 - Stream Forge `.NET` remains the source of truth for canonical application state.
 - This worker should stay focused on local AI execution and job coordination.
 - Live progress should be exposed from the worker on demand rather than treated as a high-frequency persisted database field.
+- The current implementation reports coarse stage milestones; the next refinement is to expose time-derived progress during the long-running transcription phase so admin UI can show meaningful in-flight percentages.
 - If a future broker-based architecture replaces the current handoff model, this worker can evolve without forcing a redesign of transcript storage or public APIs.
 
 ## Current Progress Snapshot

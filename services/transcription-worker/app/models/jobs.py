@@ -44,6 +44,8 @@ class WorkerJob:
     detected_language: str | None = None
     artifact_records: list[ArtifactRecord] = field(default_factory=list)
     segments_file_path: str | None = None
+    media_duration_seconds: float | None = None
+    transcribed_until_seconds: float | None = None
     started_at: datetime | None = None
     completed_at: datetime | None = None
     created_at: datetime = field(default_factory=utc_now)
@@ -55,6 +57,34 @@ class WorkerJob:
         self.message = message
         if self.started_at is None:
             self.started_at = utc_now()
+
+    def set_media_duration(self, media_duration_seconds: float | None) -> None:
+        if media_duration_seconds is None or media_duration_seconds <= 0:
+            return
+
+        self.media_duration_seconds = media_duration_seconds
+        if self.transcribed_until_seconds is None:
+            self.transcribed_until_seconds = 0.0
+
+    def update_transcription_progress(self, latest_segment_end_seconds: float) -> None:
+        self.status = "running"
+        self.stage = "transcribing"
+
+        if self.started_at is None:
+            self.started_at = utc_now()
+
+        self.transcribed_until_seconds = max(0.0, latest_segment_end_seconds)
+
+        if self.media_duration_seconds and self.media_duration_seconds > 0:
+            ratio = min(self.transcribed_until_seconds / self.media_duration_seconds, 1.0)
+            self.progress_percent = min(95, max(5, int(round(5 + (ratio * 90)))))
+            self.message = (
+                f"Transcribing media ({self.transcribed_until_seconds:.1f}s / "
+                f"{self.media_duration_seconds:.1f}s)."
+            )
+        else:
+            self.progress_percent = max(self.progress_percent, 35)
+            self.message = "Transcribing media."
 
     def mark_completed(
         self,
@@ -96,6 +126,8 @@ class WorkerJob:
                 for artifact in self.artifact_records
             ],
             "failureReason": self.failure_reason,
+            "mediaDurationSeconds": self.media_duration_seconds,
+            "transcribedUntilSeconds": self.transcribed_until_seconds,
         }
 
 

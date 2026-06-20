@@ -41,14 +41,18 @@ class TranscriptionService:
                 word_timestamps=job.options["enable_word_timestamps"],
             )
 
-            segments = [
-                SegmentRecord(
+            job.detected_language = getattr(info, "language", None)
+            job.set_media_duration(getattr(info, "duration", None))
+
+            segments: list[SegmentRecord] = []
+            for segment in segments_iter:
+                record = SegmentRecord(
                     start_seconds=float(segment.start),
                     end_seconds=float(segment.end),
                     text=segment.text.strip(),
                 )
-                for segment in segments_iter
-            ]
+                segments.append(record)
+                job.update_transcription_progress(record.end_seconds)
 
             artifact_paths: dict[str, Path] = {}
             artifact_paths["segments.json"] = self._write_segments_json(output_dir, segments)

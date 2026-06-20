@@ -1,0 +1,346 @@
+openapi: 3.1.0
+info:
+  title: Stream Forge Transcription Worker API
+  version: 0.1.0
+  description: Internal API contract for the local transcription worker used by Stream Forge.
+
+servers:
+  - url: http://127.0.0.1:8090
+    description: Local development default
+
+tags:
+  - name: Health
+  - name: Transcription Jobs
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Get worker health
+      operationId: getHealth
+      responses:
+        "200":
+          description: Worker health details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /jobs/transcriptions:
+    post:
+      tags: [Transcription Jobs]
+      summary: Create a transcription job
+      operationId: createTranscriptionJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TranscriptionJobCreateRequest"
+      responses:
+        "202":
+          description: Job accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobAcceptedResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationProblem"
+
+  /jobs/transcriptions/{jobId}:
+    get:
+      tags: [Transcription Jobs]
+      summary: Get transcription job status
+      operationId: getTranscriptionJob
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Job status details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobStatusResponse"
+        "404":
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /jobs/transcriptions/{jobId}/result:
+    get:
+      tags: [Transcription Jobs]
+      summary: Get completed transcription result
+      operationId: getTranscriptionResult
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Completed job result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobResultResponse"
+        "404":
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Job has not completed yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  parameters:
+    JobId:
+      name: jobId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Worker-generated transcription job identifier.
+
+  schemas:
+    SourceReferenceType:
+      type: string
+      enum:
+        - local_path
+        - url
+        - presigned_url
+        - s3_object
+
+    SourceReference:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - value
+      properties:
+        type:
+          $ref: "#/components/schemas/SourceReferenceType"
+        value:
+          type: string
+          minLength: 1
+
+    TranscriptionOptions:
+      type: object
+      additionalProperties: false
+      properties:
+        model:
+          type: string
+          nullable: true
+        device:
+          type: string
+          nullable: true
+        computeType:
+          type: string
+          nullable: true
+        beamSize:
+          type: integer
+          minimum: 1
+          maximum: 20
+          nullable: true
+        enableVad:
+          type: boolean
+          nullable: true
+        enableWordTimestamps:
+          type: boolean
+          nullable: true
+
+    CallbackOptions:
+      type: object
+      additionalProperties: false
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+        token:
+          type: string
+          nullable: true
+
+    TranscriptionJobCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - correlationId
+        - videoId
+        - sourceReference
+        - callback
+      properties:
+        correlationId:
+          type: string
+          minLength: 1
+          maxLength: 200
+        videoId:
+          type: string
+          minLength: 1
+          maxLength: 200
+        sourceReference:
+          $ref: "#/components/schemas/SourceReference"
+        language:
+          type: string
+          maxLength: 20
+          nullable: true
+        outputFormats:
+          type: array
+          items:
+            type: string
+            enum: [vtt, srt]
+          default: [vtt, srt]
+        options:
+          allOf:
+            - $ref: "#/components/schemas/TranscriptionOptions"
+          nullable: true
+        callback:
+          $ref: "#/components/schemas/CallbackOptions"
+
+    JobAcceptedResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - jobId
+        - status
+      properties:
+        jobId:
+          type: string
+        status:
+          type: string
+          example: accepted
+
+    ArtifactReference:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - path
+      properties:
+        kind:
+          type: string
+          enum: [local_path]
+        path:
+          type: string
+
+    JobStatusResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - jobId
+        - correlationId
+        - videoId
+        - status
+        - progressPercent
+        - stage
+        - artifacts
+      properties:
+        jobId:
+          type: string
+        correlationId:
+          type: string
+        videoId:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, completed, failed]
+        progressPercent:
+          type: integer
+          minimum: 0
+          maximum: 100
+        stage:
+          type: string
+          example: transcribing
+        message:
+          type: string
+          nullable: true
+        language:
+          type: string
+          nullable: true
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        artifacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtifactReference"
+        failureReason:
+          type: string
+          nullable: true
+        mediaDurationSeconds:
+          type: number
+          format: double
+          nullable: true
+        transcribedUntilSeconds:
+          type: number
+          format: double
+          nullable: true
+
+    JobResultResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - jobId
+        - artifacts
+      properties:
+        jobId:
+          type: string
+        artifacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtifactReference"
+        segmentsFilePath:
+          type: string
+          nullable: true
+        language:
+          type: string
+          nullable: true
+
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - sharedRoot
+        - outputRoot
+        - sharedMediaRoot
+      properties:
+        status:
+          type: string
+          example: ok
+        sharedRoot:
+          type: string
+        outputRoot:
+          type: string
+        sharedMediaRoot:
+          type: string
+
+    ErrorResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        detail:
+          type: string
+
+    ValidationProblem:
+      type: object
+      additionalProperties: true
+      properties:
+        detail:
+          type: array
+          items:
+            type: object
+            additionalProperties: true

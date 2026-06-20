@@ -60,6 +60,8 @@ class JobStatusResponse(BaseModel):
     completedAt: str | None = None
     artifacts: list[ArtifactReferenceDto] = Field(default_factory=list)
     failureReason: str | None = None
+    mediaDurationSeconds: float | None = None
+    transcribedUntilSeconds: float | None = None
 
 
 class HealthResponse(BaseModel):
