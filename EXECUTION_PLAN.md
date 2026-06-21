@@ -159,6 +159,17 @@
 - [ ] Add optional auto-transcription toggle and admin-managed provider/language/model settings
 - [ ] Add tests for transcription orchestration, storage, authorization, and failure handling
 
+### Phase 16: Signed Media Access URLs
+- [ ] Add backend-issued signed media access for thumbnails, manifests, HLS assets, and caption files
+- [ ] Add a dedicated `GET /api/v1/videos/{videoId}/media-access` endpoint for short-lived signed playback URLs
+- [ ] Add stateless HMAC-based signed URL issuance and validation for local/API-served media
+- [ ] Keep existing playback, thumbnail, and caption routes as delivery endpoints while adding signed-query support
+- [ ] Rewrite master and variant HLS manifests to emit signed asset references
+- [ ] Extend storage/media-access abstractions so future S3/object-storage providers can return presigned read URLs
+- [ ] Keep current content/search DTO media URLs stable during transition, then migrate frontend clients to the media-access bundle
+- [ ] Add tests for signed URL issuance, tamper/expiry rejection, manifest rewriting, and caption delivery
+- [ ] Document signed media delivery flow, expiry behavior, and local-vs-S3 strategy in a dedicated phase plan
+
 ## Notes
 
 - Detailed implementation notes for each phase will be maintained under `documentation/plans/`.
