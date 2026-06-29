@@ -243,6 +243,7 @@ builder.Services.AddScoped<ResolveTranscriptionSettingsService>();
 builder.Services.AddScoped<GetPlaybackManifestService>();
 builder.Services.AddScoped<GetStreamingAssetService>();
 builder.Services.AddScoped<GetVideoThumbnailService>();
+builder.Services.AddScoped<ReconcileTranscriptionOrphansService>();
 builder.Services.AddScoped<StartVideoTranscriptionService>();
 builder.Services.AddScoped<ListVideoTranscriptionsService>();
 builder.Services.AddScoped<ListVideoTranscriptionJobsService>();

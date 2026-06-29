@@ -8,12 +8,133 @@ using StreamForge.Application.Interfaces;
 using StreamForge.Application.UseCases.Transcriptions;
 using StreamForge.Domain.Entities;
 using StreamForge.Domain.Enums;
+using StreamForge.Domain.Exceptions;
 using StreamForge.Domain.Interfaces;
+using System.Reflection;
 
 namespace StreamForge.Application.Tests.Transcriptions;
 
 public sealed class TranscriptionUseCaseTests
 {
+    [Fact]
+    public async Task ListVideoTranscriptions_ShouldSelfHealOrphanedProcessingRows()
+    {
+        var videoId = Guid.NewGuid();
+        var transcription = VideoTranscription.Create(
+            videoId,
+            "auto",
+            "vtt",
+            @"videos\video\transcriptions\auto\captions.vtt",
+            "local-faster-whisper");
+        ForceTranscriptionState(transcription, TranscriptionStatus.Processing, workerJobId: null, correlationId: null);
+
+        var transcriptionsRepo = Substitute.For<IVideoTranscriptionRepository>();
+        transcriptionsRepo.GetByVideoIdAsync(videoId, Arg.Any<CancellationToken>())
+            .Returns([transcription]);
+
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        unitOfWork.VideoTranscriptions.Returns(transcriptionsRepo);
+
+        var currentUser = Substitute.For<ICurrentUserService>();
+        currentUser.UserId.Returns(Guid.NewGuid());
+        currentUser.Role.Returns(UserRole.Viewer);
+        currentUser.IsAuthenticated.Returns(true);
+
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.CanViewVideoAsync(videoId, currentUser.UserId, currentUser.Role, null, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var reconciler = CreateReconciler(unitOfWork, Substitute.For<ITranscriptionProvider>());
+        var service = new ListVideoTranscriptionsService(unitOfWork, currentUser, authorization, Substitute.For<ITranscriptionProvider>(), reconciler);
+
+        var result = await service.Handle(videoId, null, CancellationToken.None);
+
+        result.Should().ContainSingle();
+        result[0].Status.Should().Be("Failed");
+        result[0].FailureReason.Should().Contain("orphaned");
+        await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task StartVideoTranscription_ShouldIgnoreOrphanedActiveRowsAndSubmitNewJob()
+    {
+        var videoId = Guid.NewGuid();
+        var uploaderId = Guid.NewGuid();
+        var video = Video.Create("Video", null, uploaderId, status: VideoStatus.Ready);
+        SetPrivateProperty(video, nameof(Video.Id), videoId);
+
+        var orphan = VideoTranscription.Create(
+            videoId,
+            "auto",
+            "vtt",
+            @"videos\video\transcriptions\auto\captions.vtt",
+            "local-faster-whisper");
+        ForceTranscriptionState(orphan, TranscriptionStatus.Processing, workerJobId: null, correlationId: null);
+
+        var newRows = new List<VideoTranscription>();
+
+        var transcriptionsRepo = Substitute.For<IVideoTranscriptionRepository>();
+        transcriptionsRepo.GetByVideoAndStatusAsync(videoId, TranscriptionStatus.Pending, TranscriptionStatus.Processing)
+            .Returns(
+                Task.FromResult<IReadOnlyList<VideoTranscription>>([orphan]),
+                Task.FromResult<IReadOnlyList<VideoTranscription>>([]));
+        transcriptionsRepo.GetByVideoLanguageAndFormatAsync(videoId, "en", "vtt", Arg.Any<CancellationToken>())
+            .Returns((VideoTranscription?)null);
+        transcriptionsRepo.AddAsync(Arg.Any<VideoTranscription>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var row = call.Arg<VideoTranscription>();
+                newRows.Add(row);
+                return Task.FromResult(row);
+            });
+
+        var videosRepo = Substitute.For<IVideoRepository>();
+        videosRepo.GetByIdAsync(videoId, Arg.Any<CancellationToken>())
+            .Returns(video);
+
+        var filesRepo = Substitute.For<IVideoFileRepository>();
+        filesRepo.GetOriginalByVideoIdAsync(videoId, Arg.Any<CancellationToken>())
+            .Returns(VideoFile.Create(Guid.NewGuid(), Guid.NewGuid(), "videos/source.mp4", 100, "video/mp4"));
+
+        var systemSettings = Substitute.For<ISystemSettingRepository>();
+        systemSettings.GetByKeysAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        unitOfWork.VideoTranscriptions.Returns(transcriptionsRepo);
+        unitOfWork.Videos.Returns(videosRepo);
+        unitOfWork.VideoFiles.Returns(filesRepo);
+        unitOfWork.SystemSettings.Returns(systemSettings);
+
+        var provider = Substitute.For<ITranscriptionProvider>();
+        provider.SubmitAsync(Arg.Any<TranscriptionProviderRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new TranscriptionSubmissionResult("worker-123", "accepted"));
+
+        var options = new TranscriptionOptions
+        {
+            Enabled = true,
+            Provider = "local-faster-whisper",
+            CallbackBaseUrl = "http://127.0.0.1:5186"
+        };
+
+        var reconciler = CreateReconciler(unitOfWork, provider);
+        var service = new StartVideoTranscriptionService(
+            unitOfWork,
+            provider,
+            options,
+            new ResolveTranscriptionSettingsService(unitOfWork, options),
+            reconciler,
+            Substitute.For<ILogger<StartVideoTranscriptionService>>());
+
+        var result = await service.Handle(videoId, "en", ["vtt"], CancellationToken.None);
+
+        orphan.Status.Should().Be(TranscriptionStatus.Failed);
+        newRows.Should().ContainSingle();
+        result.Should().ContainSingle();
+        result[0].Language.Should().Be("en");
+        result[0].WorkerJobId.Should().Be("worker-123");
+    }
+
     [Fact]
     public async Task ResolveTranscriptionSettings_ShouldPreferSystemSettingsOverDefaults()
     {
@@ -299,5 +420,38 @@ public sealed class TranscriptionUseCaseTests
         {
             Directory.Delete(tempDir, true);
         }
+    }
+
+    private static ReconcileTranscriptionOrphansService CreateReconciler(
+        IUnitOfWork unitOfWork,
+        ITranscriptionProvider transcriptionProvider)
+    {
+        return new ReconcileTranscriptionOrphansService(
+            unitOfWork,
+            transcriptionProvider,
+            new CompleteVideoTranscriptionCallbackService(
+                unitOfWork,
+                Substitute.For<IStorageService>(),
+                Substitute.For<ILogger<CompleteVideoTranscriptionCallbackService>>()),
+            Substitute.For<ILogger<ReconcileTranscriptionOrphansService>>());
+    }
+
+    private static void ForceTranscriptionState(
+        VideoTranscription transcription,
+        TranscriptionStatus status,
+        string? workerJobId,
+        string? correlationId)
+    {
+        SetPrivateProperty(transcription, nameof(VideoTranscription.Status), status);
+        SetPrivateProperty(transcription, nameof(VideoTranscription.WorkerJobId), workerJobId);
+        SetPrivateProperty(transcription, nameof(VideoTranscription.CorrelationId), correlationId);
+        SetPrivateProperty(transcription, nameof(VideoTranscription.UpdatedAt), DateTime.UtcNow.AddMinutes(-10));
+    }
+
+    private static void SetPrivateProperty<TTarget, TValue>(TTarget target, string propertyName, TValue value)
+    {
+        var property = typeof(TTarget).GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"Property {propertyName} not found on {typeof(TTarget).Name}.");
+        property.SetValue(target, value);
     }
 }

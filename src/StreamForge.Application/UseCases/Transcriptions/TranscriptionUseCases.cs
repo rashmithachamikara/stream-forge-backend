@@ -10,12 +10,186 @@ using StreamForge.Domain.Interfaces;
 
 namespace StreamForge.Application.UseCases.Transcriptions;
 
+public sealed class ReconcileTranscriptionOrphansService
+{
+    private static readonly TimeSpan PendingCorrelationGracePeriod = TimeSpan.FromMinutes(2);
+
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ITranscriptionProvider _transcriptionProvider;
+    private readonly CompleteVideoTranscriptionCallbackService _completeVideoTranscriptionCallbackService;
+    private readonly ILogger<ReconcileTranscriptionOrphansService> _logger;
+
+    public ReconcileTranscriptionOrphansService(
+        IUnitOfWork unitOfWork,
+        ITranscriptionProvider transcriptionProvider,
+        CompleteVideoTranscriptionCallbackService completeVideoTranscriptionCallbackService,
+        ILogger<ReconcileTranscriptionOrphansService> logger)
+    {
+        _unitOfWork = unitOfWork;
+        _transcriptionProvider = transcriptionProvider;
+        _completeVideoTranscriptionCallbackService = completeVideoTranscriptionCallbackService;
+        _logger = logger;
+    }
+
+    public async Task<bool> ReconcileVideoAsync(Guid videoId, CancellationToken cancellationToken)
+    {
+        var activeRows = await _unitOfWork.VideoTranscriptions.GetByVideoAndStatusAsync(
+            videoId,
+            TranscriptionStatus.Pending,
+            TranscriptionStatus.Processing);
+
+        if (activeRows.Count == 0)
+        {
+            return false;
+        }
+
+        return await ReconcileRowsAsync(activeRows, cancellationToken);
+    }
+
+    public async Task<bool> ReconcileRowsAsync(
+        IReadOnlyCollection<VideoTranscription> rows,
+        CancellationToken cancellationToken)
+    {
+        var activeRows = rows
+            .Where(transcription => transcription.Status is TranscriptionStatus.Pending or TranscriptionStatus.Processing)
+            .ToArray();
+        if (activeRows.Length == 0)
+        {
+            return false;
+        }
+
+        var changed = false;
+
+        foreach (var group in activeRows.GroupBy(GetGroupKey))
+        {
+            var ordered = group
+                .OrderBy(transcription => transcription.CreatedAt)
+                .ThenBy(transcription => transcription.Format)
+                .ToArray();
+            var primary = ordered[0];
+
+            if (ShouldFailWithoutWorker(primary))
+            {
+                FailRows(
+                    ordered,
+                    primary.Status == TranscriptionStatus.Processing
+                        ? "Transcription processing row is orphaned because it has no worker job id."
+                        : "Transcription pending row is stale and has no correlation or worker job id.");
+                changed = true;
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(primary.WorkerJobId))
+            {
+                continue;
+            }
+
+            TranscriptionProviderJobStatus? liveStatus;
+            try
+            {
+                liveStatus = await _transcriptionProvider.GetJobStatusAsync(primary.WorkerJobId, cancellationToken);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogDebug(
+                    exception,
+                    "Skipping orphan reconciliation for worker job {WorkerJobId} because live status lookup failed.",
+                    primary.WorkerJobId);
+                continue;
+            }
+
+            if (liveStatus is null)
+            {
+                FailRows(ordered, "Transcription worker job could not be found.");
+                changed = true;
+                continue;
+            }
+
+            if (string.Equals(liveStatus.Status, "failed", StringComparison.OrdinalIgnoreCase))
+            {
+                FailRows(ordered, liveStatus.Message ?? "Transcription worker reported failure.");
+                changed = true;
+                continue;
+            }
+
+            if (string.Equals(liveStatus.Status, "completed", StringComparison.OrdinalIgnoreCase))
+            {
+                var result = await _transcriptionProvider.GetJobResultAsync(primary.WorkerJobId, cancellationToken);
+                if (result is null)
+                {
+                    continue;
+                }
+
+                await _completeVideoTranscriptionCallbackService.Handle(
+                    new TranscriptionCallbackRequestDto(
+                        primary.CorrelationId ?? liveStatus.CorrelationId,
+                        primary.VideoId,
+                        primary.WorkerJobId,
+                        "completed",
+                        result.Language,
+                        result.Artifacts.Select(artifact => new TranscriptionCallbackArtifactDto(artifact.Kind, artifact.Path)).ToArray(),
+                        null,
+                        primary.Source,
+                        primary.Model),
+                    cancellationToken);
+                changed = true;
+            }
+        }
+
+        if (changed)
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        return changed;
+    }
+
+    private static string GetGroupKey(VideoTranscription transcription)
+    {
+        var token = !string.IsNullOrWhiteSpace(transcription.WorkerJobId)
+            ? $"worker:{transcription.WorkerJobId}"
+            : !string.IsNullOrWhiteSpace(transcription.CorrelationId)
+                ? $"correlation:{transcription.CorrelationId}"
+                : $"row:{transcription.Id:N}";
+
+        return $"{token}|lang:{transcription.Language}";
+    }
+
+    private static bool ShouldFailWithoutWorker(VideoTranscription transcription)
+    {
+        if (transcription.Status == TranscriptionStatus.Processing &&
+            string.IsNullOrWhiteSpace(transcription.WorkerJobId))
+        {
+            return true;
+        }
+
+        if (transcription.Status == TranscriptionStatus.Pending &&
+            string.IsNullOrWhiteSpace(transcription.WorkerJobId) &&
+            string.IsNullOrWhiteSpace(transcription.CorrelationId))
+        {
+            var updatedAt = transcription.UpdatedAt ?? transcription.CreatedAt;
+            return DateTime.UtcNow - updatedAt > PendingCorrelationGracePeriod;
+        }
+
+        return false;
+    }
+
+    private static void FailRows(IEnumerable<VideoTranscription> rows, string reason)
+    {
+        foreach (var row in rows.Where(transcription => transcription.Status is TranscriptionStatus.Pending or TranscriptionStatus.Processing))
+        {
+            row.Fail(reason);
+        }
+    }
+}
+
 public sealed class StartVideoTranscriptionService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITranscriptionProvider _transcriptionProvider;
     private readonly TranscriptionOptions _options;
     private readonly ResolveTranscriptionSettingsService _resolveTranscriptionSettings;
+    private readonly ReconcileTranscriptionOrphansService _reconcileTranscriptionOrphans;
     private readonly ILogger<StartVideoTranscriptionService> _logger;
 
     public StartVideoTranscriptionService(
@@ -23,12 +197,14 @@ public sealed class StartVideoTranscriptionService
         ITranscriptionProvider transcriptionProvider,
         TranscriptionOptions options,
         ResolveTranscriptionSettingsService resolveTranscriptionSettings,
+        ReconcileTranscriptionOrphansService reconcileTranscriptionOrphans,
         ILogger<StartVideoTranscriptionService> logger)
     {
         _unitOfWork = unitOfWork;
         _transcriptionProvider = transcriptionProvider;
         _options = options;
         _resolveTranscriptionSettings = resolveTranscriptionSettings;
+        _reconcileTranscriptionOrphans = reconcileTranscriptionOrphans;
         _logger = logger;
     }
 
@@ -51,6 +227,8 @@ public sealed class StartVideoTranscriptionService
         {
             throw new InvalidOperationException("Video must be ready before transcription can start.");
         }
+
+        await _reconcileTranscriptionOrphans.ReconcileVideoAsync(videoId, cancellationToken);
 
         var activeRecords = await _unitOfWork.VideoTranscriptions.GetByVideoAndStatusAsync(
             videoId,
@@ -192,17 +370,20 @@ public sealed class ListVideoTranscriptionsService
     private readonly ICurrentUserService _currentUserService;
     private readonly IAuthorizationService _authorizationService;
     private readonly ITranscriptionProvider _transcriptionProvider;
+    private readonly ReconcileTranscriptionOrphansService _reconcileTranscriptionOrphans;
 
     public ListVideoTranscriptionsService(
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService,
         IAuthorizationService authorizationService,
-        ITranscriptionProvider transcriptionProvider)
+        ITranscriptionProvider transcriptionProvider,
+        ReconcileTranscriptionOrphansService reconcileTranscriptionOrphans)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
         _authorizationService = authorizationService;
         _transcriptionProvider = transcriptionProvider;
+        _reconcileTranscriptionOrphans = reconcileTranscriptionOrphans;
     }
 
     public async Task<IReadOnlyList<VideoTranscriptionDto>> Handle(Guid videoId, string? shareToken, CancellationToken cancellationToken)
@@ -215,6 +396,7 @@ public sealed class ListVideoTranscriptionsService
             cancellationToken);
 
         var transcriptions = await _unitOfWork.VideoTranscriptions.GetByVideoIdAsync(videoId, cancellationToken);
+        await _reconcileTranscriptionOrphans.ReconcileRowsAsync(transcriptions, cancellationToken);
         var liveStatuses = await TranscriptionMapper.GetLiveStatusesAsync(transcriptions, _transcriptionProvider, cancellationToken);
         return transcriptions.Select(transcription => TranscriptionMapper.ToDto(transcription, liveStatuses)).ToArray();
     }
@@ -226,17 +408,20 @@ public sealed class GetVideoTranscriptionStatusService
     private readonly ICurrentUserService _currentUserService;
     private readonly IAuthorizationService _authorizationService;
     private readonly ITranscriptionProvider _transcriptionProvider;
+    private readonly ReconcileTranscriptionOrphansService _reconcileTranscriptionOrphans;
 
     public GetVideoTranscriptionStatusService(
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService,
         IAuthorizationService authorizationService,
-        ITranscriptionProvider transcriptionProvider)
+        ITranscriptionProvider transcriptionProvider,
+        ReconcileTranscriptionOrphansService reconcileTranscriptionOrphans)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
         _authorizationService = authorizationService;
         _transcriptionProvider = transcriptionProvider;
+        _reconcileTranscriptionOrphans = reconcileTranscriptionOrphans;
     }
 
     public async Task<VideoTranscriptionDto> Handle(
@@ -260,6 +445,7 @@ public sealed class GetVideoTranscriptionStatusService
             throw new InvalidOperationException("Transcription does not belong to the specified video.");
         }
 
+        await _reconcileTranscriptionOrphans.ReconcileRowsAsync([transcription], cancellationToken);
         var liveStatuses = await TranscriptionMapper.GetLiveStatusesAsync([transcription], _transcriptionProvider, cancellationToken);
         return TranscriptionMapper.ToDto(transcription, liveStatuses);
     }
@@ -271,17 +457,20 @@ public sealed class ListVideoTranscriptionJobsService
     private readonly ICurrentUserService _currentUserService;
     private readonly IAuthorizationService _authorizationService;
     private readonly ITranscriptionProvider _transcriptionProvider;
+    private readonly ReconcileTranscriptionOrphansService _reconcileTranscriptionOrphans;
 
     public ListVideoTranscriptionJobsService(
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService,
         IAuthorizationService authorizationService,
-        ITranscriptionProvider transcriptionProvider)
+        ITranscriptionProvider transcriptionProvider,
+        ReconcileTranscriptionOrphansService reconcileTranscriptionOrphans)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
         _authorizationService = authorizationService;
         _transcriptionProvider = transcriptionProvider;
+        _reconcileTranscriptionOrphans = reconcileTranscriptionOrphans;
     }
 
     public async Task<IReadOnlyList<VideoTranscriptionJobDto>> Handle(
@@ -297,6 +486,7 @@ public sealed class ListVideoTranscriptionJobsService
             cancellationToken);
 
         var transcriptions = await _unitOfWork.VideoTranscriptions.GetByVideoIdAsync(videoId, cancellationToken);
+        await _reconcileTranscriptionOrphans.ReconcileRowsAsync(transcriptions, cancellationToken);
         var liveStatuses = await TranscriptionMapper.GetLiveStatusesAsync(transcriptions, _transcriptionProvider, cancellationToken);
         return TranscriptionMapper.ToJobDtos(transcriptions, liveStatuses);
     }
@@ -306,13 +496,16 @@ public sealed class ListAdminTranscriptionJobsService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITranscriptionProvider _transcriptionProvider;
+    private readonly ReconcileTranscriptionOrphansService _reconcileTranscriptionOrphans;
 
     public ListAdminTranscriptionJobsService(
         IUnitOfWork unitOfWork,
-        ITranscriptionProvider transcriptionProvider)
+        ITranscriptionProvider transcriptionProvider,
+        ReconcileTranscriptionOrphansService reconcileTranscriptionOrphans)
     {
         _unitOfWork = unitOfWork;
         _transcriptionProvider = transcriptionProvider;
+        _reconcileTranscriptionOrphans = reconcileTranscriptionOrphans;
     }
 
     public async Task<IReadOnlyList<VideoTranscriptionJobDto>> Handle(
@@ -334,6 +527,7 @@ public sealed class ListAdminTranscriptionJobsService
             throw new InvalidOperationException("Unsupported transcription status filter.");
         }
 
+        await _reconcileTranscriptionOrphans.ReconcileRowsAsync(transcriptions, cancellationToken);
         var liveStatuses = await TranscriptionMapper.GetLiveStatusesAsync(transcriptions, _transcriptionProvider, cancellationToken);
         return TranscriptionMapper.ToJobDtos(transcriptions, liveStatuses);
     }
@@ -343,13 +537,16 @@ public sealed class GetAdminTranscriptionJobService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITranscriptionProvider _transcriptionProvider;
+    private readonly ReconcileTranscriptionOrphansService _reconcileTranscriptionOrphans;
 
     public GetAdminTranscriptionJobService(
         IUnitOfWork unitOfWork,
-        ITranscriptionProvider transcriptionProvider)
+        ITranscriptionProvider transcriptionProvider,
+        ReconcileTranscriptionOrphansService reconcileTranscriptionOrphans)
     {
         _unitOfWork = unitOfWork;
         _transcriptionProvider = transcriptionProvider;
+        _reconcileTranscriptionOrphans = reconcileTranscriptionOrphans;
     }
 
     public async Task<VideoTranscriptionJobDto> Handle(
@@ -362,6 +559,7 @@ public sealed class GetAdminTranscriptionJobService
             throw new EntityNotFoundException("TranscriptionJob", jobKey);
         }
 
+        await _reconcileTranscriptionOrphans.ReconcileRowsAsync(transcriptions, cancellationToken);
         var liveStatuses = await TranscriptionMapper.GetLiveStatusesAsync(transcriptions, _transcriptionProvider, cancellationToken);
         return TranscriptionMapper.ToJobDtos(transcriptions, liveStatuses).Single();
     }
