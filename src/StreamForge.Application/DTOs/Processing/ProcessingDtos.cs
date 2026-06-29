@@ -6,3 +6,16 @@ public sealed record VideoProcessingStatusDto(
     string Status,
     int Progress,
     string? ErrorMessage);
+
+public sealed record AdminVideoProcessingJobDto(
+    string JobKey,
+    Guid VideoId,
+    string VideoTitle,
+    string JobType,
+    string Status,
+    int Progress,
+    string? ErrorMessage,
+    DateTime CreatedAt,
+    DateTime? StartedAt,
+    DateTime? CompletedAt,
+    string VideoStatus);

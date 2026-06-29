@@ -1,12 +1,14 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using StreamForge.Application.DTOs.Processing;
 using StreamForge.Application.DTOs.Transcriptions;
+using StreamForge.Application.UseCases.Processing;
 using StreamForge.Application.UseCases.Transcriptions;
 
 namespace StreamForge.Api.Controllers;
 
 [ApiController]
-[Route("api/v1/admin/processing/transcription-jobs")]
+[Route("api/v1/admin/processing")]
 [Authorize(Roles = "Admin")]
 public sealed class AdminProcessingController : ControllerBase
 {
@@ -14,48 +16,92 @@ public sealed class AdminProcessingController : ControllerBase
     private readonly GetAdminTranscriptionJobService _getAdminTranscriptionJob;
     private readonly RetryAdminTranscriptionJobService _retryAdminTranscriptionJob;
     private readonly ResyncAdminTranscriptionJobService _resyncAdminTranscriptionJob;
+    private readonly ListAdminVideoProcessingJobsService _listAdminVideoProcessingJobs;
+    private readonly GetAdminVideoProcessingJobService _getAdminVideoProcessingJob;
+    private readonly RetryAdminVideoProcessingJobService _retryAdminVideoProcessingJob;
+    private readonly ResyncAdminVideoProcessingJobService _resyncAdminVideoProcessingJob;
 
     public AdminProcessingController(
         ListAdminTranscriptionJobsService listAdminTranscriptionJobs,
         GetAdminTranscriptionJobService getAdminTranscriptionJob,
         RetryAdminTranscriptionJobService retryAdminTranscriptionJob,
-        ResyncAdminTranscriptionJobService resyncAdminTranscriptionJob)
+        ResyncAdminTranscriptionJobService resyncAdminTranscriptionJob,
+        ListAdminVideoProcessingJobsService listAdminVideoProcessingJobs,
+        GetAdminVideoProcessingJobService getAdminVideoProcessingJob,
+        RetryAdminVideoProcessingJobService retryAdminVideoProcessingJob,
+        ResyncAdminVideoProcessingJobService resyncAdminVideoProcessingJob)
     {
         _listAdminTranscriptionJobs = listAdminTranscriptionJobs;
         _getAdminTranscriptionJob = getAdminTranscriptionJob;
         _retryAdminTranscriptionJob = retryAdminTranscriptionJob;
         _resyncAdminTranscriptionJob = resyncAdminTranscriptionJob;
+        _listAdminVideoProcessingJobs = listAdminVideoProcessingJobs;
+        _getAdminVideoProcessingJob = getAdminVideoProcessingJob;
+        _retryAdminVideoProcessingJob = retryAdminVideoProcessingJob;
+        _resyncAdminVideoProcessingJob = resyncAdminVideoProcessingJob;
     }
 
-    [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<VideoTranscriptionJobDto>>> List(
+    [HttpGet("transcription-jobs")]
+    public async Task<ActionResult<IReadOnlyList<VideoTranscriptionJobDto>>> ListTranscriptionJobs(
         [FromQuery] string? status,
         CancellationToken cancellationToken)
     {
         return Ok(await _listAdminTranscriptionJobs.Handle(status, cancellationToken));
     }
 
-    [HttpGet("{jobKey}")]
-    public async Task<ActionResult<VideoTranscriptionJobDto>> Get(
+    [HttpGet("transcription-jobs/{jobKey}")]
+    public async Task<ActionResult<VideoTranscriptionJobDto>> GetTranscriptionJob(
         string jobKey,
         CancellationToken cancellationToken)
     {
         return Ok(await _getAdminTranscriptionJob.Handle(jobKey, cancellationToken));
     }
 
-    [HttpPost("{jobKey}/retry")]
-    public async Task<ActionResult<VideoTranscriptionJobDto>> Retry(
+    [HttpPost("transcription-jobs/{jobKey}/retry")]
+    public async Task<ActionResult<VideoTranscriptionJobDto>> RetryTranscriptionJob(
         string jobKey,
         CancellationToken cancellationToken)
     {
         return Ok(await _retryAdminTranscriptionJob.Handle(jobKey, cancellationToken));
     }
 
-    [HttpPost("{jobKey}/resync")]
-    public async Task<ActionResult<VideoTranscriptionJobDto>> Resync(
+    [HttpPost("transcription-jobs/{jobKey}/resync")]
+    public async Task<ActionResult<VideoTranscriptionJobDto>> ResyncTranscriptionJob(
         string jobKey,
         CancellationToken cancellationToken)
     {
         return Ok(await _resyncAdminTranscriptionJob.Handle(jobKey, cancellationToken));
+    }
+
+    [HttpGet("video-jobs")]
+    public async Task<ActionResult<IReadOnlyList<AdminVideoProcessingJobDto>>> ListVideoJobs(
+        [FromQuery] string? status,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _listAdminVideoProcessingJobs.Handle(status, cancellationToken));
+    }
+
+    [HttpGet("video-jobs/{jobKey}")]
+    public async Task<ActionResult<AdminVideoProcessingJobDto>> GetVideoJob(
+        string jobKey,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _getAdminVideoProcessingJob.Handle(jobKey, cancellationToken));
+    }
+
+    [HttpPost("video-jobs/{jobKey}/retry")]
+    public async Task<ActionResult<AdminVideoProcessingJobDto>> RetryVideoJob(
+        string jobKey,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _retryAdminVideoProcessingJob.Handle(jobKey, cancellationToken));
+    }
+
+    [HttpPost("video-jobs/{jobKey}/resync")]
+    public async Task<ActionResult<AdminVideoProcessingJobDto>> ResyncVideoJob(
+        string jobKey,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _resyncAdminVideoProcessingJob.Handle(jobKey, cancellationToken));
     }
 }

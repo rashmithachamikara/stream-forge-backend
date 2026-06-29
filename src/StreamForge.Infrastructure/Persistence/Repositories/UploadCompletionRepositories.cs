@@ -95,4 +95,35 @@ public sealed class VideoProcessingJobRepository : BaseRepository<VideoProcessin
             .OrderByDescending(job => job.CreatedAt)
             .ThenByDescending(job => job.Id)
             .FirstOrDefaultAsync(cancellationToken);
+
+    public Task<VideoProcessingJob?> GetWithVideoAsync(Guid jobId, CancellationToken cancellationToken = default) =>
+        DbSet
+            .Include(job => job.Video)
+            .FirstOrDefaultAsync(job => job.Id == jobId, cancellationToken);
+
+    public async Task<IReadOnlyList<VideoProcessingJob>> GetAllOrderedAsync(CancellationToken cancellationToken = default) =>
+        await DbSet
+            .AsNoTracking()
+            .Include(job => job.Video)
+            .OrderByDescending(job => job.CreatedAt)
+            .ThenByDescending(job => job.Id)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<VideoProcessingJob>> GetByStatusesAsync(
+        CancellationToken cancellationToken = default,
+        params ProcessingJobStatus[] statuses)
+    {
+        if (statuses is null || statuses.Length == 0)
+        {
+            return [];
+        }
+
+        return await DbSet
+            .AsNoTracking()
+            .Include(job => job.Video)
+            .Where(job => statuses.Contains(job.Status))
+            .OrderByDescending(job => job.CreatedAt)
+            .ThenByDescending(job => job.Id)
+            .ToListAsync(cancellationToken);
+    }
 }

@@ -176,6 +176,188 @@ public sealed class ProcessVideoJobService
     }
 }
 
+public sealed class ListAdminVideoProcessingJobsService
+{
+    private readonly IUnitOfWork _unitOfWork;
+
+    public ListAdminVideoProcessingJobsService(IUnitOfWork unitOfWork)
+    {
+        _unitOfWork = unitOfWork;
+    }
+
+    public async Task<IReadOnlyList<AdminVideoProcessingJobDto>> Handle(
+        string? status,
+        CancellationToken cancellationToken)
+    {
+        IReadOnlyList<VideoProcessingJob> jobs;
+
+        if (string.IsNullOrWhiteSpace(status))
+        {
+            jobs = await _unitOfWork.VideoProcessingJobs.GetAllOrderedAsync(cancellationToken);
+        }
+        else if (Enum.TryParse<ProcessingJobStatus>(status.Trim(), true, out var parsedStatus))
+        {
+            jobs = await _unitOfWork.VideoProcessingJobs.GetByStatusesAsync(cancellationToken, parsedStatus);
+        }
+        else
+        {
+            throw new InvalidOperationException("Unsupported video processing status filter.");
+        }
+
+        return jobs.Select(VideoProcessingAdminMapper.ToAdminDto).ToArray();
+    }
+}
+
+public sealed class GetAdminVideoProcessingJobService
+{
+    private readonly IUnitOfWork _unitOfWork;
+
+    public GetAdminVideoProcessingJobService(IUnitOfWork unitOfWork)
+    {
+        _unitOfWork = unitOfWork;
+    }
+
+    public async Task<AdminVideoProcessingJobDto> Handle(
+        string jobKey,
+        CancellationToken cancellationToken)
+    {
+        var jobId = ParseJobId(jobKey);
+        var job = await _unitOfWork.VideoProcessingJobs.GetWithVideoAsync(jobId, cancellationToken)
+            ?? throw new EntityNotFoundException("VideoProcessingJob", jobId);
+
+        return VideoProcessingAdminMapper.ToAdminDto(job);
+    }
+
+    private static Guid ParseJobId(string jobKey)
+    {
+        if (!Guid.TryParse(jobKey, out var jobId))
+        {
+            throw new EntityNotFoundException("VideoProcessingJob", jobKey);
+        }
+
+        return jobId;
+    }
+}
+
+public sealed class RetryAdminVideoProcessingJobService
+{
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IVideoProcessingQueue _videoProcessingQueue;
+
+    public RetryAdminVideoProcessingJobService(
+        IUnitOfWork unitOfWork,
+        IVideoProcessingQueue videoProcessingQueue)
+    {
+        _unitOfWork = unitOfWork;
+        _videoProcessingQueue = videoProcessingQueue;
+    }
+
+    public async Task<AdminVideoProcessingJobDto> Handle(
+        string jobKey,
+        CancellationToken cancellationToken)
+    {
+        var jobId = ParseJobId(jobKey);
+        var job = await _unitOfWork.VideoProcessingJobs.GetWithVideoAsync(jobId, cancellationToken)
+            ?? throw new EntityNotFoundException("VideoProcessingJob", jobId);
+
+        if (job.Status is ProcessingJobStatus.Pending or ProcessingJobStatus.Processing)
+        {
+            throw new InvalidOperationException("Cannot retry a video processing job that is already pending or processing.");
+        }
+
+        job.Reset();
+        job.Video.MarkAsProcessing();
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _videoProcessingQueue.EnqueueAsync(job.Id, cancellationToken);
+
+        return VideoProcessingAdminMapper.ToAdminDto(job);
+    }
+
+    private static Guid ParseJobId(string jobKey)
+    {
+        if (!Guid.TryParse(jobKey, out var jobId))
+        {
+            throw new EntityNotFoundException("VideoProcessingJob", jobKey);
+        }
+
+        return jobId;
+    }
+}
+
+public sealed class ResyncAdminVideoProcessingJobService
+{
+    private readonly IUnitOfWork _unitOfWork;
+
+    public ResyncAdminVideoProcessingJobService(IUnitOfWork unitOfWork)
+    {
+        _unitOfWork = unitOfWork;
+    }
+
+    public async Task<AdminVideoProcessingJobDto> Handle(
+        string jobKey,
+        CancellationToken cancellationToken)
+    {
+        var jobId = ParseJobId(jobKey);
+        var job = await _unitOfWork.VideoProcessingJobs.GetWithVideoAsync(jobId, cancellationToken)
+            ?? throw new EntityNotFoundException("VideoProcessingJob", jobId);
+
+        var video = job.Video;
+        var changed = false;
+
+        switch (job.Status)
+        {
+            case ProcessingJobStatus.Pending:
+            case ProcessingJobStatus.Processing:
+                if (video.Status != VideoStatus.Processing)
+                {
+                    video.MarkAsProcessing();
+                    changed = true;
+                }
+                break;
+
+            case ProcessingJobStatus.Failed:
+                if (video.Status != VideoStatus.Failed)
+                {
+                    video.MarkAsFailed();
+                    changed = true;
+                }
+                break;
+
+            case ProcessingJobStatus.Completed:
+            {
+                var versions = await _unitOfWork.VideoVersions.GetByVideoIdAsync(video.Id, cancellationToken);
+                var hasHlsOutput = versions.Any(version => version.Format == VideoFormat.HLS);
+                var defaultThumbnail = await _unitOfWork.VideoThumbnails.GetDefaultByVideoIdAsync(video.Id, cancellationToken);
+
+                if (hasHlsOutput && defaultThumbnail is not null && video.Status != VideoStatus.Ready)
+                {
+                    video.MarkAsReady();
+                    changed = true;
+                }
+
+                break;
+            }
+        }
+
+        if (changed)
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        return VideoProcessingAdminMapper.ToAdminDto(job);
+    }
+
+    private static Guid ParseJobId(string jobKey)
+    {
+        if (!Guid.TryParse(jobKey, out var jobId))
+        {
+            throw new EntityNotFoundException("VideoProcessingJob", jobKey);
+        }
+
+        return jobId;
+    }
+}
+
 public sealed class GetPlaybackManifestService
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -255,6 +437,23 @@ public sealed class GetPlaybackManifestService
 
         return string.Join('\n', lines);
     }
+}
+
+internal static class VideoProcessingAdminMapper
+{
+    public static AdminVideoProcessingJobDto ToAdminDto(VideoProcessingJob job) =>
+        new(
+            job.Id.ToString(),
+            job.VideoId,
+            job.Video?.Title ?? string.Empty,
+            job.JobType.ToString(),
+            job.Status.ToString(),
+            job.Progress,
+            job.ErrorMessage,
+            job.CreatedAt,
+            job.StartedAt,
+            job.CompletedAt,
+            job.Video?.Status.ToString() ?? string.Empty);
 }
 
 public sealed class GetStreamingAssetService

@@ -35,4 +35,9 @@ public interface IVideoThumbnailRepository : IRepository<VideoThumbnail>
 public interface IVideoProcessingJobRepository : IRepository<VideoProcessingJob>
 {
     Task<VideoProcessingJob?> GetLatestByVideoIdAsync(Guid videoId, CancellationToken cancellationToken = default);
+    Task<VideoProcessingJob?> GetWithVideoAsync(Guid jobId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<VideoProcessingJob>> GetAllOrderedAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<VideoProcessingJob>> GetByStatusesAsync(
+        CancellationToken cancellationToken = default,
+        params ProcessingJobStatus[] statuses);
 }
