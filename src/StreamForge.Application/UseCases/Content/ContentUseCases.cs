@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using StreamForge.Application.DTOs.Content;
 using StreamForge.Application.Interfaces;
+using StreamForge.Application.UseCases.Processing;
 using StreamForge.Domain.Entities;
 using StreamForge.Domain.Enums;
 using StreamForge.Domain.Exceptions;
@@ -283,15 +284,18 @@ public sealed class GetVideoProcessingStatusService
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
     private readonly IAuthorizationService _authorizationService;
+    private readonly ReconcileVideoProcessingOrphansService _reconciler;
 
     public GetVideoProcessingStatusService(
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService,
-        IAuthorizationService authorizationService)
+        IAuthorizationService authorizationService,
+        ReconcileVideoProcessingOrphansService reconciler)
     {
         _unitOfWork = unitOfWork;
         _currentUserService = currentUserService;
         _authorizationService = authorizationService;
+        _reconciler = reconciler;
     }
 
     public async Task<VideoProcessingStatusDetailsDto> Handle(Guid videoId, CancellationToken cancellationToken)
@@ -306,6 +310,10 @@ public sealed class GetVideoProcessingStatusService
         var video = await _unitOfWork.Videos.GetByIdAsync(videoId, cancellationToken)
             ?? throw new EntityNotFoundException("Video", videoId);
         var job = await _unitOfWork.VideoProcessingJobs.GetLatestByVideoIdAsync(videoId, cancellationToken);
+        if (job is not null)
+        {
+            await _reconciler.Handle(job, cancellationToken);
+        }
 
         return new VideoProcessingStatusDetailsDto(
             video.Id,

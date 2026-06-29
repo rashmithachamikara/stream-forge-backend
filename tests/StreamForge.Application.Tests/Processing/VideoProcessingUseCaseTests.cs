@@ -27,16 +27,117 @@ public sealed class VideoProcessingUseCaseTests
         var jobs = Substitute.For<IVideoProcessingJobRepository>();
         jobs.GetAllOrderedAsync(Arg.Any<CancellationToken>()).Returns([newerJob, olderJob]);
 
+        var versions = Substitute.For<IVideoVersionRepository>();
+        versions.GetByVideoIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<VideoVersion>());
+        var thumbnails = Substitute.For<IVideoThumbnailRepository>();
+        thumbnails.GetDefaultByVideoIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((VideoThumbnail?)null);
+        var runtimeMonitor = Substitute.For<IVideoProcessingRuntimeMonitor>();
+        runtimeMonitor.HasActiveExecutionAsync(newerJob.Id, Arg.Any<CancellationToken>())
+            .Returns(true);
+        runtimeMonitor.HasActiveExecutionAsync(olderJob.Id, Arg.Any<CancellationToken>())
+            .Returns(false);
+
         var unitOfWork = Substitute.For<IUnitOfWork>();
         unitOfWork.VideoProcessingJobs.Returns(jobs);
+        unitOfWork.VideoVersions.Returns(versions);
+        unitOfWork.VideoThumbnails.Returns(thumbnails);
 
-        var service = new ListAdminVideoProcessingJobsService(unitOfWork);
+        var service = new ListAdminVideoProcessingJobsService(
+            unitOfWork,
+            new ReconcileVideoProcessingOrphansService(unitOfWork, runtimeMonitor));
 
         var result = await service.Handle(null, CancellationToken.None);
 
         result.Select(job => job.JobKey).Should().Equal(newerJob.Id.ToString(), olderJob.Id.ToString());
         result[0].VideoTitle.Should().Be("Newer Video");
         result[0].VideoStatus.Should().Be(VideoStatus.Processing.ToString());
+    }
+
+    [Fact]
+    public async Task GetAdminVideoProcessingJob_ShouldSelfHealProcessingOrphanWhenArtifactsExist()
+    {
+        var video = Video.Create("Orphan Video", null, Guid.NewGuid(), status: VideoStatus.Processing);
+        var job = VideoProcessingJob.Create(video.Id, ProcessingJobType.Transcode);
+        job.Start();
+        job.UpdateProgress(20);
+        AttachJobToVideo(job, video);
+
+        var jobs = Substitute.For<IVideoProcessingJobRepository>();
+        jobs.GetWithVideoAsync(job.Id, Arg.Any<CancellationToken>()).Returns(job);
+
+        var versions = Substitute.For<IVideoVersionRepository>();
+        versions.GetByVideoIdAsync(video.Id, Arg.Any<CancellationToken>())
+            .Returns([VideoVersion.Create(video.Id, "adaptive", VideoFormat.HLS, "master.m3u8", 100, 120)]);
+
+        var thumbnails = Substitute.For<IVideoThumbnailRepository>();
+        thumbnails.GetDefaultByVideoIdAsync(video.Id, Arg.Any<CancellationToken>())
+            .Returns(VideoThumbnail.Create(video.Id, "thumb.jpg", 1280, 720, 10, true, 5));
+
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        unitOfWork.VideoProcessingJobs.Returns(jobs);
+        unitOfWork.VideoVersions.Returns(versions);
+        unitOfWork.VideoThumbnails.Returns(thumbnails);
+        var runtimeMonitor = Substitute.For<IVideoProcessingRuntimeMonitor>();
+        runtimeMonitor.HasActiveExecutionAsync(job.Id, Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        var service = new GetAdminVideoProcessingJobService(
+            unitOfWork,
+            new ReconcileVideoProcessingOrphansService(unitOfWork, runtimeMonitor));
+
+        var result = await service.Handle(job.Id.ToString(), CancellationToken.None);
+
+        job.Status.Should().Be(ProcessingJobStatus.Completed);
+        job.Progress.Should().Be(100);
+        video.Status.Should().Be(VideoStatus.Ready);
+        result.Status.Should().Be(ProcessingJobStatus.Completed.ToString());
+        result.VideoStatus.Should().Be(VideoStatus.Ready.ToString());
+        await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetAdminVideoProcessingJob_ShouldMarkProcessingJobFailedWhenNoRuntimeExecutionAndNoArtifacts()
+    {
+        var video = Video.Create("Stuck Video", null, Guid.NewGuid(), status: VideoStatus.Processing);
+        var job = VideoProcessingJob.Create(video.Id, ProcessingJobType.Transcode);
+        job.Start();
+        job.UpdateProgress(20);
+        AttachJobToVideo(job, video);
+
+        var jobs = Substitute.For<IVideoProcessingJobRepository>();
+        jobs.GetWithVideoAsync(job.Id, Arg.Any<CancellationToken>()).Returns(job);
+
+        var versions = Substitute.For<IVideoVersionRepository>();
+        versions.GetByVideoIdAsync(video.Id, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<VideoVersion>());
+
+        var thumbnails = Substitute.For<IVideoThumbnailRepository>();
+        thumbnails.GetDefaultByVideoIdAsync(video.Id, Arg.Any<CancellationToken>())
+            .Returns((VideoThumbnail?)null);
+
+        var runtimeMonitor = Substitute.For<IVideoProcessingRuntimeMonitor>();
+        runtimeMonitor.HasActiveExecutionAsync(job.Id, Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        unitOfWork.VideoProcessingJobs.Returns(jobs);
+        unitOfWork.VideoVersions.Returns(versions);
+        unitOfWork.VideoThumbnails.Returns(thumbnails);
+
+        var service = new GetAdminVideoProcessingJobService(
+            unitOfWork,
+            new ReconcileVideoProcessingOrphansService(unitOfWork, runtimeMonitor));
+
+        var result = await service.Handle(job.Id.ToString(), CancellationToken.None);
+
+        job.Status.Should().Be(ProcessingJobStatus.Failed);
+        video.Status.Should().Be(VideoStatus.Failed);
+        result.Status.Should().Be(ProcessingJobStatus.Failed.ToString());
+        result.VideoStatus.Should().Be(VideoStatus.Failed.ToString());
+        result.ErrorMessage.Should().Be("Processing job was interrupted or orphaned before completion.");
+        await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -73,7 +174,7 @@ public sealed class VideoProcessingUseCaseTests
         var video = Video.Create("Ready Video", null, Guid.NewGuid(), status: VideoStatus.Processing);
         var job = VideoProcessingJob.Create(video.Id, ProcessingJobType.Transcode);
         job.Start();
-        job.Complete();
+        job.UpdateProgress(20);
         AttachJobToVideo(job, video);
 
         var jobs = Substitute.For<IVideoProcessingJobRepository>();
@@ -91,12 +192,18 @@ public sealed class VideoProcessingUseCaseTests
         unitOfWork.VideoProcessingJobs.Returns(jobs);
         unitOfWork.VideoVersions.Returns(versions);
         unitOfWork.VideoThumbnails.Returns(thumbnails);
+        var runtimeMonitor = Substitute.For<IVideoProcessingRuntimeMonitor>();
+        runtimeMonitor.HasActiveExecutionAsync(job.Id, Arg.Any<CancellationToken>())
+            .Returns(false);
 
-        var service = new ResyncAdminVideoProcessingJobService(unitOfWork);
+        var service = new ResyncAdminVideoProcessingJobService(
+            new ReconcileVideoProcessingOrphansService(unitOfWork, runtimeMonitor));
 
         var result = await service.Handle(job.Id.ToString(), CancellationToken.None);
 
+        job.Status.Should().Be(ProcessingJobStatus.Completed);
         video.Status.Should().Be(VideoStatus.Ready);
+        result.Status.Should().Be(ProcessingJobStatus.Completed.ToString());
         result.VideoStatus.Should().Be(VideoStatus.Ready.ToString());
         await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }

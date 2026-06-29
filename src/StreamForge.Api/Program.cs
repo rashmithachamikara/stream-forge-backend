@@ -227,6 +227,7 @@ builder.Services.AddScoped<IMediaProcessingService>(sp =>
     return new LocalFfmpegMediaProcessingService(storagePath, processingOptions, logger);
 });
 builder.Services.AddScoped<IVideoProcessingQueue, HangfireVideoProcessingQueue>();
+builder.Services.AddScoped<IVideoProcessingRuntimeMonitor, HangfireVideoProcessingRuntimeMonitor>();
 builder.Services.AddScoped<ITranscriptionQueue, HangfireTranscriptionQueue>();
 builder.Services.AddHttpClient<ITranscriptionProvider, LocalFasterWhisperTranscriptionProvider>((serviceProvider, client) =>
 {
@@ -239,6 +240,7 @@ builder.Services.AddScoped<GetUploadTargetService>();
 builder.Services.AddScoped<UploadPartService>();
 builder.Services.AddScoped<CompleteUploadSessionService>();
 builder.Services.AddScoped<ProcessVideoJobService>();
+builder.Services.AddScoped<ReconcileVideoProcessingOrphansService>();
 builder.Services.AddScoped<ListAdminVideoProcessingJobsService>();
 builder.Services.AddScoped<GetAdminVideoProcessingJobService>();
 builder.Services.AddScoped<RetryAdminVideoProcessingJobService>();

@@ -110,6 +110,18 @@ public class VideoProcessingJob : BaseEntity
     }
 
     /// <summary>
+    /// Reconciles a stale/orphaned job into completed state when outputs exist.
+    /// </summary>
+    public void ReconcileAsCompleted()
+    {
+        Status = ProcessingJobStatus.Completed;
+        Progress = 100;
+        ErrorMessage = null;
+        StartedAt ??= DateTime.UtcNow;
+        CompletedAt ??= DateTime.UtcNow;
+    }
+
+    /// <summary>
     /// Marks job as failed
     /// </summary>
     public void Fail(string errorMessage)

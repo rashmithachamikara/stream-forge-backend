@@ -179,10 +179,14 @@ public sealed class ProcessVideoJobService
 public sealed class ListAdminVideoProcessingJobsService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ReconcileVideoProcessingOrphansService _reconciler;
 
-    public ListAdminVideoProcessingJobsService(IUnitOfWork unitOfWork)
+    public ListAdminVideoProcessingJobsService(
+        IUnitOfWork unitOfWork,
+        ReconcileVideoProcessingOrphansService reconciler)
     {
         _unitOfWork = unitOfWork;
+        _reconciler = reconciler;
     }
 
     public async Task<IReadOnlyList<AdminVideoProcessingJobDto>> Handle(
@@ -204,6 +208,7 @@ public sealed class ListAdminVideoProcessingJobsService
             throw new InvalidOperationException("Unsupported video processing status filter.");
         }
 
+        await _reconciler.HandleMany(jobs, cancellationToken);
         return jobs.Select(VideoProcessingAdminMapper.ToAdminDto).ToArray();
     }
 }
@@ -211,10 +216,14 @@ public sealed class ListAdminVideoProcessingJobsService
 public sealed class GetAdminVideoProcessingJobService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ReconcileVideoProcessingOrphansService _reconciler;
 
-    public GetAdminVideoProcessingJobService(IUnitOfWork unitOfWork)
+    public GetAdminVideoProcessingJobService(
+        IUnitOfWork unitOfWork,
+        ReconcileVideoProcessingOrphansService reconciler)
     {
         _unitOfWork = unitOfWork;
+        _reconciler = reconciler;
     }
 
     public async Task<AdminVideoProcessingJobDto> Handle(
@@ -225,6 +234,7 @@ public sealed class GetAdminVideoProcessingJobService
         var job = await _unitOfWork.VideoProcessingJobs.GetWithVideoAsync(jobId, cancellationToken)
             ?? throw new EntityNotFoundException("VideoProcessingJob", jobId);
 
+        await _reconciler.Handle(job, cancellationToken);
         return VideoProcessingAdminMapper.ToAdminDto(job);
     }
 
@@ -286,11 +296,11 @@ public sealed class RetryAdminVideoProcessingJobService
 
 public sealed class ResyncAdminVideoProcessingJobService
 {
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly ReconcileVideoProcessingOrphansService _reconciler;
 
-    public ResyncAdminVideoProcessingJobService(IUnitOfWork unitOfWork)
+    public ResyncAdminVideoProcessingJobService(ReconcileVideoProcessingOrphansService reconciler)
     {
-        _unitOfWork = unitOfWork;
+        _reconciler = reconciler;
     }
 
     public async Task<AdminVideoProcessingJobDto> Handle(
@@ -298,52 +308,7 @@ public sealed class ResyncAdminVideoProcessingJobService
         CancellationToken cancellationToken)
     {
         var jobId = ParseJobId(jobKey);
-        var job = await _unitOfWork.VideoProcessingJobs.GetWithVideoAsync(jobId, cancellationToken)
-            ?? throw new EntityNotFoundException("VideoProcessingJob", jobId);
-
-        var video = job.Video;
-        var changed = false;
-
-        switch (job.Status)
-        {
-            case ProcessingJobStatus.Pending:
-            case ProcessingJobStatus.Processing:
-                if (video.Status != VideoStatus.Processing)
-                {
-                    video.MarkAsProcessing();
-                    changed = true;
-                }
-                break;
-
-            case ProcessingJobStatus.Failed:
-                if (video.Status != VideoStatus.Failed)
-                {
-                    video.MarkAsFailed();
-                    changed = true;
-                }
-                break;
-
-            case ProcessingJobStatus.Completed:
-            {
-                var versions = await _unitOfWork.VideoVersions.GetByVideoIdAsync(video.Id, cancellationToken);
-                var hasHlsOutput = versions.Any(version => version.Format == VideoFormat.HLS);
-                var defaultThumbnail = await _unitOfWork.VideoThumbnails.GetDefaultByVideoIdAsync(video.Id, cancellationToken);
-
-                if (hasHlsOutput && defaultThumbnail is not null && video.Status != VideoStatus.Ready)
-                {
-                    video.MarkAsReady();
-                    changed = true;
-                }
-
-                break;
-            }
-        }
-
-        if (changed)
-        {
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-        }
-
+        var job = await _reconciler.Handle(jobId, cancellationToken);
         return VideoProcessingAdminMapper.ToAdminDto(job);
     }
 
@@ -355,6 +320,134 @@ public sealed class ResyncAdminVideoProcessingJobService
         }
 
         return jobId;
+    }
+}
+
+public sealed class ReconcileVideoProcessingOrphansService
+{
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IVideoProcessingRuntimeMonitor _runtimeMonitor;
+
+    public ReconcileVideoProcessingOrphansService(
+        IUnitOfWork unitOfWork,
+        IVideoProcessingRuntimeMonitor runtimeMonitor)
+    {
+        _unitOfWork = unitOfWork;
+        _runtimeMonitor = runtimeMonitor;
+    }
+
+    public async Task<VideoProcessingJob> Handle(Guid jobId, CancellationToken cancellationToken)
+    {
+        var job = await _unitOfWork.VideoProcessingJobs.GetWithVideoAsync(jobId, cancellationToken)
+            ?? throw new EntityNotFoundException("VideoProcessingJob", jobId);
+
+        await Handle(job, cancellationToken);
+        return job;
+    }
+
+    public async Task Handle(VideoProcessingJob job, CancellationToken cancellationToken)
+    {
+        if (await ReconcileAsync(job, cancellationToken))
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    public async Task HandleMany(IEnumerable<VideoProcessingJob> jobs, CancellationToken cancellationToken)
+    {
+        var changed = false;
+
+        foreach (var job in jobs)
+        {
+            changed |= await ReconcileAsync(job, cancellationToken);
+        }
+
+        if (changed)
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    private async Task<bool> ReconcileAsync(VideoProcessingJob job, CancellationToken cancellationToken)
+    {
+        var video = job.Video;
+        var changed = false;
+        var artifactsReady = await HasCompletedArtifactsAsync(video.Id, cancellationToken);
+
+        if (artifactsReady)
+        {
+            if (job.Status != ProcessingJobStatus.Completed)
+            {
+                job.ReconcileAsCompleted();
+                changed = true;
+            }
+
+            if (video.Status != VideoStatus.Ready)
+            {
+                video.MarkAsReady();
+                changed = true;
+            }
+
+            return changed;
+        }
+
+        switch (job.Status)
+        {
+            case ProcessingJobStatus.Pending:
+                if (video.Status != VideoStatus.Processing)
+                {
+                    video.MarkAsProcessing();
+                    changed = true;
+                }
+                break;
+
+            case ProcessingJobStatus.Processing:
+            {
+                var hasActiveExecution = await _runtimeMonitor.HasActiveExecutionAsync(job.Id, cancellationToken);
+                if (!hasActiveExecution)
+                {
+                    job.Fail("Processing job was interrupted or orphaned before completion.");
+                    if (video.Status != VideoStatus.Failed)
+                    {
+                        video.MarkAsFailed();
+                    }
+
+                    changed = true;
+                    break;
+                }
+
+                if (video.Status != VideoStatus.Processing)
+                {
+                    video.MarkAsProcessing();
+                    changed = true;
+                }
+
+                break;
+            }
+
+            case ProcessingJobStatus.Failed:
+                if (video.Status != VideoStatus.Failed)
+                {
+                    video.MarkAsFailed();
+                    changed = true;
+                }
+                break;
+        }
+
+        return changed;
+    }
+
+    private async Task<bool> HasCompletedArtifactsAsync(Guid videoId, CancellationToken cancellationToken)
+    {
+        var versions = await _unitOfWork.VideoVersions.GetByVideoIdAsync(videoId, cancellationToken);
+        var hasHlsOutput = versions.Any(version => version.Format == VideoFormat.HLS);
+        if (!hasHlsOutput)
+        {
+            return false;
+        }
+
+        var defaultThumbnail = await _unitOfWork.VideoThumbnails.GetDefaultByVideoIdAsync(videoId, cancellationToken);
+        return defaultThumbnail is not null;
     }
 }
 
