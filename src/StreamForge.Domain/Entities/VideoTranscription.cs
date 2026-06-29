@@ -64,6 +64,7 @@ public class VideoTranscription : BaseEntity
 
     // Navigation properties
     public Video Video { get; private set; } = null!;
+    public ICollection<VideoTranscriptChunk> TranscriptChunks { get; private set; } = new List<VideoTranscriptChunk>();
 
     // Private constructor for EF Core
     private VideoTranscription() : base()

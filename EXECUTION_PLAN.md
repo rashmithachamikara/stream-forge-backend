@@ -153,10 +153,10 @@
 - [X] Track transcription job state, language, provider, and failure details in `VideoTranscriptions`
 - [X] Add APIs for listing, retrieving, and downloading video transcriptions/captions
 - [X] Add player-facing caption endpoint support using existing video authorization rules
-- [ ] Chunk transcripts with timestamps for transcript search and grounded Q&A
-- [ ] Add transcript search using full-text search and optional semantic/vector retrieval
+- [X] Chunk transcripts with timestamps and persist them for transcript search and grounded Q&A foundations
+- [ ] Upgrade transcript search from keyword search to full-text search and optional semantic/vector retrieval
 - [ ] Add video Q&A endpoints over retrieved transcript passages with cited time ranges
-- [ ] Add optional auto-transcription toggle and admin-managed provider/language/model settings
+- [X] Add optional auto-transcription toggle and admin-managed provider/language/model settings
 - [ ] Add tests for transcription orchestration, storage, authorization, and failure handling
 
 ### Phase 16: Signed Media Access URLs
@@ -174,4 +174,4 @@
 
 - Detailed implementation notes for each phase will be maintained under `documentation/plans/`.
 - This document tracks phase-level status only.
-- Schema source of truth remains `documentation/schema/schema-v4.0.md`.
+- Schema source of truth remains `documentation/schema/schema-v5.0.md`.

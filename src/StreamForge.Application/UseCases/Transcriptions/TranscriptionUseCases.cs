@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 using StreamForge.Application.Common;
 using StreamForge.Application.DTOs.Transcriptions;
 using StreamForge.Application.Interfaces;
@@ -14,17 +15,20 @@ public sealed class StartVideoTranscriptionService
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITranscriptionProvider _transcriptionProvider;
     private readonly TranscriptionOptions _options;
+    private readonly ResolveTranscriptionSettingsService _resolveTranscriptionSettings;
     private readonly ILogger<StartVideoTranscriptionService> _logger;
 
     public StartVideoTranscriptionService(
         IUnitOfWork unitOfWork,
         ITranscriptionProvider transcriptionProvider,
         TranscriptionOptions options,
+        ResolveTranscriptionSettingsService resolveTranscriptionSettings,
         ILogger<StartVideoTranscriptionService> logger)
     {
         _unitOfWork = unitOfWork;
         _transcriptionProvider = transcriptionProvider;
         _options = options;
+        _resolveTranscriptionSettings = resolveTranscriptionSettings;
         _logger = logger;
     }
 
@@ -34,7 +38,9 @@ public sealed class StartVideoTranscriptionService
         IReadOnlyCollection<string>? outputFormats,
         CancellationToken cancellationToken = default)
     {
-        if (!_options.Enabled)
+        var effectiveSettings = await _resolveTranscriptionSettings.Handle(cancellationToken);
+
+        if (!effectiveSettings.Enabled)
         {
             throw new InvalidOperationException("Transcription is disabled.");
         }
@@ -60,8 +66,8 @@ public sealed class StartVideoTranscriptionService
         var originalFile = await _unitOfWork.VideoFiles.GetOriginalByVideoIdAsync(videoId, cancellationToken)
             ?? throw new InvalidOperationException($"Video {videoId} does not have an original source file.");
 
-        var requestedLanguage = NormalizeLanguage(language) ?? NormalizeLanguage(_options.DefaultLanguage) ?? "auto";
-        var normalizedOutputFormats = NormalizeOutputFormats(outputFormats ?? _options.OutputFormats);
+        var requestedLanguage = NormalizeLanguage(language) ?? NormalizeLanguage(effectiveSettings.DefaultLanguage) ?? "auto";
+        var normalizedOutputFormats = NormalizeOutputFormats(outputFormats ?? effectiveSettings.OutputFormats);
         var transcriptions = new List<VideoTranscription>(normalizedOutputFormats.Count);
         var correlationId = $"{videoId:N}:{requestedLanguage}:{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
 
@@ -81,11 +87,11 @@ public sealed class StartVideoTranscriptionService
                     requestedLanguage,
                     format,
                     destinationStoragePath,
-                    _options.Provider);
+                    effectiveSettings.Provider);
                 await _unitOfWork.VideoTranscriptions.AddAsync(existing, cancellationToken);
             }
 
-            existing.QueueForProcessing(destinationStoragePath, _options.Provider, correlationId, _options.LocalFasterWhisper.Model);
+            existing.QueueForProcessing(destinationStoragePath, effectiveSettings.Provider, correlationId, effectiveSettings.Model);
 
             transcriptions.Add(existing);
         }
@@ -106,12 +112,12 @@ public sealed class StartVideoTranscriptionService
                     normalizedOutputFormats.Select(format => format.ToLowerInvariant()).ToArray(),
                     callbackUrl,
                     _options.WorkerCallbackSecret,
-                    _options.LocalFasterWhisper.Model,
-                    _options.LocalFasterWhisper.Device,
-                    _options.LocalFasterWhisper.ComputeType,
-                    _options.LocalFasterWhisper.BeamSize,
-                    _options.LocalFasterWhisper.EnableVad,
-                    _options.LocalFasterWhisper.EnableWordTimestamps),
+                    effectiveSettings.Model,
+                    effectiveSettings.Device,
+                    effectiveSettings.ComputeType,
+                    effectiveSettings.BeamSize,
+                    effectiveSettings.EnableVad,
+                    effectiveSettings.EnableWordTimestamps),
                 cancellationToken);
 
             foreach (var transcription in transcriptions)
@@ -624,8 +630,69 @@ public sealed class CompleteVideoTranscriptionCallbackService
             row.Complete(storedPath, detectedLanguage, request.Provider, request.Model);
         }
 
+        await PersistTranscriptChunksAsync(activeRows, request, detectedLanguage, cancellationToken);
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
+
+    private async Task PersistTranscriptChunksAsync(
+        IReadOnlyList<VideoTranscription> activeRows,
+        TranscriptionCallbackRequestDto request,
+        string? detectedLanguage,
+        CancellationToken cancellationToken)
+    {
+        var segmentsArtifact = request.Artifacts.FirstOrDefault(candidate =>
+            candidate.Kind.Equals("local_path", StringComparison.OrdinalIgnoreCase) &&
+            candidate.Path.EndsWith("segments.json", StringComparison.OrdinalIgnoreCase));
+
+        if (segmentsArtifact is null)
+        {
+            return;
+        }
+
+        if (!File.Exists(segmentsArtifact.Path))
+        {
+            _logger.LogWarning(
+                "Transcription callback referenced missing segments artifact for video {VideoId}: {ArtifactPath}",
+                request.VideoId,
+                segmentsArtifact.Path);
+            return;
+        }
+
+        var primaryRow = activeRows
+            .OrderBy(row => row.Format.Equals("VTT", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .ThenBy(row => row.CreatedAt)
+            .First();
+
+        var language = detectedLanguage ?? primaryRow.Language;
+        var json = await File.ReadAllTextAsync(segmentsArtifact.Path, cancellationToken);
+        var segments = JsonSerializer.Deserialize<TranscriptionSegmentArtifactRecord[]>(
+            json,
+            new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            }) ?? [];
+
+        await _unitOfWork.VideoTranscriptChunks.DeleteByVideoAndLanguageAsync(primaryRow.VideoId, language, cancellationToken);
+
+        foreach (var segment in segments.Where(segment => !string.IsNullOrWhiteSpace(segment.Text)))
+        {
+            var chunk = VideoTranscriptChunk.Create(
+                primaryRow.VideoId,
+                primaryRow.Id,
+                language,
+                segment.StartSeconds,
+                segment.EndSeconds,
+                segment.Text);
+
+            await _unitOfWork.VideoTranscriptChunks.AddAsync(chunk, cancellationToken);
+        }
+    }
+
+    private sealed record TranscriptionSegmentArtifactRecord(
+        double StartSeconds,
+        double EndSeconds,
+        string Text);
 }
 
 public static class TranscriptionMapper

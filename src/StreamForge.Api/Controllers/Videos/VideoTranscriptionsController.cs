@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using StreamForge.Application.DTOs.Content;
 using StreamForge.Application.DTOs.Transcriptions;
 using StreamForge.Application.Interfaces;
 using StreamForge.Application.UseCases.Transcriptions;
@@ -14,6 +15,8 @@ public sealed class VideoTranscriptionsController : ControllerBase
     private readonly ListVideoTranscriptionJobsService _listVideoTranscriptionJobs;
     private readonly GetVideoTranscriptionStatusService _getVideoTranscriptionStatus;
     private readonly GetVideoTranscriptionFileService _getVideoTranscriptionFile;
+    private readonly SearchVideoTranscriptService _searchVideoTranscript;
+    private readonly GetVideoTranscriptionChunksService _getVideoTranscriptionChunks;
     private readonly StartVideoTranscriptionService _startVideoTranscription;
 
     public VideoTranscriptionsController(
@@ -21,12 +24,16 @@ public sealed class VideoTranscriptionsController : ControllerBase
         ListVideoTranscriptionJobsService listVideoTranscriptionJobs,
         GetVideoTranscriptionStatusService getVideoTranscriptionStatus,
         GetVideoTranscriptionFileService getVideoTranscriptionFile,
+        SearchVideoTranscriptService searchVideoTranscript,
+        GetVideoTranscriptionChunksService getVideoTranscriptionChunks,
         StartVideoTranscriptionService startVideoTranscription)
     {
         _listVideoTranscriptions = listVideoTranscriptions;
         _listVideoTranscriptionJobs = listVideoTranscriptionJobs;
         _getVideoTranscriptionStatus = getVideoTranscriptionStatus;
         _getVideoTranscriptionFile = getVideoTranscriptionFile;
+        _searchVideoTranscript = searchVideoTranscript;
+        _getVideoTranscriptionChunks = getVideoTranscriptionChunks;
         _startVideoTranscription = startVideoTranscription;
     }
 
@@ -77,6 +84,31 @@ public sealed class VideoTranscriptionsController : ControllerBase
         }
 
         return File(file.Stream, file.ContentType, enableRangeProcessing: true);
+    }
+
+    [HttpGet("{transcriptionId:guid}/chunks")]
+    [AllowAnonymous]
+    public async Task<ActionResult<IReadOnlyList<TranscriptChunkDto>>> GetChunks(
+        Guid videoId,
+        Guid transcriptionId,
+        [FromQuery] string? shareToken,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _getVideoTranscriptionChunks.Handle(videoId, transcriptionId, shareToken, cancellationToken));
+    }
+
+    [HttpGet("/api/v1/videos/{videoId:guid}/transcript-search")]
+    [AllowAnonymous]
+    public async Task<ActionResult<PagedResponseDto<TranscriptSearchResultDto>>> Search(
+        Guid videoId,
+        [FromQuery(Name = "q")] string query,
+        [FromQuery] string? language,
+        [FromQuery] int page,
+        [FromQuery] int pageSize,
+        [FromQuery] string? shareToken,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _searchVideoTranscript.Handle(videoId, query, language, page, pageSize, shareToken, cancellationToken));
     }
 
     [HttpPost]

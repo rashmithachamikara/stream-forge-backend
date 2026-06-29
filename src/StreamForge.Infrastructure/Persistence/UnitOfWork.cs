@@ -20,6 +20,7 @@ public sealed class UnitOfWork : IUnitOfWork
         VideoThumbnails = new VideoThumbnailRepository(dbContext);
         VideoProcessingJobs = new VideoProcessingJobRepository(dbContext);
         VideoTranscriptions = new VideoTranscriptionRepository(dbContext);
+        VideoTranscriptChunks = new VideoTranscriptChunkRepository(dbContext);
         VideoReactions = new VideoReactionRepository(dbContext);
         VideoComments = new VideoCommentRepository(dbContext);
         Bookmarks = new BookmarkRepository(dbContext);
@@ -31,6 +32,7 @@ public sealed class UnitOfWork : IUnitOfWork
         PlaylistVideos = new PlaylistVideoRepository(dbContext);
         Notifications = new NotificationRepository(dbContext);
         AnalyticsEvents = new AnalyticsEventRepository(dbContext);
+        SystemSettings = new SystemSettingRepository(dbContext);
         AccessControls = new AccessControlRepository(dbContext);
         UploadSessions = new UploadSessionRepository(dbContext);
         UploadSessionParts = new UploadSessionPartRepository(dbContext);
@@ -43,6 +45,7 @@ public sealed class UnitOfWork : IUnitOfWork
     public IVideoThumbnailRepository VideoThumbnails { get; }
     public IVideoProcessingJobRepository VideoProcessingJobs { get; }
     public IVideoTranscriptionRepository VideoTranscriptions { get; }
+    public IVideoTranscriptChunkRepository VideoTranscriptChunks { get; }
     public IVideoReactionRepository VideoReactions { get; }
     public IVideoCommentRepository VideoComments { get; }
     public IBookmarkRepository Bookmarks { get; }
@@ -54,6 +57,7 @@ public sealed class UnitOfWork : IUnitOfWork
     public IPlaylistVideoRepository PlaylistVideos { get; }
     public INotificationRepository Notifications { get; }
     public IAnalyticsEventRepository AnalyticsEvents { get; }
+    public ISystemSettingRepository SystemSettings { get; }
     public IAccessControlRepository AccessControls { get; }
     public IUploadSessionRepository UploadSessions { get; }
     public IUploadSessionPartRepository UploadSessionParts { get; }

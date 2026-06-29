@@ -26,6 +26,7 @@ public class StreamForgeDbContext : DbContext
     public DbSet<VideoThumbnail> VideoThumbnails => Set<VideoThumbnail>();
     public DbSet<VideoProcessingJob> VideoProcessingJobs => Set<VideoProcessingJob>();
     public DbSet<VideoTranscription> VideoTranscriptions => Set<VideoTranscription>();
+    public DbSet<VideoTranscriptChunk> VideoTranscriptChunks => Set<VideoTranscriptChunk>();
 
     // Video Relations
     public DbSet<VideoTag> VideoTags => Set<VideoTag>();
@@ -41,6 +42,7 @@ public class StreamForgeDbContext : DbContext
     // System Entities
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<AnalyticsEvent> AnalyticsEvents => Set<AnalyticsEvent>();
+    public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
 
     // Upload Entities
     public DbSet<UploadSession> UploadSessions => Set<UploadSession>();

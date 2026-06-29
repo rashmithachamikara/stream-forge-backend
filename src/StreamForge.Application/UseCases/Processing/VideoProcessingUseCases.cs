@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using StreamForge.Application.DTOs.Processing;
 using StreamForge.Application.Interfaces;
 using StreamForge.Application.Common;
+using StreamForge.Application.UseCases.Transcriptions;
 using StreamForge.Domain.Entities;
 using StreamForge.Domain.Enums;
 using StreamForge.Domain.Exceptions;
@@ -14,20 +15,20 @@ public sealed class ProcessVideoJobService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMediaProcessingService _mediaProcessingService;
     private readonly ITranscriptionQueue _transcriptionQueue;
-    private readonly TranscriptionOptions _transcriptionOptions;
+    private readonly ResolveTranscriptionSettingsService _resolveTranscriptionSettings;
     private readonly ILogger<ProcessVideoJobService> _logger;
 
     public ProcessVideoJobService(
         IUnitOfWork unitOfWork,
         IMediaProcessingService mediaProcessingService,
         ITranscriptionQueue transcriptionQueue,
-        TranscriptionOptions transcriptionOptions,
+        ResolveTranscriptionSettingsService resolveTranscriptionSettings,
         ILogger<ProcessVideoJobService> logger)
     {
         _unitOfWork = unitOfWork;
         _mediaProcessingService = mediaProcessingService;
         _transcriptionQueue = transcriptionQueue;
-        _transcriptionOptions = transcriptionOptions;
+        _resolveTranscriptionSettings = resolveTranscriptionSettings;
         _logger = logger;
     }
 
@@ -102,9 +103,10 @@ public sealed class ProcessVideoJobService
             video.MarkAsReady();
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            if (_transcriptionOptions.Enabled && _transcriptionOptions.AutoTranscribeOnReady)
+            var transcriptionSettings = await _resolveTranscriptionSettings.Handle(cancellationToken);
+            if (transcriptionSettings.Enabled && transcriptionSettings.AutoTranscribeOnReady)
             {
-                await _transcriptionQueue.EnqueueAsync(video.Id, _transcriptionOptions.DefaultLanguage, cancellationToken);
+                await _transcriptionQueue.EnqueueAsync(video.Id, transcriptionSettings.DefaultLanguage, cancellationToken);
             }
 
             _logger.LogInformation(

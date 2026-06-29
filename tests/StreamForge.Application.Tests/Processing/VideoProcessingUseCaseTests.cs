@@ -4,6 +4,7 @@ using NSubstitute;
 using StreamForge.Application.Common;
 using StreamForge.Application.Interfaces;
 using StreamForge.Application.UseCases.Processing;
+using StreamForge.Application.UseCases.Transcriptions;
 using StreamForge.Domain.Entities;
 using StreamForge.Domain.Enums;
 using StreamForge.Domain.Interfaces;
@@ -35,11 +36,12 @@ public sealed class VideoProcessingUseCaseTests
         var videoFiles = Substitute.For<IVideoFileRepository>();
         videoFiles.GetOriginalByVideoIdAsync(video.Id, Arg.Any<CancellationToken>()).Returns(originalFile);
         var thumbnails = Substitute.For<IVideoThumbnailRepository>();
+        var unitOfWork = CreateUnitOfWork(video, job, provider, videoVersions, videoFiles, thumbnails);
         var service = new ProcessVideoJobService(
-            CreateUnitOfWork(video, job, provider, videoVersions, videoFiles, thumbnails),
+            unitOfWork,
             media,
             Substitute.For<ITranscriptionQueue>(),
-            new TranscriptionOptions(),
+            new ResolveTranscriptionSettingsService(unitOfWork, new TranscriptionOptions()),
             Substitute.For<ILogger<ProcessVideoJobService>>());
 
         await service.Handle(job.Id, CancellationToken.None);
@@ -73,11 +75,12 @@ public sealed class VideoProcessingUseCaseTests
         videoVersions.GetByIdAsync(originalVersion.Id, Arg.Any<CancellationToken>()).Returns(originalVersion);
         var videoFiles = Substitute.For<IVideoFileRepository>();
         videoFiles.GetOriginalByVideoIdAsync(video.Id, Arg.Any<CancellationToken>()).Returns(originalFile);
+        var unitOfWork = CreateUnitOfWork(video, job, provider, videoVersions, videoFiles, Substitute.For<IVideoThumbnailRepository>());
         var service = new ProcessVideoJobService(
-            CreateUnitOfWork(video, job, provider, videoVersions, videoFiles, Substitute.For<IVideoThumbnailRepository>()),
+            unitOfWork,
             media,
             Substitute.For<ITranscriptionQueue>(),
-            new TranscriptionOptions(),
+            new ResolveTranscriptionSettingsService(unitOfWork, new TranscriptionOptions()),
             Substitute.For<ILogger<ProcessVideoJobService>>());
 
         await service.Handle(job.Id, CancellationToken.None);
@@ -109,6 +112,7 @@ public sealed class VideoProcessingUseCaseTests
         unitOfWork.VideoFiles.Returns(videoFiles);
         unitOfWork.StorageProviders.Returns(storageProviders);
         unitOfWork.VideoThumbnails.Returns(thumbnails);
+        unitOfWork.SystemSettings.Returns(Substitute.For<ISystemSettingRepository>());
         return unitOfWork;
     }
 }

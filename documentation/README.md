@@ -23,6 +23,14 @@ Project structure and architectural decisions.
 - **[../README.md](../README.md)** - Project overview
 - **[../QUICK_REFERENCE.md](../QUICK_REFERENCE.md)** - Developer quick reference
 
+### Feature Integration Documentation
+**Location:** Root documentation files
+
+Frontend-facing and integration-focused behavior notes for implemented features.
+
+- **[ANALYTICS.md](ANALYTICS.md)** - Analytics model and frontend integration guidance
+- **[TRANSCRIPTIONS_FRONTEND_CONTRACT.md](TRANSCRIPTIONS_FRONTEND_CONTRACT.md)** - Transcript, caption, polling, and transcript-search frontend contract
+
 ## 🎯 Quick Start
 
 ### For Developers

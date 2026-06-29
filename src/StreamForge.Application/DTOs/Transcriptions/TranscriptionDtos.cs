@@ -53,6 +53,50 @@ public sealed record RequestVideoTranscriptionRequestDto(
     string? Language,
     IReadOnlyCollection<string>? OutputFormats);
 
+public sealed record TranscriptSearchResultDto(
+    Guid ChunkId,
+    Guid VideoId,
+    Guid TranscriptionId,
+    string Language,
+    double StartSeconds,
+    double EndSeconds,
+    string Content);
+
+public sealed record TranscriptChunkDto(
+    Guid ChunkId,
+    Guid VideoId,
+    Guid TranscriptionId,
+    string Language,
+    double StartSeconds,
+    double EndSeconds,
+    string Content);
+
+public sealed record AdminTranscriptionSettingsDto(
+    bool Enabled,
+    bool AutoTranscribeOnReady,
+    string Provider,
+    string? DefaultLanguage,
+    IReadOnlyList<string> OutputFormats,
+    string Model,
+    string Device,
+    string ComputeType,
+    int BeamSize,
+    bool EnableVad,
+    bool EnableWordTimestamps);
+
+public sealed record UpdateAdminTranscriptionSettingsRequestDto(
+    bool Enabled,
+    bool AutoTranscribeOnReady,
+    string Provider,
+    string? DefaultLanguage,
+    IReadOnlyCollection<string> OutputFormats,
+    string Model,
+    string Device,
+    string ComputeType,
+    int BeamSize,
+    bool EnableVad,
+    bool EnableWordTimestamps);
+
 public sealed record TranscriptionCallbackArtifactDto(
     string Kind,
     string Path);

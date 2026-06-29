@@ -17,17 +17,22 @@ Implemented already:
 
 Still pending for Phase 15 completion:
 
-- transcript chunk persistence, `pgvector`, search, and Q&A APIs
-- admin/configuration UI and automated tests
+- upgrade transcript search from the current keyword-based implementation to PostgreSQL full-text search
+- add `pgvector`-backed semantic retrieval and grounded Q&A APIs
+- build the admin/configuration UI on top of the new persisted settings and add broader automated tests
 
 Implemented in the latest backend pass:
 
 - `.NET` transcription provider abstraction and orchestration
 - queueing transcription automatically after video readiness
 - callback ingestion and canonical persistence into `VideoTranscriptions`
+- callback ingestion of `segments.json` into persisted `VideoTranscriptChunks`
 - durable worker metadata persistence for correlation IDs, worker job IDs, model, and failure reason
 - backend transcription status/read APIs with worker-polled live status for running jobs
 - player-facing caption retrieval APIs
+- per-video transcript keyword search API over persisted chunks
+- admin-managed transcription settings persisted through a `SystemSettings` key-value store
+- a dedicated frontend contract doc for transcript UI, polling, search-result behavior, and multi-artifact handling in `documentation/TRANSCRIPTIONS_FRONTEND_CONTRACT.md`
 
 ## Purpose
 
@@ -219,7 +224,8 @@ Add a new configuration section such as `Transcription`.
 Current status:
 
 - the worker already has its own local runtime configuration and `.env.example`
-- Stream Forge `.NET` does not yet have the full Phase 15 `Transcription` settings section wired in
+- Stream Forge `.NET` now supports effective transcription settings from defaults plus persisted `SystemSettings`
+- admin-facing settings APIs are in place; the admin UI still remains to be built
 
 Suggested options:
 
@@ -257,7 +263,7 @@ Keep this off by default because model downloads, CPU load, GPU usage, and stora
 
 ## 7. Settings And Admin UX Direction
 
-Phase 15 should assume that transcription settings may later be managed from an admin UI.
+Phase 15 now has backend-managed transcription settings persisted in `SystemSettings`, and the next step is exposing those controls cleanly in the admin UI.
 
 That means the design should support:
 
@@ -476,6 +482,7 @@ Suggested examples:
 
 - `GET /api/v1/videos/{videoId}/transcriptions`
 - `GET /api/v1/videos/{videoId}/transcriptions/{transcriptionId}`
+- `GET /api/v1/videos/{videoId}/transcriptions/{transcriptionId}/chunks`
 - `POST /api/v1/videos/{videoId}/transcriptions`
 - `POST /api/v1/videos/{videoId}/transcriptions/{transcriptionId}/retry`
 - `GET /api/v1/videos/{videoId}/transcript-search?q=...`

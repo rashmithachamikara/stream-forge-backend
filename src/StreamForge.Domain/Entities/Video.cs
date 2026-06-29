@@ -89,6 +89,7 @@ public class Video : BaseEntity
     public ICollection<VideoThumbnail> VideoThumbnails { get; private set; }
     public ICollection<VideoProcessingJob> VideoProcessingJobs { get; private set; }
     public ICollection<VideoTranscription> VideoTranscriptions { get; private set; }
+    public ICollection<VideoTranscriptChunk> VideoTranscriptChunks { get; private set; }
     public ICollection<VideoTag> VideoTags { get; private set; }
     public ICollection<VideoReaction> VideoReactions { get; private set; }
     public ICollection<VideoComment> VideoComments { get; private set; }
@@ -107,6 +108,7 @@ public class Video : BaseEntity
         VideoThumbnails = new List<VideoThumbnail>();
         VideoProcessingJobs = new List<VideoProcessingJob>();
         VideoTranscriptions = new List<VideoTranscription>();
+        VideoTranscriptChunks = new List<VideoTranscriptChunk>();
         VideoTags = new List<VideoTag>();
         VideoReactions = new List<VideoReaction>();
         VideoComments = new List<VideoComment>();

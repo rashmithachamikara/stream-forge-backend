@@ -33,6 +33,8 @@ public interface IUnitOfWork : IDisposable
 
     IVideoTranscriptionRepository VideoTranscriptions { get; }
 
+    IVideoTranscriptChunkRepository VideoTranscriptChunks { get; }
+
     IVideoReactionRepository VideoReactions { get; }
 
     IVideoCommentRepository VideoComments { get; }
@@ -75,6 +77,8 @@ public interface IUnitOfWork : IDisposable
     /// Analytics repository
     /// </summary>
     IAnalyticsEventRepository AnalyticsEvents { get; }
+
+    ISystemSettingRepository SystemSettings { get; }
 
     IAccessControlRepository AccessControls { get; }
 

@@ -4,15 +4,16 @@ This directory contains the complete database schema documentation for Stream Fo
 
 ## Files
 
-- **[schema-v4.0.md](schema-v4.0.md)** - Current database schema specification (v4.0)
-- **[schema-v3.0.md](schema-v3.0.md)** - Previous schema version with bookmark redesign and initial Phase 15 alignment
+- **[schema-v5.0.md](schema-v5.0.md)** - Current database schema specification (v5.0)
+- **[schema-v4.0.md](schema-v4.0.md)** - Previous schema version with transcription job metadata and caption delivery alignment
+- **[schema-v3.0.md](schema-v3.0.md)** - Earlier schema version with bookmark redesign and initial Phase 15 alignment
 - **[schema-v1.0.md](schema-v1.0.md)** - Complete database schema specification (v1.0)
 - **[schema-diagram.md](schema-diagram.md)** - Visual entity relationship diagrams
 - **[migration-guide.md](migration-guide.md)** - Database migration guidelines
 
 ## Quick Reference
 
-### Total Tables: 19
+### Total Tables: 21
 
 #### Core Tables (7)
 1. Users
@@ -35,11 +36,13 @@ This directory contains the complete database schema documentation for Stream Fo
 14. Playlists
 15. PlaylistVideos (join table)
 
-#### Advanced Features (4)
+#### Advanced Features (6)
 16. VideoTranscriptions
-17. AccessControl
-18. Notifications
-19. AnalyticsEvents
+17. VideoTranscriptChunks
+18. SystemSettings
+19. AccessControl
+20. Notifications
+21. AnalyticsEvents
 
 ## Implementation Status
 
@@ -139,5 +142,5 @@ GROUP BY p.Id;
 
 ---
 
-**Last Updated:** January 22, 2026  
-**Schema Version:** 1.0
+**Last Updated:** June 21, 2026  
+**Schema Version:** 5.0
