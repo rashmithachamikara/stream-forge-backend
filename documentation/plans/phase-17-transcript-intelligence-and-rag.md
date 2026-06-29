@@ -4,11 +4,15 @@ Status: [ ] Not Started
 
 ## Purpose
 
-Build the next backend layer on top of persisted transcript chunks:
+Build the transcript-intelligence layer on top of existing persisted `VideoTranscriptChunks`.
+
+This phase adds:
 
 - PostgreSQL full-text transcript search
 - semantic retrieval over transcript embeddings
-- grounded video Q&A with cited time ranges
+- hybrid retrieval using lexical plus semantic recall
+- grounded Q&A with cited transcript evidence
+- both per-video and cross-video answering flows
 
 This phase starts after Phase 15 has already delivered:
 
@@ -16,88 +20,351 @@ This phase starts after Phase 15 has already delivered:
 - caption persistence and delivery
 - transcript chunk persistence
 - keyword transcript search
+- admin-managed transcription settings
 
-## Scope
+## Backend Direction
 
-This phase includes backend execution only.
+This phase is backend-only.
 
 It covers:
 
-- search/indexing improvements
-- embedding pipeline design and persistence
-- retrieval and answer-generation APIs
-- schema additions required for semantic retrieval
-- backend tests for retrieval and grounding behavior
+- schema additions required for full-text and vector retrieval
+- retrieval and answer-generation abstractions
+- embedding generation pipeline
+- new search and Q&A APIs
+- backend tests for retrieval, grounding, and authorization
+
+It does not cover:
+
+- transcript reader UX
+- admin UI
+- conversation/chat UI
 
 ## Planned Work
 
-### 1. Full-Text Transcript Search
+### 1. Full-Text Search Upgrade
 
-- replace the current keyword search implementation with PostgreSQL full-text search
-- add ranking and ordering tuned for transcript chunks
-- preserve filtering by video and language
-- keep timestamped chunk results as the output shape
+Upgrade the existing transcript keyword search to PostgreSQL full-text search.
+
+Behavior:
+
+- keep `GET /api/v1/videos/{videoId}/transcript-search?q=...`
+- preserve current authorization and `shareToken` behavior
+- preserve current chunk-oriented response model
+- replace naive keyword matching with PostgreSQL full-text search
+- add relevance-based ordering tuned for transcript chunks
+- support timestamped chunk matches as the output shape
+
+Recommended result behavior:
+
+- order by lexical relevance first
+- then apply stable time ordering as a tie-breaker
+- keep current paging and optional `language` filter
 
 ### 2. Embedding Pipeline
 
-- introduce a dedicated embedding stage after transcript chunk persistence
-- keep embedding generation decoupled from the Python transcription worker
-- define provider abstraction for embeddings
-- support re-indexing when models change
+Add a dedicated embedding stage after transcript chunk persistence.
 
-Recommended default direction:
+Direction chosen:
 
-- use a separate worker or background stage for embeddings
-- do not couple embedding generation to the latency of caption completion
+- do not generate embeddings inside the Python transcription worker
+- do not block transcription callback completion on embedding generation
+- use a separate background embedding pipeline
+
+Recommended implementation:
+
+- add an `ITranscriptEmbeddingProvider`
+- add an `ITranscriptEmbeddingQueue`
+- queue embedding generation automatically whenever transcript chunks are created or replaced
+- implement the first queue/runtime using Hangfire
+
+Background flow:
+
+1. transcription callback persists/replaces transcript chunks for a `(VideoId, Language)` set
+2. `.NET` enqueues an embedding job for that chunk set
+3. embedding job loads the current canonical chunks
+4. embedding provider generates vectors
+5. vectors are stored on those chunk rows
+
+Operational rules:
+
+- embedding generation is eventually consistent
+- lexical/full-text search remains usable even if embeddings are missing or stale
+- re-transcription of a language replaces the old chunk set and triggers re-embedding automatically
 
 ### 3. Schema And Storage
 
-- add a new schema version before semantic retrieval changes
-- add embedding/vector storage for transcript chunks
-- add `pgvector` indexes and any supporting metadata needed for retrieval
-- keep Phase 15 chunk persistence backward compatible
+Add a new schema version before implementing semantic retrieval.
 
-### 4. Semantic Retrieval
+Schema additions should include:
 
-- add vector similarity retrieval over transcript chunks
-- support hybrid retrieval where useful:
-  - full-text recall
-  - semantic recall
-- keep retrieved chunks grounded to:
-  - `VideoId`
-  - `TranscriptionId`
-  - `Language`
-  - `StartSeconds`
-  - `EndSeconds`
+- embedding/vector storage on `VideoTranscriptChunks`
+- any provider/model metadata needed to know how vectors were produced
+- PostgreSQL full-text search support for chunk content
+- `pgvector` indexes for semantic retrieval
 
-### 5. Video Q&A
+Keep the current chunk ownership model intact:
 
-- add question-answering endpoints over retrieved transcript passages
-- require cited time ranges in answers
-- keep answers grounded only in retrieved transcript evidence
-- define failure behavior for:
-  - no relevant passages
-  - provider failures
-  - partial retrieval/index state
+- one canonical chunk set per `(VideoId, Language)` replacement cycle
+- `VideoTranscription` remains the canonical artifact metadata parent
+- `VideoTranscriptChunks` remains the retrieval unit
 
-## Suggested API Direction
+Do not add Q&A conversation/session persistence in the first version.
 
-- `GET /api/v1/videos/{videoId}/transcript-search?q=...` upgraded to full-text behavior
+### 4. Retrieval Abstractions
+
+Add application abstractions for:
+
+- `ITranscriptSearchProvider`
+- `ITranscriptEmbeddingProvider`
+- `IVideoQuestionAnsweringProvider`
+
+Responsibilities:
+
+- `ITranscriptSearchProvider`
+  - run lexical retrieval
+  - run semantic retrieval
+  - combine and deduplicate hybrid retrieval results
+- `ITranscriptEmbeddingProvider`
+  - generate embeddings for transcript chunks
+  - support model/version-aware indexing
+- `IVideoQuestionAnsweringProvider`
+  - generate answers from retrieved transcript evidence only
+  - return answer metadata useful for citations/observability
+
+The first implementation should stay provider-agnostic and not bake the feature into a single LLM vendor contract.
+
+### 5. Semantic Retrieval
+
+Add a separate semantic transcript search endpoint rather than overloading the existing one.
+
+Per-video endpoint:
+
+- `GET /api/v1/videos/{videoId}/transcript-semantic-search?q=...`
+
+Behavior:
+
+- same authorization model as the current transcript search endpoint
+- scoped to one video
+- returns chunk-level timestamped results
+- includes semantic relevance score
+- supports `language`, `page`, and `pageSize`
+
+Cross-video endpoint:
+
+- `GET /api/v1/transcript-semantic-search?q=...`
+
+Behavior:
+
+- supports both:
+  - explicit `videoIds` scope
+  - all accessible videos when no `videoIds` are supplied
+- backend must intersect explicit `videoIds` with the caller’s allowed videos
+- backend must never retrieve from unauthorized videos and filter afterward
+- response remains chunk-level and must include:
+  - `videoId`
+  - `videoTitle`
+  - `transcriptionId`
+  - `chunkId`
+  - `language`
+  - `startSeconds`
+  - `endSeconds`
+  - `content`
+  - `score`
+
+Recommended retrieval semantics:
+
+- semantic retrieval runs only over authorized chunks inside the resolved scope
+- if embeddings are not available for part of the scope, return partial semantic results rather than failing the whole request
+
+### 6. Hybrid Retrieval
+
+Use hybrid retrieval as the default retrieval strategy for Q&A.
+
+Hybrid retrieval should:
+
+- run lexical/full-text retrieval
+- run semantic/vector retrieval
+- merge candidates
+- deduplicate by `chunkId`
+- rerank before answer generation
+
+Suggested use:
+
+- full-text search remains strongest for exact terms, names, and quoted phrases
+- semantic retrieval handles paraphrases and concept-level similarity
+- hybrid retrieval is the default for question answering
+
+For direct search endpoints:
+
+- per-video `transcript-search` remains lexical/full-text
+- per-video and cross-video semantic endpoints remain semantic-first
+- hybrid behavior is primarily required for Q&A and can be added to dedicated search later if needed
+
+### 7. Grounded Q&A
+
+Add stateless grounded Q&A endpoints.
+
+Per-video endpoint:
+
 - `POST /api/v1/videos/{videoId}/questions`
-- optional admin/indexing endpoints later if re-embedding or repair workflows are needed
+
+Cross-video endpoint:
+
+- `POST /api/v1/questions`
+
+Direction chosen:
+
+- stateless only in v1
+- no conversation/session persistence
+- no chat history tables
+
+Per-video Q&A behavior:
+
+1. authorize access to the video
+2. retrieve candidate chunks for that video using hybrid retrieval
+3. build an answer-generation prompt from retrieved chunks only
+4. generate an answer through `IVideoQuestionAnsweringProvider`
+5. return answer with citations
+
+Cross-video Q&A behavior:
+
+1. resolve scope:
+   - explicit `videoIds`, or
+   - all accessible videos
+2. retrieve candidate chunks only from the authorized scoped set
+3. build answer-generation prompt from retrieved chunks only
+4. return answer with cross-video citations
+
+Response requirements:
+
+- answer text
+- citations
+- each citation must include:
+  - `videoId`
+  - `videoTitle`
+  - `chunkId`
+  - `startSeconds`
+  - `endSeconds`
+  - cited excerpt text
+
+Failure behavior:
+
+- no relevant evidence should return a no-answer style response, not a hallucinated answer
+- provider failure should return a clear backend failure response
+- partial indexing state should not block lexical search or lexical-only fallback
+
+### 8. Settings And Runtime Configuration
+
+Use the existing `SystemSettings` model for Phase 17 runtime settings unless a later schema requires stronger provider/config tables.
+
+Add settings groups for:
+
+- transcript search
+  - full-text enabled
+  - semantic enabled
+  - hybrid retrieval enabled
+- embeddings
+  - provider
+  - model
+  - automatic indexing enabled
+  - batch size
+- Q&A
+  - provider
+  - model
+  - enabled
+  - max retrieved chunks
+  - max citations
+
+Keep these separate from Phase 15 transcription-generation settings even though both live under the broader admin settings surface.
+
+### Good First `SystemSettings` Key Set
+
+The first persisted Phase 17 key set should include:
+
+- `rag.enabled`
+- `rag.semanticSearch.enabled`
+- `rag.videoQuestions.enabled`
+- `rag.crossVideoQuestions.enabled`
+- `rag.embedding.provider`
+- `rag.embedding.model`
+- `rag.embedding.batchSize`
+- `rag.retrieval.defaultMode`
+- `rag.retrieval.semanticTopK`
+- `rag.retrieval.fullTextTopK`
+- `rag.qa.provider`
+- `rag.qa.model`
+- `rag.qa.maxContextChunks`
+- `rag.qa.maxCitations`
+
+Recommended intent for these keys:
+
+- feature toggles:
+  - `rag.enabled`
+  - `rag.semanticSearch.enabled`
+  - `rag.videoQuestions.enabled`
+  - `rag.crossVideoQuestions.enabled`
+- embedding runtime:
+  - `rag.embedding.provider`
+  - `rag.embedding.model`
+  - `rag.embedding.batchSize`
+- retrieval behavior:
+  - `rag.retrieval.defaultMode`
+  - `rag.retrieval.semanticTopK`
+  - `rag.retrieval.fullTextTopK`
+- Q&A runtime:
+  - `rag.qa.provider`
+  - `rag.qa.model`
+  - `rag.qa.maxContextChunks`
+  - `rag.qa.maxCitations`
+
+Keep secrets and deployment-specific infrastructure values out of `SystemSettings`.
+Those should remain in app configuration, environment variables, or a secret store.
+
+## API Direction
+
+### Keep And Upgrade
+
+- `GET /api/v1/videos/{videoId}/transcript-search?q=...`
+  - upgrade to PostgreSQL full-text behavior
+  - keep current chunk-oriented shape
+
+### Add
+
+- `GET /api/v1/videos/{videoId}/transcript-semantic-search?q=...`
+- `GET /api/v1/transcript-semantic-search?q=...`
+- `POST /api/v1/videos/{videoId}/questions`
+- `POST /api/v1/questions`
+
+### Optional Later Admin/Repair Endpoints
+
+Possible later additions if needed:
+
+- manual re-embed endpoint for a video/language set
+- admin indexing status endpoint
+- admin repair/resync endpoint for semantic index state
 
 ## Testing
 
 Add backend tests for:
 
-- PostgreSQL full-text ranking/filtering behavior
-- embedding pipeline orchestration
-- semantic retrieval correctness
-- citation integrity in Q&A responses
-- no-result and provider-failure behavior
-- re-index/re-embed flows when transcript content changes
+- PostgreSQL full-text search ranking and filtering
+- lexical search authorization and `shareToken` behavior
+- embedding job enqueue-on-transcript-completion behavior
+- embedding refresh after transcript replacement
+- semantic retrieval correctness for per-video scope
+- semantic retrieval correctness for cross-video scope
+- explicit `videoIds` scope intersected with authorization
+- all-accessible-videos scope behavior
+- hybrid retrieval deduping and reranking
+- Q&A citation integrity
+- no-answer behavior when evidence is insufficient
+- provider failure behavior for embeddings and Q&A
+- regression coverage so existing chunk and caption endpoints remain stable
 
 ## Notes
 
-- Keep the current transcript chunk contract stable where possible so Phase 15 consumers do not break.
-- Signed media delivery remains Phase 16 and should stay separate from transcript intelligence work.
+- Keep the current transcript chunk contract stable where possible so Phase 15 consumers are not broken.
+- Signed media delivery remains Phase 16 and stays separate from transcript intelligence work.
+- Full-text search remains part of the design even with RAG; semantic retrieval complements it rather than replacing it.
+- Keep embedding-worker-specific implementation details in `services/embedding-worker/EXECUTION_PLAN.md`.
