@@ -141,7 +141,7 @@
 - [ ] Keep milestone-based DB progress as the durable fallback after restarts
 - [ ] Add tests for progress parsing, throttling, and fallback behavior
 
-### Phase 15: AI Transcription and Captions (In Progress)
+### Phase 15: AI Transcription and Captions
 - [X] Add transcription configuration and provider abstraction for local and hosted transcription providers
 - [X] Queue transcription after upload/processing completes and source media is ready
 - [X] Implement .NET transcription adapter that submits jobs to a local Python Faster-Whisper worker
@@ -154,10 +154,8 @@
 - [X] Add APIs for listing, retrieving, and downloading video transcriptions/captions
 - [X] Add player-facing caption endpoint support using existing video authorization rules
 - [X] Chunk transcripts with timestamps and persist them for transcript search and grounded Q&A foundations
-- [ ] Upgrade transcript search from keyword search to full-text search and optional semantic/vector retrieval
-- [ ] Add video Q&A endpoints over retrieved transcript passages with cited time ranges
 - [X] Add optional auto-transcription toggle and admin-managed provider/language/model settings
-- [ ] Add tests for transcription orchestration, storage, authorization, and failure handling
+- [X] Add tests for transcription orchestration, storage, authorization, and failure handling
 
 ### Phase 16: Signed Media Access URLs
 - [ ] Add backend-issued signed media access for thumbnails, manifests, HLS assets, and caption files
@@ -169,6 +167,15 @@
 - [ ] Keep current content/search DTO media URLs stable during transition, then migrate frontend clients to the media-access bundle
 - [ ] Add tests for signed URL issuance, tamper/expiry rejection, manifest rewriting, and caption delivery
 - [ ] Document signed media delivery flow, expiry behavior, and local-vs-S3 strategy in a dedicated phase plan
+
+### Phase 17: Transcript Intelligence and RAG
+- [ ] Upgrade transcript search from keyword search to PostgreSQL full-text search
+- [ ] Add transcript ranking/highlighting behavior for full-text matches over persisted chunks
+- [ ] Define the embedding pipeline and move embedding generation into a dedicated post-transcription stage or worker
+- [ ] Add schema support for embedding storage and vector indexes in a new schema version
+- [ ] Add `pgvector`-backed semantic retrieval over transcript chunks
+- [ ] Add grounded video Q&A endpoints over retrieved transcript passages with cited time ranges
+- [ ] Add retrieval/answering tests for full-text search, semantic search, citation integrity, and failure handling
 
 ## Notes
 

@@ -1,6 +1,6 @@
 # Phase 15 - AI Transcription and Captions
 
-Status: [~] In Progress
+Status: [X] Complete
 
 ## Current Progress Snapshot
 
@@ -15,11 +15,19 @@ Implemented already:
 - source-reference handling that can support local paths, S3-style references, and presigned URLs
 - worker Dockerfile, README, `.env.example`, and manual smoke-test script
 
-Still pending for Phase 15 completion:
+Phase 15 completion scope:
 
-- upgrade transcript search from the current keyword-based implementation to PostgreSQL full-text search
-- add `pgvector`-backed semantic retrieval and grounded Q&A APIs
-- build the admin/configuration UI on top of the new persisted settings and add broader automated tests
+- backend transcription orchestration
+- caption persistence and delivery
+- transcript chunk persistence
+- keyword transcript search
+- admin-managed backend transcription settings
+- broader backend automated tests for transcription orchestration, storage, authorization, and failure handling
+
+Deferred beyond Phase 15:
+
+- PostgreSQL full-text search, embeddings, semantic retrieval, and grounded Q&A in `documentation/plans/phase-17-transcript-intelligence-and-rag.md`
+- admin/configuration UI work, which is intentionally out of scope for this backend execution plan
 
 Implemented in the latest backend pass:
 
@@ -40,7 +48,7 @@ Automatically transcribe uploaded videos and turn those transcripts into usable 
 
 The initial target is Whisper-based transcription triggered after a video upload has completed and the source media is ready. This phase should keep the transcription provider behind an application abstraction so the system is not tightly coupled to one local model runtime or one hosted AI vendor.
 
-This phase should also lay the foundation for transcript-based search and user Q&A over videos.
+This phase should lay the backend foundation for later transcript intelligence work without implementing the RAG layer itself.
 
 ## Why This Fits The Current Architecture
 
@@ -187,12 +195,8 @@ The current planned pipeline is:
 17. `.NET` ingests staged transcript segment JSON
 18. `.NET` creates or updates `VideoTranscriptions`
 19. `.NET` persists normalized transcript chunks in the database
-20. embedding generation runs as the next stage
-21. the configured embedding provider generates vectors for transcript chunks
-22. `.NET` stores chunk embeddings
-23. transcript search becomes available
-24. video Q&A retrieves matching chunks
-25. answer generation uses retrieved chunks with cited timestamps
+20. keyword transcript search becomes available over persisted transcript chunks
+21. later phases can add embedding generation, semantic retrieval, and grounded Q&A on top of those chunks
 
 Operationally:
 
@@ -261,11 +265,11 @@ Suggested conservative defaults:
 
 Keep this off by default because model downloads, CPU load, GPU usage, and storage growth are deployment concerns.
 
-## 7. Settings And Admin UX Direction
+## 7. Settings Direction
 
-Phase 15 now has backend-managed transcription settings persisted in `SystemSettings`, and the next step is exposing those controls cleanly in the admin UI.
+Phase 15 now has backend-managed transcription settings persisted in `SystemSettings`.
 
-That means the design should support:
+For backend planning, the design should support:
 
 - provider selection
 - local vs hosted provider choice
@@ -274,14 +278,12 @@ That means the design should support:
 - enable/disable toggles
 - secure storage of hosted-provider secrets
 
-The frontend should never hold hosted provider API keys for runtime transcription calls.
-
 The likely future data shape is:
 
 - provider-specific integration records for configured providers
 - system-level settings for active provider selection and feature toggles
 
-This phase does not need to finalize that schema, but it should stay compatible with it.
+UI exposure of these settings is intentionally outside the scope of this backend execution phase.
 
 ## 8. Storage Model
 
@@ -339,7 +341,7 @@ The expected schema work for this phase is:
 
 1. expand `VideoTranscriptions`
 2. add transcript-chunk persistence
-3. enable `pgvector` for semantic retrieval support
+3. defer semantic-retrieval schema additions to the later transcript-intelligence phase
 
 #### `VideoTranscriptions`
 
@@ -380,7 +382,6 @@ Suggested fields:
 - `StartSeconds`
 - `EndSeconds`
 - `Content`
-- optional `Embedding`
 - `CreatedAt`
 - `UpdatedAt`
 
@@ -395,7 +396,7 @@ Add indexes for:
 - `IX_VideoTranscriptChunks_TranscriptionId`
 - `IX_VideoTranscriptChunks_VideoId_StartSeconds`
 
-Also plan for:
+Also plan later for:
 
 - PostgreSQL full-text indexing on chunk content
 - `pgvector` indexing for embedding similarity search
@@ -422,9 +423,9 @@ A practical default split is:
 
 That gives the admin UI a meaningful in-flight percentage without turning the database into a high-frequency progress log.
 
-## 9. Transcript Search And Q&A Model
+## 9. Transcript Search Foundation
 
-Transcription should not stop at caption files. To support search and user questions about videos, the system should also derive searchable transcript chunks.
+Transcription should not stop at caption files. To support later search and question-answering work, the system should also derive searchable transcript chunks.
 
 Recommended model:
 
@@ -435,37 +436,14 @@ Recommended model:
   - `StartSeconds`
   - `EndSeconds`
   - chunk text
-  - optional embedding vector
-- support both:
-  - full-text search for keyword matching
-  - semantic/vector retrieval for natural-language questions
 
-The plan is to use PostgreSQL full-text search plus `pgvector` for semantic retrieval.
+Phase 15 delivers:
 
-That means:
+- transcript chunks stored as regular relational rows
+- keyword search over those persisted chunks
+- stable chunk metadata that later retrieval stages can build on
 
-- transcript chunks should be stored as regular relational rows
-- chunk text should support full-text indexing for keyword search
-- embedding vectors should be stored in PostgreSQL using `pgvector`
-- semantic retrieval should use vector similarity over those stored chunk embeddings
-
-### Recommended Retrieval Strategy
-
-Start with a focused transcript-based retrieval approach rather than a large, generic RAG platform.
-
-Suggested rollout:
-
-1. transcript persistence
-2. transcript chunk persistence
-3. full-text transcript search
-4. `pgvector`-backed embeddings and semantic retrieval
-5. grounded Q&A over retrieved chunks
-
-This gives:
-
-- keyword search for exact terms
-- semantic search for concept-level retrieval
-- Q&A that cites the relevant transcript time ranges
+PostgreSQL full-text search, semantic retrieval, embeddings, and grounded Q&A are deferred to Phase 17.
 
 ## 10. API Surface
 
@@ -476,8 +454,6 @@ Add endpoints for:
 - optionally request transcription for a video manually
 - optionally re-run transcription for admins/editors
 - search within a video transcript
-- ask questions about a video using retrieved transcript passages
-
 Suggested examples:
 
 - `GET /api/v1/videos/{videoId}/transcriptions`
@@ -486,7 +462,6 @@ Suggested examples:
 - `POST /api/v1/videos/{videoId}/transcriptions`
 - `POST /api/v1/videos/{videoId}/transcriptions/{transcriptionId}/retry`
 - `GET /api/v1/videos/{videoId}/transcript-search?q=...`
-- `POST /api/v1/videos/{videoId}/questions`
 
 Internal endpoints may also be needed for the Python worker callback, for example:
 
@@ -510,8 +485,8 @@ Plan for:
 - large-file runtime limits
 - language auto-detection inaccuracies
 - reprocessing strategy when a model changes
-- embedding generation cost and storage size
-- search-index refresh behavior after transcript updates
+- later embedding generation cost and storage size
+- later search-index refresh behavior after transcript updates
 
 Do not block upload success on transcription success.
 Transcription should be an asynchronous enhancement, not part of the critical upload contract.
@@ -528,8 +503,7 @@ Add tests for:
 - storage path generation
 - per-format record handling
 - transcript chunk generation
-- transcript search ranking/filtering
-- Q&A retrieval grounding and cited time ranges
+- keyword transcript search behavior
 
 Use a fake transcription provider for most `.NET` tests.
 Python worker smoke tests can be separate and lighter-weight.
@@ -542,7 +516,6 @@ Python worker smoke tests can be separate and lighter-weight.
 - Transcription status is queryable through the API, with live worker status available while jobs are running.
 - Caption retrieval respects existing video authorization rules.
 - Transcript search can return timestamped matches for a video.
-- Video Q&A uses retrieved transcript passages rather than the full raw transcript.
 - The feature is configurable and off by default.
 - Tests cover orchestration, authorization, and failure handling.
 

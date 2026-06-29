@@ -328,6 +328,160 @@ public sealed class TranscriptionUseCaseTests
     }
 
     [Fact]
+    public async Task StartVideoTranscription_ShouldCreateCanonicalRowsAndFailRowsWhenSubmitThrows()
+    {
+        var videoId = Guid.NewGuid();
+        var uploaderId = Guid.NewGuid();
+        var video = Video.Create("Video", null, uploaderId, status: VideoStatus.Ready);
+        SetPrivateProperty(video, nameof(Video.Id), videoId);
+
+        var createdRows = new List<VideoTranscription>();
+
+        var transcriptionsRepo = Substitute.For<IVideoTranscriptionRepository>();
+        transcriptionsRepo.GetByVideoAndStatusAsync(videoId, TranscriptionStatus.Pending, TranscriptionStatus.Processing)
+            .Returns([]);
+        transcriptionsRepo.GetByVideoLanguageAndFormatAsync(videoId, "en", "vtt", Arg.Any<CancellationToken>())
+            .Returns((VideoTranscription?)null);
+        transcriptionsRepo.GetByVideoLanguageAndFormatAsync(videoId, "en", "srt", Arg.Any<CancellationToken>())
+            .Returns((VideoTranscription?)null);
+        transcriptionsRepo.AddAsync(Arg.Any<VideoTranscription>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var row = call.Arg<VideoTranscription>();
+                createdRows.Add(row);
+                return Task.FromResult(row);
+            });
+
+        var videosRepo = Substitute.For<IVideoRepository>();
+        videosRepo.GetByIdAsync(videoId, Arg.Any<CancellationToken>())
+            .Returns(video);
+
+        var filesRepo = Substitute.For<IVideoFileRepository>();
+        filesRepo.GetOriginalByVideoIdAsync(videoId, Arg.Any<CancellationToken>())
+            .Returns(VideoFile.Create(Guid.NewGuid(), Guid.NewGuid(), "videos/source.mp4", 100, "video/mp4"));
+
+        var systemSettings = Substitute.For<ISystemSettingRepository>();
+        systemSettings.GetByKeysAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        unitOfWork.VideoTranscriptions.Returns(transcriptionsRepo);
+        unitOfWork.Videos.Returns(videosRepo);
+        unitOfWork.VideoFiles.Returns(filesRepo);
+        unitOfWork.SystemSettings.Returns(systemSettings);
+
+        var provider = Substitute.For<ITranscriptionProvider>();
+        provider.SubmitAsync(Arg.Any<TranscriptionProviderRequest>(), Arg.Any<CancellationToken>())
+            .Returns<Task<TranscriptionSubmissionResult>>(_ => throw new InvalidOperationException("worker offline"));
+
+        var options = new TranscriptionOptions
+        {
+            Enabled = true,
+            Provider = "local-faster-whisper",
+            CallbackBaseUrl = "http://127.0.0.1:5186"
+        };
+
+        var reconciler = CreateReconciler(unitOfWork, provider);
+        var service = new StartVideoTranscriptionService(
+            unitOfWork,
+            provider,
+            options,
+            new ResolveTranscriptionSettingsService(unitOfWork, options),
+            reconciler,
+            Substitute.For<ILogger<StartVideoTranscriptionService>>());
+
+        var act = () => service.Handle(videoId, "en", ["VTT", "SRT"], CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("worker offline");
+
+        createdRows.Should().HaveCount(2);
+        createdRows.Select(row => row.Format).Should().BeEquivalentTo(["VTT", "SRT"]);
+        createdRows.Select(row => row.StoragePath).Should().BeEquivalentTo(
+        [
+            Path.Combine("videos", videoId.ToString("N"), "transcriptions", "en", "captions.vtt"),
+            Path.Combine("videos", videoId.ToString("N"), "transcriptions", "en", "captions.srt")
+        ]);
+        createdRows.Should().OnlyContain(row =>
+            row.Status == TranscriptionStatus.Failed &&
+            row.FailureReason == "worker offline");
+        await unitOfWork.Received(2).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetVideoTranscriptionFile_ShouldAuthorizeAndOpenCompletedArtifact()
+    {
+        var videoId = Guid.NewGuid();
+        var transcriptionId = Guid.NewGuid();
+
+        var transcription = VideoTranscription.Create(
+            videoId,
+            "en",
+            "vtt",
+            @"videos\video\transcriptions\en\captions.vtt",
+            "local-faster-whisper");
+        transcription.QueueForProcessing(transcription.StoragePath, "local-faster-whisper", "corr-1", "small");
+        transcription.StartProcessing("worker-1");
+        transcription.Complete(transcription.StoragePath, "en", "local-faster-whisper", "small");
+        SetPrivateProperty(transcription, nameof(VideoTranscription.Id), transcriptionId);
+
+        var transcriptionsRepo = Substitute.For<IVideoTranscriptionRepository>();
+        transcriptionsRepo.GetByIdAsync(transcriptionId, Arg.Any<CancellationToken>())
+            .Returns(transcription);
+
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        unitOfWork.VideoTranscriptions.Returns(transcriptionsRepo);
+
+        var currentUser = Substitute.For<ICurrentUserService>();
+        currentUser.UserId.Returns(Guid.NewGuid());
+        currentUser.Role.Returns(UserRole.Viewer);
+        currentUser.IsAuthenticated.Returns(true);
+
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.CanViewVideoAsync(videoId, currentUser.UserId, currentUser.Role, null, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        using var stream = new MemoryStream();
+        var descriptor = new StoredFileDescriptor(stream, "text/vtt", "captions.vtt", 12);
+
+        var storage = Substitute.For<IStorageService>();
+        storage.OpenReadAsync(transcription.StoragePath, "text/vtt", Arg.Any<CancellationToken>())
+            .Returns(descriptor);
+
+        var service = new GetVideoTranscriptionFileService(unitOfWork, currentUser, authorization, storage);
+
+        var result = await service.Handle(videoId, transcriptionId, null, CancellationToken.None);
+
+        result.Should().BeSameAs(descriptor);
+        await storage.Received(1).OpenReadAsync(transcription.StoragePath, "text/vtt", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetVideoTranscriptionFile_ShouldRejectUnauthorizedViewer()
+    {
+        var videoId = Guid.NewGuid();
+        var transcriptionId = Guid.NewGuid();
+
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var currentUser = Substitute.For<ICurrentUserService>();
+        currentUser.UserId.Returns(Guid.NewGuid());
+        currentUser.Role.Returns(UserRole.Viewer);
+        currentUser.IsAuthenticated.Returns(true);
+
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.CanViewVideoAsync(videoId, currentUser.UserId, currentUser.Role, null, Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        var storage = Substitute.For<IStorageService>();
+        var service = new GetVideoTranscriptionFileService(unitOfWork, currentUser, authorization, storage);
+
+        var act = () => service.Handle(videoId, transcriptionId, null, CancellationToken.None);
+
+        await act.Should().ThrowAsync<System.UnauthorizedAccessException>();
+        await storage.DidNotReceive().OpenReadAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task CompleteVideoTranscriptionCallback_ShouldImportArtifactsAndPersistTranscriptChunks()
     {
         var videoId = Guid.NewGuid();
@@ -414,6 +568,72 @@ public sealed class TranscriptionUseCaseTests
             persistedChunks.Should().HaveCount(2);
             persistedChunks.Should().OnlyContain(chunk => chunk.VideoId == videoId && chunk.TranscriptionId == vttRow.Id && chunk.Language == "en");
             persistedChunks.Select(chunk => chunk.Content).Should().BeEquivalentTo(["Hello there", "General Kenobi"]);
+            await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public async Task CompleteVideoTranscriptionCallback_ShouldFailRowsWhenExpectedArtifactIsMissing()
+    {
+        var videoId = Guid.NewGuid();
+        var correlationId = "corr-1";
+        var workerJobId = "job-1";
+
+        var vttRow = VideoTranscription.Create(videoId, "auto", "vtt", @"videos\video\captions.vtt", "local-faster-whisper");
+        vttRow.QueueForProcessing(vttRow.StoragePath, "local-faster-whisper", correlationId, "medium");
+        vttRow.StartProcessing(workerJobId);
+
+        var srtRow = VideoTranscription.Create(videoId, "auto", "srt", @"videos\video\captions.srt", "local-faster-whisper");
+        srtRow.QueueForProcessing(srtRow.StoragePath, "local-faster-whisper", correlationId, "medium");
+        srtRow.StartProcessing(workerJobId);
+
+        var transcriptionsRepo = Substitute.For<IVideoTranscriptionRepository>();
+        transcriptionsRepo.GetByWorkerJobIdAsync(workerJobId, Arg.Any<CancellationToken>())
+            .Returns([vttRow, srtRow]);
+
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        unitOfWork.VideoTranscriptions.Returns(transcriptionsRepo);
+        unitOfWork.VideoTranscriptChunks.Returns(Substitute.For<IVideoTranscriptChunkRepository>());
+
+        var storageService = Substitute.For<IStorageService>();
+        storageService.ImportFileAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.ArgAt<string>(1));
+
+        var tempDir = Path.Combine(Path.GetTempPath(), $"streamforge-transcription-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var vttPath = Path.Combine(tempDir, "captions.vtt");
+            await File.WriteAllTextAsync(vttPath, "WEBVTT");
+
+            var service = new CompleteVideoTranscriptionCallbackService(
+                unitOfWork,
+                storageService,
+                Substitute.For<ILogger<CompleteVideoTranscriptionCallbackService>>());
+
+            await service.Handle(
+                new TranscriptionCallbackRequestDto(
+                    correlationId,
+                    videoId,
+                    workerJobId,
+                    "completed",
+                    "en",
+                    [
+                        new TranscriptionCallbackArtifactDto("local_path", vttPath)
+                    ],
+                    null,
+                    "local-faster-whisper",
+                    "medium"),
+                CancellationToken.None);
+
+            vttRow.Status.Should().Be(TranscriptionStatus.Completed);
+            srtRow.Status.Should().Be(TranscriptionStatus.Failed);
+            srtRow.FailureReason.Should().Contain("Expected caption artifact");
             await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
         }
         finally
