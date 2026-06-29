@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using StreamForge.Application.DTOs.Content;
 using StreamForge.Application.DTOs.Processing;
 using StreamForge.Application.DTOs.Transcriptions;
 using StreamForge.Application.UseCases.Processing;
@@ -42,15 +43,15 @@ public sealed class AdminProcessingController : ControllerBase
     }
 
     [HttpGet("transcription-jobs")]
-    public async Task<ActionResult<IReadOnlyList<VideoTranscriptionJobDto>>> ListTranscriptionJobs(
-        [FromQuery] string? status,
+    public async Task<ActionResult<PagedResponseDto<AdminTranscriptionJobDto>>> ListTranscriptionJobs(
+        [FromQuery] AdminTranscriptionJobsQueryDto query,
         CancellationToken cancellationToken)
     {
-        return Ok(await _listAdminTranscriptionJobs.Handle(status, cancellationToken));
+        return Ok(await _listAdminTranscriptionJobs.Handle(query, cancellationToken));
     }
 
     [HttpGet("transcription-jobs/{jobKey}")]
-    public async Task<ActionResult<VideoTranscriptionJobDto>> GetTranscriptionJob(
+    public async Task<ActionResult<AdminTranscriptionJobDto>> GetTranscriptionJob(
         string jobKey,
         CancellationToken cancellationToken)
     {
@@ -58,7 +59,7 @@ public sealed class AdminProcessingController : ControllerBase
     }
 
     [HttpPost("transcription-jobs/{jobKey}/retry")]
-    public async Task<ActionResult<VideoTranscriptionJobDto>> RetryTranscriptionJob(
+    public async Task<ActionResult<AdminTranscriptionJobDto>> RetryTranscriptionJob(
         string jobKey,
         CancellationToken cancellationToken)
     {
@@ -66,7 +67,7 @@ public sealed class AdminProcessingController : ControllerBase
     }
 
     [HttpPost("transcription-jobs/{jobKey}/resync")]
-    public async Task<ActionResult<VideoTranscriptionJobDto>> ResyncTranscriptionJob(
+    public async Task<ActionResult<AdminTranscriptionJobDto>> ResyncTranscriptionJob(
         string jobKey,
         CancellationToken cancellationToken)
     {
@@ -74,11 +75,11 @@ public sealed class AdminProcessingController : ControllerBase
     }
 
     [HttpGet("video-jobs")]
-    public async Task<ActionResult<IReadOnlyList<AdminVideoProcessingJobDto>>> ListVideoJobs(
-        [FromQuery] string? status,
+    public async Task<ActionResult<PagedResponseDto<AdminVideoProcessingJobDto>>> ListVideoJobs(
+        [FromQuery] AdminVideoProcessingJobsQueryDto query,
         CancellationToken cancellationToken)
     {
-        return Ok(await _listAdminVideoProcessingJobs.Handle(status, cancellationToken));
+        return Ok(await _listAdminVideoProcessingJobs.Handle(query, cancellationToken));
     }
 
     [HttpGet("video-jobs/{jobKey}")]

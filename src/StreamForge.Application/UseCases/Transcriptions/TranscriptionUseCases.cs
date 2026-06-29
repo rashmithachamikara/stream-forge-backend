@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using StreamForge.Application.Common;
+using StreamForge.Application.DTOs.Content;
 using StreamForge.Application.DTOs.Transcriptions;
 using StreamForge.Application.Interfaces;
 using StreamForge.Domain.Entities;
@@ -508,28 +509,27 @@ public sealed class ListAdminTranscriptionJobsService
         _reconcileTranscriptionOrphans = reconcileTranscriptionOrphans;
     }
 
-    public async Task<IReadOnlyList<VideoTranscriptionJobDto>> Handle(
-        string? status,
+    public async Task<PagedResponseDto<AdminTranscriptionJobDto>> Handle(
+        AdminTranscriptionJobsQueryDto request,
         CancellationToken cancellationToken)
     {
-        IReadOnlyList<VideoTranscription> transcriptions;
+        var query = AdminTranscriptionQueryParser.Parse(request);
+        var transcriptions = await _unitOfWork.VideoTranscriptions.QueryAdminRowsAsync(query, cancellationToken);
+        var grouped = TranscriptionMapper.SortAdminGroups(TranscriptionMapper.GroupJobs(transcriptions), query.SortBy, query.SortDescending);
+        var totalCount = grouped.Count;
+        var pageItems = grouped
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .SelectMany(group => group.Rows)
+            .ToArray();
 
-        if (string.IsNullOrWhiteSpace(status))
-        {
-            transcriptions = await _unitOfWork.VideoTranscriptions.GetAllOrderedAsync(cancellationToken);
-        }
-        else if (Enum.TryParse<TranscriptionStatus>(status.Trim(), true, out var parsedStatus))
-        {
-            transcriptions = await _unitOfWork.VideoTranscriptions.GetByStatusesAsync(cancellationToken, parsedStatus);
-        }
-        else
-        {
-            throw new InvalidOperationException("Unsupported transcription status filter.");
-        }
-
-        await _reconcileTranscriptionOrphans.ReconcileRowsAsync(transcriptions, cancellationToken);
-        var liveStatuses = await TranscriptionMapper.GetLiveStatusesAsync(transcriptions, _transcriptionProvider, cancellationToken);
-        return TranscriptionMapper.ToJobDtos(transcriptions, liveStatuses);
+        await _reconcileTranscriptionOrphans.ReconcileRowsAsync(pageItems, cancellationToken);
+        var liveStatuses = await TranscriptionMapper.GetLiveStatusesAsync(pageItems, _transcriptionProvider, cancellationToken);
+        var jobs = TranscriptionMapper.SortAdminDtos(
+            TranscriptionMapper.ToAdminJobDtos(pageItems, liveStatuses),
+            query.SortBy,
+            query.SortDescending);
+        return PagedResponses.Create(jobs, query.Page, query.PageSize, totalCount);
     }
 }
 
@@ -549,7 +549,7 @@ public sealed class GetAdminTranscriptionJobService
         _reconcileTranscriptionOrphans = reconcileTranscriptionOrphans;
     }
 
-    public async Task<VideoTranscriptionJobDto> Handle(
+    public async Task<AdminTranscriptionJobDto> Handle(
         string jobKey,
         CancellationToken cancellationToken)
     {
@@ -561,7 +561,7 @@ public sealed class GetAdminTranscriptionJobService
 
         await _reconcileTranscriptionOrphans.ReconcileRowsAsync(transcriptions, cancellationToken);
         var liveStatuses = await TranscriptionMapper.GetLiveStatusesAsync(transcriptions, _transcriptionProvider, cancellationToken);
-        return TranscriptionMapper.ToJobDtos(transcriptions, liveStatuses).Single();
+        return TranscriptionMapper.ToAdminJobDtos(transcriptions, liveStatuses).Single();
     }
 }
 
@@ -581,7 +581,7 @@ public sealed class RetryAdminTranscriptionJobService
         _transcriptionProvider = transcriptionProvider;
     }
 
-    public async Task<VideoTranscriptionJobDto> Handle(
+    public async Task<AdminTranscriptionJobDto> Handle(
         string jobKey,
         CancellationToken cancellationToken)
     {
@@ -613,7 +613,7 @@ public sealed class RetryAdminTranscriptionJobService
             cancellationToken);
 
         var liveStatuses = await TranscriptionMapper.GetLiveStatusesAsync(refreshed, _transcriptionProvider, cancellationToken);
-        return TranscriptionMapper.ToJobDtos(refreshed, liveStatuses).Single();
+        return TranscriptionMapper.ToAdminJobDtos(refreshed, liveStatuses).Single();
     }
 }
 
@@ -633,7 +633,7 @@ public sealed class ResyncAdminTranscriptionJobService
         _completeVideoTranscriptionCallbackService = completeVideoTranscriptionCallbackService;
     }
 
-    public async Task<VideoTranscriptionJobDto> Handle(
+    public async Task<AdminTranscriptionJobDto> Handle(
         string jobKey,
         CancellationToken cancellationToken)
     {
@@ -647,14 +647,14 @@ public sealed class ResyncAdminTranscriptionJobService
         if (string.IsNullOrWhiteSpace(primary.WorkerJobId))
         {
             var emptyStatuses = TranscriptionMapper.EmptyLiveStatuses;
-            return TranscriptionMapper.ToJobDtos(transcriptions, emptyStatuses).Single();
+            return TranscriptionMapper.ToAdminJobDtos(transcriptions, emptyStatuses).Single();
         }
 
         var liveStatus = await _transcriptionProvider.GetJobStatusAsync(primary.WorkerJobId, cancellationToken);
         if (liveStatus is null)
         {
             var emptyStatuses = TranscriptionMapper.EmptyLiveStatuses;
-            return TranscriptionMapper.ToJobDtos(transcriptions, emptyStatuses).Single();
+            return TranscriptionMapper.ToAdminJobDtos(transcriptions, emptyStatuses).Single();
         }
 
         if (string.Equals(liveStatus.Status, "completed", StringComparison.OrdinalIgnoreCase))
@@ -688,7 +688,7 @@ public sealed class ResyncAdminTranscriptionJobService
 
         var refreshed = await TranscriptionAdminJobResolver.ResolveRowsAsync(_unitOfWork, jobKey, cancellationToken);
         var refreshedStatuses = await TranscriptionMapper.GetLiveStatusesAsync(refreshed, _transcriptionProvider, cancellationToken);
-        return TranscriptionMapper.ToJobDtos(refreshed, refreshedStatuses).Single();
+        return TranscriptionMapper.ToAdminJobDtos(refreshed, refreshedStatuses).Single();
     }
 }
 
@@ -962,6 +962,61 @@ public static class TranscriptionMapper
         IReadOnlyCollection<VideoTranscription> transcriptions,
         IReadOnlyDictionary<string, TranscriptionProviderJobStatus> liveStatuses)
     {
+        return GroupJobs(transcriptions)
+            .Select(group =>
+            {
+                var liveStatus = ResolveLiveStatus(group.Primary, liveStatuses);
+
+                return new VideoTranscriptionJobDto(
+                    GetClientJobKey(group.Primary),
+                    group.Primary.VideoId,
+                    group.Primary.Language,
+                    ResolveJobStatus(group.Rows, liveStatus),
+                    group.Primary.Source,
+                    group.Primary.CorrelationId,
+                    group.Primary.WorkerJobId,
+                    group.Primary.Model,
+                    ResolveFailureReason(group.Rows),
+                    group.CreatedAt,
+                    group.UpdatedAt,
+                    liveStatus,
+                    ToArtifactDtos(group.Rows));
+            })
+            .OrderByDescending(job => job.CreatedAt)
+            .ToArray();
+    }
+
+    public static IReadOnlyList<AdminTranscriptionJobDto> ToAdminJobDtos(
+        IReadOnlyCollection<VideoTranscription> transcriptions,
+        IReadOnlyDictionary<string, TranscriptionProviderJobStatus> liveStatuses)
+    {
+        return GroupJobs(transcriptions)
+            .Select(group =>
+            {
+                var liveStatus = ResolveLiveStatus(group.Primary, liveStatuses);
+
+                return new AdminTranscriptionJobDto(
+                    GetClientJobKey(group.Primary),
+                    group.Primary.VideoId,
+                    group.Primary.Video?.Title ?? string.Empty,
+                    group.Primary.Language,
+                    ResolveJobStatus(group.Rows, liveStatus),
+                    group.Primary.Source,
+                    group.Primary.CorrelationId,
+                    group.Primary.WorkerJobId,
+                    group.Primary.Model,
+                    ResolveFailureReason(group.Rows),
+                    group.CreatedAt,
+                    group.UpdatedAt,
+                    liveStatus,
+                    ToArtifactDtos(group.Rows));
+            })
+            .OrderByDescending(job => job.CreatedAt)
+            .ToArray();
+    }
+
+    public static IReadOnlyList<TranscriptionJobGroup> GroupJobs(IReadOnlyCollection<VideoTranscription> transcriptions)
+    {
         return transcriptions
             .GroupBy(GetJobGroupKey)
             .Select(group =>
@@ -971,34 +1026,55 @@ public static class TranscriptionMapper
                     .ThenBy(transcription => transcription.Format)
                     .ToArray();
 
-                var primary = ordered[0];
-                var liveStatus = ResolveLiveStatus(primary, liveStatuses);
-
-                return new VideoTranscriptionJobDto(
-                    GetClientJobKey(primary),
-                    primary.VideoId,
-                    primary.Language,
-                    ResolveJobStatus(ordered, liveStatus),
-                    primary.Source,
-                    primary.CorrelationId,
-                    primary.WorkerJobId,
-                    primary.Model,
-                    ResolveFailureReason(ordered),
+                return new TranscriptionJobGroup(
+                    ordered[0],
+                    ordered,
                     ordered.Min(transcription => transcription.CreatedAt),
-                    ordered.Max(transcription => transcription.UpdatedAt),
-                    liveStatus,
-                    ordered
-                        .Select(transcription => new VideoTranscriptionArtifactDto(
-                            transcription.Id,
-                            transcription.Format,
-                            transcription.Status.ToString(),
-                            transcription.FailureReason,
-                            transcription.CreatedAt,
-                            transcription.UpdatedAt))
-                        .ToArray());
+                    ordered.Max(transcription => transcription.UpdatedAt));
             })
-            .OrderByDescending(job => job.CreatedAt)
             .ToArray();
+    }
+
+    public static IReadOnlyList<TranscriptionJobGroup> SortAdminGroups(
+        IReadOnlyList<TranscriptionJobGroup> groups,
+        string sortBy,
+        bool sortDescending)
+    {
+        return (sortBy.Trim().ToLowerInvariant(), sortDescending) switch
+        {
+            ("createdat", true) => groups.OrderByDescending(group => group.CreatedAt).ThenByDescending(group => group.Primary.Id).ToArray(),
+            ("createdat", false) => groups.OrderBy(group => group.CreatedAt).ThenBy(group => group.Primary.Id).ToArray(),
+            ("updatedat", true) => groups.OrderByDescending(group => group.UpdatedAt).ThenByDescending(group => group.Primary.Id).ToArray(),
+            ("updatedat", false) => groups.OrderBy(group => group.UpdatedAt).ThenBy(group => group.Primary.Id).ToArray(),
+            ("language", true) => groups.OrderByDescending(group => group.Primary.Language).ThenByDescending(group => group.Primary.Id).ToArray(),
+            ("language", false) => groups.OrderBy(group => group.Primary.Language).ThenBy(group => group.Primary.Id).ToArray(),
+            ("status", true) => groups.OrderByDescending(group => ResolveJobStatus(group.Rows, null)).ThenByDescending(group => group.Primary.Id).ToArray(),
+            ("status", false) => groups.OrderBy(group => ResolveJobStatus(group.Rows, null)).ThenBy(group => group.Primary.Id).ToArray(),
+            ("videotitle", true) => groups.OrderByDescending(group => group.Primary.Video?.Title ?? string.Empty).ThenByDescending(group => group.Primary.Id).ToArray(),
+            ("videotitle", false) => groups.OrderBy(group => group.Primary.Video?.Title ?? string.Empty).ThenBy(group => group.Primary.Id).ToArray(),
+            _ => throw new ArgumentException("Unsupported transcription sortBy value.", nameof(sortBy))
+        };
+    }
+
+    public static IReadOnlyList<AdminTranscriptionJobDto> SortAdminDtos(
+        IReadOnlyList<AdminTranscriptionJobDto> jobs,
+        string sortBy,
+        bool sortDescending)
+    {
+        return (sortBy.Trim().ToLowerInvariant(), sortDescending) switch
+        {
+            ("createdat", true) => jobs.OrderByDescending(job => job.CreatedAt).ThenByDescending(job => job.JobKey).ToArray(),
+            ("createdat", false) => jobs.OrderBy(job => job.CreatedAt).ThenBy(job => job.JobKey).ToArray(),
+            ("updatedat", true) => jobs.OrderByDescending(job => job.UpdatedAt).ThenByDescending(job => job.JobKey).ToArray(),
+            ("updatedat", false) => jobs.OrderBy(job => job.UpdatedAt).ThenBy(job => job.JobKey).ToArray(),
+            ("language", true) => jobs.OrderByDescending(job => job.Language).ThenByDescending(job => job.JobKey).ToArray(),
+            ("language", false) => jobs.OrderBy(job => job.Language).ThenBy(job => job.JobKey).ToArray(),
+            ("status", true) => jobs.OrderByDescending(job => job.Status).ThenByDescending(job => job.JobKey).ToArray(),
+            ("status", false) => jobs.OrderBy(job => job.Status).ThenBy(job => job.JobKey).ToArray(),
+            ("videotitle", true) => jobs.OrderByDescending(job => job.VideoTitle).ThenByDescending(job => job.JobKey).ToArray(),
+            ("videotitle", false) => jobs.OrderBy(job => job.VideoTitle).ThenBy(job => job.JobKey).ToArray(),
+            _ => throw new ArgumentException("Unsupported transcription sortBy value.", nameof(sortBy))
+        };
     }
 
     private static string GetJobGroupKey(VideoTranscription transcription)
@@ -1093,6 +1169,25 @@ public static class TranscriptionMapper
             liveStatus.MediaDurationSeconds,
             liveStatus.TranscribedUntilSeconds);
     }
+
+    private static IReadOnlyList<VideoTranscriptionArtifactDto> ToArtifactDtos(IReadOnlyCollection<VideoTranscription> transcriptions)
+    {
+        return transcriptions
+            .Select(transcription => new VideoTranscriptionArtifactDto(
+                transcription.Id,
+                transcription.Format,
+                transcription.Status.ToString(),
+                transcription.FailureReason,
+                transcription.CreatedAt,
+                transcription.UpdatedAt))
+            .ToArray();
+    }
+
+    public sealed record TranscriptionJobGroup(
+        VideoTranscription Primary,
+        IReadOnlyList<VideoTranscription> Rows,
+        DateTime CreatedAt,
+        DateTime? UpdatedAt);
 }
 
 internal static class TranscriptionGuards
@@ -1143,7 +1238,7 @@ internal static class TranscriptionAdminJobResolver
 
         if (Guid.TryParse(jobKey, out var rowId))
         {
-            var row = await unitOfWork.VideoTranscriptions.GetByIdAsync(rowId, cancellationToken);
+            var row = await unitOfWork.VideoTranscriptions.GetWithVideoAsync(rowId, cancellationToken);
             if (row is not null)
             {
                 return [row];
@@ -1192,5 +1287,85 @@ internal static class TranscriptionAdminJobResolver
         }
 
         return rows;
+    }
+}
+
+internal static class AdminTranscriptionQueryParser
+{
+    public static AdminTranscriptionJobsQuery Parse(AdminTranscriptionJobsQueryDto request)
+    {
+        var status = ParseStatus(request.Status);
+        var sortBy = ParseSortBy(request.SortBy);
+        var sortDescending = ParseSortDirection(request.SortDirection);
+        ValidateRange(request.CreatedFrom, request.CreatedTo, "created");
+
+        return new AdminTranscriptionJobsQuery(
+            PagedResponses.NormalizePage(request.Page),
+            PagedResponses.NormalizePageSize(request.PageSize),
+            status,
+            request.VideoId,
+            request.UploaderUserId,
+            request.Search?.Trim(),
+            request.CreatedFrom,
+            request.CreatedTo,
+            request.HasError,
+            request.Provider?.Trim(),
+            request.Language?.Trim(),
+            request.Format?.Trim(),
+            request.Source?.Trim(),
+            sortBy,
+            sortDescending);
+    }
+
+    private static TranscriptionStatus? ParseStatus(string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status))
+        {
+            return null;
+        }
+
+        if (Enum.TryParse<TranscriptionStatus>(status.Trim(), true, out var parsedStatus))
+        {
+            return parsedStatus;
+        }
+
+        throw new InvalidOperationException("Unsupported transcription status filter.");
+    }
+
+    private static string ParseSortBy(string? sortBy)
+    {
+        var normalized = string.IsNullOrWhiteSpace(sortBy) ? "createdAt" : sortBy.Trim();
+        return normalized.ToLowerInvariant() switch
+        {
+            "createdat" => "createdAt",
+            "updatedat" => "updatedAt",
+            "language" => "language",
+            "status" => "status",
+            "videotitle" => "videoTitle",
+            _ => throw new ArgumentException("Unsupported transcription sortBy value.", nameof(sortBy))
+        };
+    }
+
+    private static bool ParseSortDirection(string? sortDirection)
+    {
+        if (string.IsNullOrWhiteSpace(sortDirection))
+        {
+            return true;
+        }
+
+        return sortDirection.Trim().ToLowerInvariant() switch
+        {
+            "desc" => true,
+            "asc" => false,
+            _ => throw new ArgumentException("Unsupported sortDirection value.", nameof(sortDirection))
+        };
+    }
+
+    private static void ValidateRange(DateTime? from, DateTime? to, string fieldName)
+    {
+        if (from.HasValue && to.HasValue && from.Value > to.Value)
+        {
+            throw new ArgumentException($"The {fieldName} from date must be earlier than or equal to the to date.");
+        }
     }
 }

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using StreamForge.Application.DTOs.Processing;
 using StreamForge.Application.Interfaces;
 using StreamForge.Application.Common;
+using StreamForge.Application.DTOs.Content;
 using StreamForge.Application.UseCases.Transcriptions;
 using StreamForge.Domain.Entities;
 using StreamForge.Domain.Enums;
@@ -189,27 +190,15 @@ public sealed class ListAdminVideoProcessingJobsService
         _reconciler = reconciler;
     }
 
-    public async Task<IReadOnlyList<AdminVideoProcessingJobDto>> Handle(
-        string? status,
+    public async Task<PagedResponseDto<AdminVideoProcessingJobDto>> Handle(
+        AdminVideoProcessingJobsQueryDto request,
         CancellationToken cancellationToken)
     {
-        IReadOnlyList<VideoProcessingJob> jobs;
+        var query = AdminVideoProcessingQueryParser.Parse(request);
+        var result = await _unitOfWork.VideoProcessingJobs.QueryAdminAsync(query, cancellationToken);
 
-        if (string.IsNullOrWhiteSpace(status))
-        {
-            jobs = await _unitOfWork.VideoProcessingJobs.GetAllOrderedAsync(cancellationToken);
-        }
-        else if (Enum.TryParse<ProcessingJobStatus>(status.Trim(), true, out var parsedStatus))
-        {
-            jobs = await _unitOfWork.VideoProcessingJobs.GetByStatusesAsync(cancellationToken, parsedStatus);
-        }
-        else
-        {
-            throw new InvalidOperationException("Unsupported video processing status filter.");
-        }
-
-        await _reconciler.HandleMany(jobs, cancellationToken);
-        return jobs.Select(VideoProcessingAdminMapper.ToAdminDto).ToArray();
+        await _reconciler.HandleMany(result.Items, cancellationToken);
+        return PagedResponses.Map(result, VideoProcessingAdminMapper.ToAdminDto);
     }
 }
 
@@ -547,6 +536,89 @@ internal static class VideoProcessingAdminMapper
             job.StartedAt,
             job.CompletedAt,
             job.Video?.Status.ToString() ?? string.Empty);
+}
+
+internal static class AdminVideoProcessingQueryParser
+{
+    public static AdminVideoProcessingJobsQuery Parse(AdminVideoProcessingJobsQueryDto request)
+    {
+        var status = ParseStatus(request.Status);
+        var sortBy = ParseSortBy(request.SortBy);
+        var sortDescending = ParseSortDirection(request.SortDirection);
+
+        ValidateRange(request.CreatedFrom, request.CreatedTo, "created");
+        ValidateRange(request.StartedFrom, request.StartedTo, "started");
+        ValidateRange(request.CompletedFrom, request.CompletedTo, "completed");
+
+        return new AdminVideoProcessingJobsQuery(
+            PagedResponses.NormalizePage(request.Page),
+            PagedResponses.NormalizePageSize(request.PageSize),
+            status,
+            request.VideoId,
+            request.UploaderUserId,
+            request.Search?.Trim(),
+            request.CreatedFrom,
+            request.CreatedTo,
+            request.StartedFrom,
+            request.StartedTo,
+            request.CompletedFrom,
+            request.CompletedTo,
+            request.HasError,
+            sortBy,
+            sortDescending);
+    }
+
+    private static ProcessingJobStatus? ParseStatus(string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status))
+        {
+            return null;
+        }
+
+        if (Enum.TryParse<ProcessingJobStatus>(status.Trim(), true, out var parsedStatus))
+        {
+            return parsedStatus;
+        }
+
+        throw new InvalidOperationException("Unsupported video processing status filter.");
+    }
+
+    private static string ParseSortBy(string? sortBy)
+    {
+        var normalized = string.IsNullOrWhiteSpace(sortBy) ? "createdAt" : sortBy.Trim();
+        return normalized.ToLowerInvariant() switch
+        {
+            "createdat" => "createdAt",
+            "startedat" => "startedAt",
+            "completedat" => "completedAt",
+            "progress" => "progress",
+            "videotitle" => "videoTitle",
+            _ => throw new ArgumentException("Unsupported video processing sortBy value.", nameof(sortBy))
+        };
+    }
+
+    private static bool ParseSortDirection(string? sortDirection)
+    {
+        if (string.IsNullOrWhiteSpace(sortDirection))
+        {
+            return true;
+        }
+
+        return sortDirection.Trim().ToLowerInvariant() switch
+        {
+            "desc" => true,
+            "asc" => false,
+            _ => throw new ArgumentException("Unsupported sortDirection value.", nameof(sortDirection))
+        };
+    }
+
+    private static void ValidateRange(DateTime? from, DateTime? to, string fieldName)
+    {
+        if (from.HasValue && to.HasValue && from.Value > to.Value)
+        {
+            throw new ArgumentException($"The {fieldName} from date must be earlier than or equal to the to date.");
+        }
+    }
 }
 
 public sealed class GetStreamingAssetService

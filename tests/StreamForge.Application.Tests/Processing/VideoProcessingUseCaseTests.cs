@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using StreamForge.Application.Common;
+using StreamForge.Application.DTOs.Processing;
 using StreamForge.Application.Interfaces;
 using StreamForge.Application.UseCases.Processing;
 using StreamForge.Application.UseCases.Transcriptions;
@@ -25,7 +26,8 @@ public sealed class VideoProcessingUseCaseTests
         AttachJobToVideo(newerJob, newerVideo);
 
         var jobs = Substitute.For<IVideoProcessingJobRepository>();
-        jobs.GetAllOrderedAsync(Arg.Any<CancellationToken>()).Returns([newerJob, olderJob]);
+        jobs.QueryAdminAsync(Arg.Any<AdminVideoProcessingJobsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new PagedQueryResult<VideoProcessingJob>([newerJob, olderJob], 2, 1, 25));
 
         var versions = Substitute.For<IVideoVersionRepository>();
         versions.GetByVideoIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -48,11 +50,32 @@ public sealed class VideoProcessingUseCaseTests
             unitOfWork,
             new ReconcileVideoProcessingOrphansService(unitOfWork, runtimeMonitor));
 
-        var result = await service.Handle(null, CancellationToken.None);
+        var result = await service.Handle(new AdminVideoProcessingJobsQueryDto(), CancellationToken.None);
 
-        result.Select(job => job.JobKey).Should().Equal(newerJob.Id.ToString(), olderJob.Id.ToString());
-        result[0].VideoTitle.Should().Be("Newer Video");
-        result[0].VideoStatus.Should().Be(VideoStatus.Processing.ToString());
+        result.Items.Select(job => job.JobKey).Should().Equal(newerJob.Id.ToString(), olderJob.Id.ToString());
+        result.Items[0].VideoTitle.Should().Be("Newer Video");
+        result.Items[0].VideoStatus.Should().Be(VideoStatus.Processing.ToString());
+        result.Page.Should().Be(1);
+        result.PageSize.Should().Be(25);
+        result.TotalCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task ListAdminVideoProcessingJobs_ShouldRejectUnsupportedSortBy()
+    {
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var service = new ListAdminVideoProcessingJobsService(
+            unitOfWork,
+            new ReconcileVideoProcessingOrphansService(unitOfWork, Substitute.For<IVideoProcessingRuntimeMonitor>()));
+
+        var act = () => service.Handle(
+            new AdminVideoProcessingJobsQueryDto
+            {
+                SortBy = "status"
+            },
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<ArgumentException>();
     }
 
     [Fact]

@@ -6,6 +6,7 @@ namespace StreamForge.Domain.Interfaces;
 public interface IVideoTranscriptionRepository : IRepository<VideoTranscription>
 {
     Task<IReadOnlyList<VideoTranscription>> GetByVideoIdAsync(Guid videoId, CancellationToken cancellationToken = default);
+    Task<VideoTranscription?> GetWithVideoAsync(Guid transcriptionId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<VideoTranscription>> GetByVideoAndStatusAsync(
         Guid videoId,
@@ -31,4 +32,8 @@ public interface IVideoTranscriptionRepository : IRepository<VideoTranscription>
     Task<IReadOnlyList<VideoTranscription>> GetByStatusesAsync(
         CancellationToken cancellationToken = default,
         params TranscriptionStatus[] statuses);
+
+    Task<IReadOnlyList<VideoTranscription>> QueryAdminRowsAsync(
+        AdminTranscriptionJobsQuery query,
+        CancellationToken cancellationToken = default);
 }

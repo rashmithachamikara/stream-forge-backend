@@ -90,7 +90,7 @@ public sealed class VideoProcessingJobRepository : BaseRepository<VideoProcessin
 
     public Task<VideoProcessingJob?> GetLatestByVideoIdAsync(Guid videoId, CancellationToken cancellationToken = default) =>
         DbSet
-            .AsNoTracking()
+            .Include(job => job.Video)
             .Where(job => job.VideoId == videoId)
             .OrderByDescending(job => job.CreatedAt)
             .ThenByDescending(job => job.Id)
@@ -125,5 +125,109 @@ public sealed class VideoProcessingJobRepository : BaseRepository<VideoProcessin
             .OrderByDescending(job => job.CreatedAt)
             .ThenByDescending(job => job.Id)
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<PagedQueryResult<VideoProcessingJob>> QueryAdminAsync(
+        AdminVideoProcessingJobsQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        var itemsQuery = DbSet
+            .AsNoTracking()
+            .Include(job => job.Video)
+            .AsQueryable();
+
+        if (query.Status.HasValue)
+        {
+            itemsQuery = itemsQuery.Where(job => job.Status == query.Status.Value);
+        }
+
+        if (query.VideoId.HasValue)
+        {
+            itemsQuery = itemsQuery.Where(job => job.VideoId == query.VideoId.Value);
+        }
+
+        if (query.UploaderUserId.HasValue)
+        {
+            itemsQuery = itemsQuery.Where(job => job.Video.UploaderId == query.UploaderUserId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var normalizedSearch = query.Search.Trim();
+            var pattern = $"%{normalizedSearch}%";
+            var hasJobId = Guid.TryParse(normalizedSearch, out var parsedJobId);
+
+            itemsQuery = itemsQuery.Where(job =>
+                EF.Functions.ILike(job.Video.Title, pattern) ||
+                (hasJobId && job.Id == parsedJobId));
+        }
+
+        if (query.CreatedFrom.HasValue)
+        {
+            itemsQuery = itemsQuery.Where(job => job.CreatedAt >= query.CreatedFrom.Value);
+        }
+
+        if (query.CreatedTo.HasValue)
+        {
+            itemsQuery = itemsQuery.Where(job => job.CreatedAt <= query.CreatedTo.Value);
+        }
+
+        if (query.StartedFrom.HasValue)
+        {
+            itemsQuery = itemsQuery.Where(job => job.StartedAt.HasValue && job.StartedAt.Value >= query.StartedFrom.Value);
+        }
+
+        if (query.StartedTo.HasValue)
+        {
+            itemsQuery = itemsQuery.Where(job => job.StartedAt.HasValue && job.StartedAt.Value <= query.StartedTo.Value);
+        }
+
+        if (query.CompletedFrom.HasValue)
+        {
+            itemsQuery = itemsQuery.Where(job => job.CompletedAt.HasValue && job.CompletedAt.Value >= query.CompletedFrom.Value);
+        }
+
+        if (query.CompletedTo.HasValue)
+        {
+            itemsQuery = itemsQuery.Where(job => job.CompletedAt.HasValue && job.CompletedAt.Value <= query.CompletedTo.Value);
+        }
+
+        if (query.HasError.HasValue)
+        {
+            itemsQuery = query.HasError.Value
+                ? itemsQuery.Where(job => job.ErrorMessage != null && job.ErrorMessage != string.Empty)
+                : itemsQuery.Where(job => job.ErrorMessage == null || job.ErrorMessage == string.Empty);
+        }
+
+        itemsQuery = ApplyAdminSort(itemsQuery, query.SortBy, query.SortDescending);
+
+        var totalCount = await itemsQuery.CountAsync(cancellationToken);
+        var items = await itemsQuery
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .ToListAsync(cancellationToken);
+
+        return new PagedQueryResult<VideoProcessingJob>(items, totalCount, query.Page, query.PageSize);
+    }
+
+    private static IQueryable<VideoProcessingJob> ApplyAdminSort(
+        IQueryable<VideoProcessingJob> query,
+        string sortBy,
+        bool sortDescending)
+    {
+        return (sortBy.Trim().ToLowerInvariant(), sortDescending) switch
+        {
+            ("createdat", true) => query.OrderByDescending(job => job.CreatedAt).ThenByDescending(job => job.Id),
+            ("createdat", false) => query.OrderBy(job => job.CreatedAt).ThenBy(job => job.Id),
+            ("startedat", true) => query.OrderByDescending(job => job.StartedAt).ThenByDescending(job => job.Id),
+            ("startedat", false) => query.OrderBy(job => job.StartedAt).ThenBy(job => job.Id),
+            ("completedat", true) => query.OrderByDescending(job => job.CompletedAt).ThenByDescending(job => job.Id),
+            ("completedat", false) => query.OrderBy(job => job.CompletedAt).ThenBy(job => job.Id),
+            ("progress", true) => query.OrderByDescending(job => job.Progress).ThenByDescending(job => job.Id),
+            ("progress", false) => query.OrderBy(job => job.Progress).ThenBy(job => job.Id),
+            ("videotitle", true) => query.OrderByDescending(job => job.Video.Title).ThenByDescending(job => job.Id),
+            ("videotitle", false) => query.OrderBy(job => job.Video.Title).ThenBy(job => job.Id),
+            _ => throw new ArgumentException("Unsupported video processing sortBy value.", nameof(sortBy))
+        };
     }
 }

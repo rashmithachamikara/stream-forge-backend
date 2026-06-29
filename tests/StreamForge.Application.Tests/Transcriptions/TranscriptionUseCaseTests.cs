@@ -422,6 +422,76 @@ public sealed class TranscriptionUseCaseTests
         }
     }
 
+    [Fact]
+    public async Task ListAdminTranscriptionJobs_ShouldReturnPagedJobsWithVideoTitle()
+    {
+        var video = Video.Create("Admin Video", null, Guid.NewGuid(), status: VideoStatus.Ready);
+        var vttRow = VideoTranscription.Create(video.Id, "en", "vtt", @"videos\video\captions.vtt", "local-faster-whisper");
+        var srtRow = VideoTranscription.Create(video.Id, "en", "srt", @"videos\video\captions.srt", "local-faster-whisper");
+
+        vttRow.QueueForProcessing(vttRow.StoragePath, "local-faster-whisper", "corr-1", "small");
+        vttRow.StartProcessing("worker-1");
+        srtRow.QueueForProcessing(srtRow.StoragePath, "local-faster-whisper", "corr-1", "small");
+        srtRow.StartProcessing("worker-1");
+
+        SetPrivateProperty(vttRow, nameof(VideoTranscription.Video), video);
+        SetPrivateProperty(srtRow, nameof(VideoTranscription.Video), video);
+
+        var transcriptionsRepo = Substitute.For<IVideoTranscriptionRepository>();
+        transcriptionsRepo.QueryAdminRowsAsync(Arg.Any<AdminTranscriptionJobsQuery>(), Arg.Any<CancellationToken>())
+            .Returns([vttRow, srtRow]);
+
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        unitOfWork.VideoTranscriptions.Returns(transcriptionsRepo);
+
+        var provider = Substitute.For<ITranscriptionProvider>();
+        provider.GetJobStatusAsync("worker-1", Arg.Any<CancellationToken>())
+            .Returns(new TranscriptionProviderJobStatus(
+                "worker-1",
+                "corr-1",
+                "running",
+                55,
+                "transcribing",
+                null,
+                "en",
+                DateTimeOffset.UtcNow.AddMinutes(-1),
+                null,
+                120,
+                66));
+
+        var service = new ListAdminTranscriptionJobsService(
+            unitOfWork,
+            provider,
+            CreateReconciler(unitOfWork, provider));
+
+        var result = await service.Handle(new AdminTranscriptionJobsQueryDto(), CancellationToken.None);
+
+        result.TotalCount.Should().Be(1);
+        result.Items.Should().ContainSingle();
+        result.Items[0].VideoTitle.Should().Be("Admin Video");
+        result.Items[0].WorkerJobId.Should().Be("worker-1");
+        result.Items[0].Artifacts.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task ListAdminTranscriptionJobs_ShouldRejectUnsupportedSortBy()
+    {
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        var service = new ListAdminTranscriptionJobsService(
+            unitOfWork,
+            Substitute.For<ITranscriptionProvider>(),
+            CreateReconciler(unitOfWork, Substitute.For<ITranscriptionProvider>()));
+
+        var act = () => service.Handle(
+            new AdminTranscriptionJobsQueryDto
+            {
+                SortBy = "provider"
+            },
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
     private static ReconcileTranscriptionOrphansService CreateReconciler(
         IUnitOfWork unitOfWork,
         ITranscriptionProvider transcriptionProvider)

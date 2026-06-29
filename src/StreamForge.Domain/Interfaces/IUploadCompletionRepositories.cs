@@ -40,4 +40,7 @@ public interface IVideoProcessingJobRepository : IRepository<VideoProcessingJob>
     Task<IReadOnlyList<VideoProcessingJob>> GetByStatusesAsync(
         CancellationToken cancellationToken = default,
         params ProcessingJobStatus[] statuses);
+    Task<PagedQueryResult<VideoProcessingJob>> QueryAdminAsync(
+        AdminVideoProcessingJobsQuery query,
+        CancellationToken cancellationToken = default);
 }
