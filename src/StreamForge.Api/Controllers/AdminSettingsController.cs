@@ -6,14 +6,14 @@ using StreamForge.Application.UseCases.Transcriptions;
 namespace StreamForge.Api.Controllers;
 
 [ApiController]
-[Route("api/v1/admin/transcription/settings")]
+[Route("api/v1/admin/settings/transcription")]
 [Authorize(Roles = "Admin")]
-public sealed class AdminTranscriptionSettingsController : ControllerBase
+public sealed class AdminSettingsController : ControllerBase
 {
     private readonly GetAdminTranscriptionSettingsService _getAdminTranscriptionSettings;
     private readonly UpdateAdminTranscriptionSettingsService _updateAdminTranscriptionSettings;
 
-    public AdminTranscriptionSettingsController(
+    public AdminSettingsController(
         GetAdminTranscriptionSettingsService getAdminTranscriptionSettings,
         UpdateAdminTranscriptionSettingsService updateAdminTranscriptionSettings)
     {
