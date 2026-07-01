@@ -65,6 +65,28 @@ public sealed class EfModelConfigurationTests
         uniqueIndex!.IsUnique.Should().BeTrue();
     }
 
+    [Fact]
+    public void VideoTranscriptChunkConfiguration_ShouldRegisterFullTextAndTrigramSearchArtifacts()
+    {
+        using var context = CreateContext();
+
+        var chunkEntity = context.Model.FindEntityType(typeof(VideoTranscriptChunk));
+        chunkEntity.Should().NotBeNull();
+
+        var searchVectorIndex = chunkEntity!.GetIndexes()
+            .FirstOrDefault(index => index.Properties.Select(property => property.Name)
+                .SequenceEqual(new[] { "SearchVector" }));
+        searchVectorIndex.Should().NotBeNull();
+        searchVectorIndex!.FindAnnotation("Npgsql:IndexMethod")?.Value.Should().Be("GIN");
+
+        var contentTrigramIndex = chunkEntity.GetIndexes()
+            .FirstOrDefault(index => index.Properties.Select(property => property.Name)
+                .SequenceEqual(new[] { nameof(VideoTranscriptChunk.Content) }));
+        contentTrigramIndex.Should().NotBeNull();
+        contentTrigramIndex!.GetDatabaseName().Should().Be("IX_VideoTranscriptChunks_Content_Trgm");
+        contentTrigramIndex!.FindAnnotation("Npgsql:IndexMethod")?.Value.Should().Be("GIN");
+    }
+
     private static StreamForgeDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<StreamForgeDbContext>()

@@ -169,7 +169,7 @@
 - [ ] Document signed media delivery flow, expiry behavior, and local-vs-S3 strategy in a dedicated phase plan
 
 ### Phase 17: Transcript Intelligence and RAG
-- [X] Upgrade transcript search from keyword search to PostgreSQL full-text search
+- [X] Upgrade transcript search from keyword search to PostgreSQL full-text + pg_trgm search
 - [ ] Add transcript ranking/highlighting behavior for full-text matches over persisted chunks
 - [ ] Define the embedding pipeline and move embedding generation into a dedicated post-transcription stage or worker
 - [ ] Add schema support for embedding storage and vector indexes in a new schema version

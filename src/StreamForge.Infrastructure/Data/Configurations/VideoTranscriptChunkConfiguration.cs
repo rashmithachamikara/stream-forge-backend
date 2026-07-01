@@ -7,6 +7,7 @@ namespace StreamForge.Infrastructure.Data.Configurations;
 
 public sealed class VideoTranscriptChunkConfiguration : IEntityTypeConfiguration<VideoTranscriptChunk>
 {
+    private const string _trigramIndexOperator = "gin_trgm_ops";
     private const string _searchVectorPropertyName = "SearchVector";
     private const string _searchConfiguration = "english";
 
@@ -50,6 +51,11 @@ public sealed class VideoTranscriptChunkConfiguration : IEntityTypeConfiguration
         builder.HasIndex(_searchVectorPropertyName)
             .HasMethod("GIN")
             .HasDatabaseName("IX_VideoTranscriptChunks_SearchVector");
+
+        builder.HasIndex(chunk => chunk.Content)
+            .HasMethod("GIN")
+            .HasOperators(_trigramIndexOperator)
+            .HasDatabaseName("IX_VideoTranscriptChunks_Content_Trgm");
 
         builder.HasOne(chunk => chunk.Video)
             .WithMany(video => video.VideoTranscriptChunks)

@@ -8,6 +8,7 @@ namespace StreamForge.Infrastructure.Persistence.Repositories;
 
 public sealed class VideoTranscriptChunkRepository : BaseRepository<VideoTranscriptChunk>, IVideoTranscriptChunkRepository
 {
+    private const float _trigramWordSimilarityThreshold = 0.2f;
     private const string _searchVectorPropertyName = "SearchVector";
     private const string _searchConfiguration = "english";
 
@@ -75,21 +76,39 @@ public sealed class VideoTranscriptChunkRepository : BaseRepository<VideoTranscr
 
         if (!string.IsNullOrWhiteSpace(normalizedSearchTerm))
         {
-            query = query.Where(chunk =>
-                EF.Property<NpgsqlTsVector>(chunk, _searchVectorPropertyName)
-                    .Matches(EF.Functions.WebSearchToTsQuery(_searchConfiguration, normalizedSearchTerm)));
+            var rankedQuery = query
+                .Select(chunk => new
+                {
+                    Chunk = chunk,
+                    IsFullTextMatch = EF.Property<NpgsqlTsVector>(chunk, _searchVectorPropertyName)
+                        .Matches(EF.Functions.WebSearchToTsQuery(_searchConfiguration, normalizedSearchTerm)),
+                    FullTextRank = EF.Property<NpgsqlTsVector>(chunk, _searchVectorPropertyName)
+                        .RankCoverDensity(EF.Functions.WebSearchToTsQuery(_searchConfiguration, normalizedSearchTerm)),
+                    TrigramWordSimilarity = EF.Functions.TrigramsWordSimilarity(normalizedSearchTerm, chunk.Content)
+                })
+                .Where(item => item.IsFullTextMatch || item.TrigramWordSimilarity >= _trigramWordSimilarityThreshold);
+
+            var totalCount = await rankedQuery.CountAsync(cancellationToken);
+            var items = await rankedQuery
+                .OrderByDescending(item => item.IsFullTextMatch)
+                .ThenByDescending(item => item.FullTextRank)
+                .ThenByDescending(item => item.TrigramWordSimilarity)
+                .ThenBy(item => item.Chunk.StartSeconds)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(item => item.Chunk)
+                .ToListAsync(cancellationToken);
+
+            return new PagedQueryResult<VideoTranscriptChunk>(items, totalCount, page, pageSize);
         }
 
-        var totalCount = await query.CountAsync(cancellationToken);
-        var items = await query
-            .OrderByDescending(chunk =>
-                EF.Property<NpgsqlTsVector>(chunk, _searchVectorPropertyName)
-                    .RankCoverDensity(EF.Functions.WebSearchToTsQuery(_searchConfiguration, normalizedSearchTerm)))
-            .ThenBy(chunk => chunk.StartSeconds)
+        var fallbackTotalCount = await query.CountAsync(cancellationToken);
+        var fallbackItems = await query
+            .OrderBy(chunk => chunk.StartSeconds)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
-        return new PagedQueryResult<VideoTranscriptChunk>(items, totalCount, page, pageSize);
+        return new PagedQueryResult<VideoTranscriptChunk>(fallbackItems, fallbackTotalCount, page, pageSize);
     }
 }
