@@ -24,6 +24,7 @@ using StreamForge.Application.UseCases.Engagement;
 using StreamForge.Application.UseCases.Uploads;
 using StreamForge.Application.UseCases.Uploads.CreateSession;
 using StreamForge.Application.UseCases.Processing;
+using StreamForge.Application.UseCases.TranscriptIntelligence;
 using StreamForge.Application.UseCases.Transcriptions;
 using StreamForge.Domain.Enums;
 using StreamForge.Domain.Interfaces;
@@ -32,6 +33,7 @@ using StreamForge.Infrastructure.Data;
 using StreamForge.Infrastructure.Persistence;
 using StreamForge.Infrastructure.Processing;
 using StreamForge.Infrastructure.Storage;
+using StreamForge.Infrastructure.TranscriptIntelligence;
 using StreamForge.Infrastructure.Transcription;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -125,6 +127,12 @@ builder.Services
     .ValidateOnStart();
 
 builder.Services
+    .Configure<RagOptions>(builder.Configuration.GetSection(RagOptions.SectionName))
+    .AddOptions<RagOptions>()
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services
     .Configure<AnalyticsOptions>(builder.Configuration.GetSection(AnalyticsOptions.SectionName))
     .AddOptions<AnalyticsOptions>()
     .ValidateDataAnnotations()
@@ -203,6 +211,7 @@ builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<UploadOptions>>(
 builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<StorageOptions>>().Value);
 builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<VideoProcessingOptions>>().Value);
 builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<TranscriptionOptions>>().Value);
+builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<RagOptions>>().Value);
 builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<AnalyticsOptions>>().Value);
 builder.Services.AddScoped<IAnalyticsQueryService, AnalyticsQueryService>();
 builder.Services.AddScoped<IStorageService>(sp =>
@@ -229,9 +238,16 @@ builder.Services.AddScoped<IMediaProcessingService>(sp =>
 builder.Services.AddScoped<IVideoProcessingQueue, HangfireVideoProcessingQueue>();
 builder.Services.AddScoped<IVideoProcessingRuntimeMonitor, HangfireVideoProcessingRuntimeMonitor>();
 builder.Services.AddScoped<ITranscriptionQueue, HangfireTranscriptionQueue>();
+builder.Services.AddScoped<ITranscriptEmbeddingQueue, HangfireTranscriptEmbeddingQueue>();
 builder.Services.AddHttpClient<ITranscriptionProvider, LocalFasterWhisperTranscriptionProvider>((serviceProvider, client) =>
 {
     var options = serviceProvider.GetRequiredService<IOptions<TranscriptionOptions>>().Value;
+    client.BaseAddress = new Uri(options.WorkerBaseUrl.TrimEnd('/'));
+    client.Timeout = TimeSpan.FromMinutes(options.JobTimeoutMinutes);
+});
+builder.Services.AddHttpClient<ITranscriptEmbeddingProvider, LocalSentenceTransformerEmbeddingProvider>((serviceProvider, client) =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<RagOptions>>().Value;
     client.BaseAddress = new Uri(options.WorkerBaseUrl.TrimEnd('/'));
     client.Timeout = TimeSpan.FromMinutes(options.JobTimeoutMinutes);
 });
@@ -246,6 +262,8 @@ builder.Services.AddScoped<GetAdminVideoProcessingJobService>();
 builder.Services.AddScoped<RetryAdminVideoProcessingJobService>();
 builder.Services.AddScoped<ResyncAdminVideoProcessingJobService>();
 builder.Services.AddScoped<ResolveTranscriptionSettingsService>();
+builder.Services.AddScoped<ResolveRagSettingsService>();
+builder.Services.AddScoped<GenerateTranscriptEmbeddingsService>();
 builder.Services.AddScoped<GetPlaybackManifestService>();
 builder.Services.AddScoped<GetStreamingAssetService>();
 builder.Services.AddScoped<GetVideoThumbnailService>();

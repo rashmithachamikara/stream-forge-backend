@@ -4,6 +4,7 @@ using StreamForge.Application.Common;
 using StreamForge.Application.DTOs.Content;
 using StreamForge.Application.DTOs.Transcriptions;
 using StreamForge.Application.Interfaces;
+using StreamForge.Application.UseCases.TranscriptIntelligence;
 using StreamForge.Domain.Entities;
 using StreamForge.Domain.Enums;
 using StreamForge.Domain.Exceptions;
@@ -749,15 +750,18 @@ public sealed class CompleteVideoTranscriptionCallbackService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IStorageService _storageService;
+    private readonly ITranscriptEmbeddingQueue _transcriptEmbeddingQueue;
     private readonly ILogger<CompleteVideoTranscriptionCallbackService> _logger;
 
     public CompleteVideoTranscriptionCallbackService(
         IUnitOfWork unitOfWork,
         IStorageService storageService,
+        ITranscriptEmbeddingQueue transcriptEmbeddingQueue,
         ILogger<CompleteVideoTranscriptionCallbackService> logger)
     {
         _unitOfWork = unitOfWork;
         _storageService = storageService;
+        _transcriptEmbeddingQueue = transcriptEmbeddingQueue;
         _logger = logger;
     }
 
@@ -831,6 +835,16 @@ public sealed class CompleteVideoTranscriptionCallbackService
         await PersistTranscriptChunksAsync(activeRows, request, detectedLanguage, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        var completedLanguage = activeRows
+            .Where(row => row.Status == TranscriptionStatus.Completed)
+            .Select(row => row.Language)
+            .FirstOrDefault(language => !string.IsNullOrWhiteSpace(language));
+
+        if (!string.IsNullOrWhiteSpace(completedLanguage))
+        {
+            await _transcriptEmbeddingQueue.EnqueueAsync(request.VideoId, completedLanguage, cancellationToken);
+        }
     }
 
     private async Task PersistTranscriptChunksAsync(

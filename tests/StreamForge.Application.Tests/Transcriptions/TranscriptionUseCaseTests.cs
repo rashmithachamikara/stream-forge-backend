@@ -5,6 +5,7 @@ using NSubstitute;
 using StreamForge.Application.Common;
 using StreamForge.Application.DTOs.Transcriptions;
 using StreamForge.Application.Interfaces;
+using StreamForge.Application.UseCases.TranscriptIntelligence;
 using StreamForge.Application.UseCases.Transcriptions;
 using StreamForge.Domain.Entities;
 using StreamForge.Domain.Enums;
@@ -517,6 +518,7 @@ public sealed class TranscriptionUseCaseTests
         var storageService = Substitute.For<IStorageService>();
         storageService.ImportFileAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(call => call.ArgAt<string>(1));
+        var embeddingQueue = Substitute.For<ITranscriptEmbeddingQueue>();
 
         var tempDir = Path.Combine(Path.GetTempPath(), $"streamforge-transcription-test-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
@@ -540,6 +542,7 @@ public sealed class TranscriptionUseCaseTests
             var service = new CompleteVideoTranscriptionCallbackService(
                 unitOfWork,
                 storageService,
+                embeddingQueue,
                 Substitute.For<ILogger<CompleteVideoTranscriptionCallbackService>>());
 
             await service.Handle(
@@ -568,6 +571,7 @@ public sealed class TranscriptionUseCaseTests
             persistedChunks.Should().HaveCount(2);
             persistedChunks.Should().OnlyContain(chunk => chunk.VideoId == videoId && chunk.TranscriptionId == vttRow.Id && chunk.Language == "en");
             persistedChunks.Select(chunk => chunk.Content).Should().BeEquivalentTo(["Hello there", "General Kenobi"]);
+            await embeddingQueue.Received(1).EnqueueAsync(videoId, "en", Arg.Any<CancellationToken>());
             await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
         }
         finally
@@ -602,6 +606,7 @@ public sealed class TranscriptionUseCaseTests
         var storageService = Substitute.For<IStorageService>();
         storageService.ImportFileAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(call => call.ArgAt<string>(1));
+        var embeddingQueue = Substitute.For<ITranscriptEmbeddingQueue>();
 
         var tempDir = Path.Combine(Path.GetTempPath(), $"streamforge-transcription-test-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
@@ -614,6 +619,7 @@ public sealed class TranscriptionUseCaseTests
             var service = new CompleteVideoTranscriptionCallbackService(
                 unitOfWork,
                 storageService,
+                embeddingQueue,
                 Substitute.For<ILogger<CompleteVideoTranscriptionCallbackService>>());
 
             await service.Handle(
@@ -722,6 +728,7 @@ public sealed class TranscriptionUseCaseTests
             new CompleteVideoTranscriptionCallbackService(
                 unitOfWork,
                 Substitute.For<IStorageService>(),
+                Substitute.For<ITranscriptEmbeddingQueue>(),
                 Substitute.For<ILogger<CompleteVideoTranscriptionCallbackService>>()),
             Substitute.For<ILogger<ReconcileTranscriptionOrphansService>>());
     }

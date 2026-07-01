@@ -171,11 +171,12 @@
 ### Phase 17: Transcript Intelligence and RAG
 - [X] Upgrade transcript search from keyword search to PostgreSQL full-text + pg_trgm search
 - [ ] [OPTIONAL] Add transcript ranking/highlighting behavior for full-text matches over persisted chunks
-- [ ] Define the embedding pipeline and move embedding generation into a dedicated post-transcription stage or worker
+- [X] Define the embedding pipeline and move embedding generation into a dedicated post-transcription stage or worker
 - [ ] Add schema support for embedding storage and vector indexes in a new schema version
 - [ ] Add `pgvector`-backed semantic retrieval over transcript chunks
 - [ ] Add grounded video Q&A endpoints over retrieved transcript passages with cited time ranges
 - [ ] Add retrieval/answering tests for full-text search, semantic search, citation integrity, and failure handling
+- [ ] Add docker support
 
 ## Backlog
 - [ ] Add multi-language support for PostgreSQL full-text search so transcript chunks use language-aware text search configuration instead of the current fixed English configuration
