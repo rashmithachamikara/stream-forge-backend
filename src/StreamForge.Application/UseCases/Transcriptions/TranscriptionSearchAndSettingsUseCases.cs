@@ -257,7 +257,7 @@ public sealed class SearchVideoTranscriptService
         var normalizedPage = page <= 0 ? 1 : page;
         var normalizedPageSize = pageSize <= 0 ? 20 : Math.Min(pageSize, 100);
 
-        var result = await _unitOfWork.VideoTranscriptChunks.SearchKeywordAsync(
+        var result = await _unitOfWork.VideoTranscriptChunks.SearchFullTextAsync(
             videoId,
             query,
             language,

@@ -250,7 +250,7 @@ public sealed class TranscriptionUseCaseTests
         var chunk = VideoTranscriptChunk.Create(videoId, transcriptionId, "en", 12, 18, "hello world");
 
         var chunksRepo = Substitute.For<IVideoTranscriptChunkRepository>();
-        chunksRepo.SearchKeywordAsync(videoId, "hello", "en", 1, 100, Arg.Any<CancellationToken>())
+        chunksRepo.SearchFullTextAsync(videoId, "hello", "en", 1, 100, Arg.Any<CancellationToken>())
             .Returns(new PagedQueryResult<VideoTranscriptChunk>([chunk], 1, 1, 100));
 
         var unitOfWork = Substitute.For<IUnitOfWork>();
@@ -274,7 +274,7 @@ public sealed class TranscriptionUseCaseTests
         result.Items[0].StartSeconds.Should().Be(12);
         result.Page.Should().Be(1);
         result.PageSize.Should().Be(100);
-        await chunksRepo.Received(1).SearchKeywordAsync(videoId, "hello", "en", 1, 100, Arg.Any<CancellationToken>());
+        await chunksRepo.Received(1).SearchFullTextAsync(videoId, "hello", "en", 1, 100, Arg.Any<CancellationToken>());
     }
 
     [Fact]

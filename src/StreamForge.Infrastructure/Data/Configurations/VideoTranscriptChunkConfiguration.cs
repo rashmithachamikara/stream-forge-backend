@@ -1,11 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using NpgsqlTypes;
 using StreamForge.Domain.Entities;
 
 namespace StreamForge.Infrastructure.Data.Configurations;
 
 public sealed class VideoTranscriptChunkConfiguration : IEntityTypeConfiguration<VideoTranscriptChunk>
 {
+    private const string _searchVectorPropertyName = "SearchVector";
+    private const string _searchConfiguration = "english";
+
     public void Configure(EntityTypeBuilder<VideoTranscriptChunk> builder)
     {
         builder.ToTable("VideoTranscriptChunks");
@@ -28,6 +32,9 @@ public sealed class VideoTranscriptChunkConfiguration : IEntityTypeConfiguration
         builder.Property(chunk => chunk.UpdatedAt)
             .IsRequired();
 
+        builder.Property<NpgsqlTsVector>(_searchVectorPropertyName)
+            .IsGeneratedTsVectorColumn(_searchConfiguration, nameof(VideoTranscriptChunk.Content));
+
         builder.HasIndex(chunk => chunk.VideoId)
             .HasDatabaseName("IX_VideoTranscriptChunks_VideoId");
 
@@ -39,6 +46,10 @@ public sealed class VideoTranscriptChunkConfiguration : IEntityTypeConfiguration
 
         builder.HasIndex(chunk => new { chunk.VideoId, chunk.Language })
             .HasDatabaseName("IX_VideoTranscriptChunks_VideoId_Language");
+
+        builder.HasIndex(_searchVectorPropertyName)
+            .HasMethod("GIN")
+            .HasDatabaseName("IX_VideoTranscriptChunks_SearchVector");
 
         builder.HasOne(chunk => chunk.Video)
             .WithMany(video => video.VideoTranscriptChunks)

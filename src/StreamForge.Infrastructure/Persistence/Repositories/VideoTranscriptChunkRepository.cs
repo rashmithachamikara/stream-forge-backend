@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NpgsqlTypes;
 using StreamForge.Domain.Entities;
 using StreamForge.Domain.Interfaces;
 using StreamForge.Infrastructure.Data;
@@ -7,6 +8,9 @@ namespace StreamForge.Infrastructure.Persistence.Repositories;
 
 public sealed class VideoTranscriptChunkRepository : BaseRepository<VideoTranscriptChunk>, IVideoTranscriptChunkRepository
 {
+    private const string _searchVectorPropertyName = "SearchVector";
+    private const string _searchConfiguration = "english";
+
     public VideoTranscriptChunkRepository(StreamForgeDbContext dbContext) : base(dbContext)
     {
     }
@@ -50,7 +54,7 @@ public sealed class VideoTranscriptChunkRepository : BaseRepository<VideoTranscr
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<PagedQueryResult<VideoTranscriptChunk>> SearchKeywordAsync(
+    public async Task<PagedQueryResult<VideoTranscriptChunk>> SearchFullTextAsync(
         Guid videoId,
         string searchTerm,
         string? language,
@@ -60,7 +64,6 @@ public sealed class VideoTranscriptChunkRepository : BaseRepository<VideoTranscr
     {
         var normalizedSearchTerm = searchTerm.Trim();
         var normalizedLanguage = string.IsNullOrWhiteSpace(language) ? null : language.Trim().ToLowerInvariant();
-
         var query = DbContext.VideoTranscriptChunks
             .AsNoTracking()
             .Where(chunk => chunk.VideoId == videoId);
@@ -72,13 +75,17 @@ public sealed class VideoTranscriptChunkRepository : BaseRepository<VideoTranscr
 
         if (!string.IsNullOrWhiteSpace(normalizedSearchTerm))
         {
-            var pattern = $"%{normalizedSearchTerm}%";
-            query = query.Where(chunk => EF.Functions.ILike(chunk.Content, pattern));
+            query = query.Where(chunk =>
+                EF.Property<NpgsqlTsVector>(chunk, _searchVectorPropertyName)
+                    .Matches(EF.Functions.WebSearchToTsQuery(_searchConfiguration, normalizedSearchTerm)));
         }
 
         var totalCount = await query.CountAsync(cancellationToken);
         var items = await query
-            .OrderBy(chunk => chunk.StartSeconds)
+            .OrderByDescending(chunk =>
+                EF.Property<NpgsqlTsVector>(chunk, _searchVectorPropertyName)
+                    .RankCoverDensity(EF.Functions.WebSearchToTsQuery(_searchConfiguration, normalizedSearchTerm)))
+            .ThenBy(chunk => chunk.StartSeconds)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);

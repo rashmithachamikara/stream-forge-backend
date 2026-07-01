@@ -15,7 +15,7 @@ public interface IVideoTranscriptChunkRepository : IRepository<VideoTranscriptCh
         string language,
         CancellationToken cancellationToken = default);
 
-    Task<PagedQueryResult<VideoTranscriptChunk>> SearchKeywordAsync(
+    Task<PagedQueryResult<VideoTranscriptChunk>> SearchFullTextAsync(
         Guid videoId,
         string searchTerm,
         string? language,

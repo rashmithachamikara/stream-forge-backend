@@ -169,7 +169,7 @@
 - [ ] Document signed media delivery flow, expiry behavior, and local-vs-S3 strategy in a dedicated phase plan
 
 ### Phase 17: Transcript Intelligence and RAG
-- [ ] Upgrade transcript search from keyword search to PostgreSQL full-text search
+- [X] Upgrade transcript search from keyword search to PostgreSQL full-text search
 - [ ] Add transcript ranking/highlighting behavior for full-text matches over persisted chunks
 - [ ] Define the embedding pipeline and move embedding generation into a dedicated post-transcription stage or worker
 - [ ] Add schema support for embedding storage and vector indexes in a new schema version
@@ -177,8 +177,11 @@
 - [ ] Add grounded video Q&A endpoints over retrieved transcript passages with cited time ranges
 - [ ] Add retrieval/answering tests for full-text search, semantic search, citation integrity, and failure handling
 
+## Backlog
+- [ ] Add multi-language support for PostgreSQL full-text search so transcript chunks use language-aware text search configuration instead of the current fixed English configuration
+
 ## Notes
 
 - Detailed implementation notes for each phase will be maintained under `documentation/plans/`.
 - This document tracks phase-level status only.
-- Schema source of truth remains `documentation/schema/schema-v5.0.md`.
+- Schema source of truth remains `documentation/schema/schema-v6.0.md`.
