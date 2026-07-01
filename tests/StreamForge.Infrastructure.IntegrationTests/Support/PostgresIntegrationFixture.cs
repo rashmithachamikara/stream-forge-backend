@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Pgvector.EntityFrameworkCore;
 using StreamForge.Infrastructure.Data;
 using Testcontainers.PostgreSql;
 
@@ -42,7 +43,7 @@ public sealed class PostgresIntegrationFixture : IAsyncLifetime
         }
 
         var options = new DbContextOptionsBuilder<StreamForgeDbContext>()
-            .UseNpgsql(_container.GetConnectionString())
+            .UseNpgsql(_container.GetConnectionString(), npgsqlOptions => npgsqlOptions.UseVector())
             .Options;
 
         return new StreamForgeDbContext(options);

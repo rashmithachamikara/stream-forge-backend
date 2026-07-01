@@ -35,6 +35,7 @@ using StreamForge.Infrastructure.Processing;
 using StreamForge.Infrastructure.Storage;
 using StreamForge.Infrastructure.TranscriptIntelligence;
 using StreamForge.Infrastructure.Transcription;
+using Pgvector.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 const string CorsPolicyName = "StreamForgeCors";
@@ -451,7 +452,7 @@ static bool ShouldUseHttpsRedirection(IConfiguration configuration)
 
 // Configure database
 builder.Services.AddDbContext<StreamForgeDbContext>(options =>
-    options.UseNpgsql(connectionStrings.DefaultConnection));
+    options.UseNpgsql(connectionStrings.DefaultConnection, npgsqlOptions => npgsqlOptions.UseVector()));
 
 var app = builder.Build();
 

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Pgvector.EntityFrameworkCore;
 using StreamForge.Domain.Entities;
 
 namespace StreamForge.Infrastructure.Data;
@@ -53,6 +54,7 @@ public class StreamForgeDbContext : DbContext
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.HasPostgresExtension("pg_trgm");
+        modelBuilder.HasPostgresExtension("vector");
 
         // Apply all entity configurations from the current assembly
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(StreamForgeDbContext).Assembly);

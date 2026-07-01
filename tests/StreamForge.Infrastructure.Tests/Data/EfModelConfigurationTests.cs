@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Pgvector.EntityFrameworkCore;
 using StreamForge.Domain.Entities;
 using StreamForge.Infrastructure.Data;
 
@@ -66,14 +67,19 @@ public sealed class EfModelConfigurationTests
     }
 
     [Fact]
-    public void VideoTranscriptChunkConfiguration_ShouldRegisterFullTextAndTrigramSearchArtifacts()
+    public void VideoTranscriptChunkConfiguration_ShouldRegisterLexicalAndVectorSearchArtifacts()
     {
         using var context = CreateContext();
 
         var chunkEntity = context.Model.FindEntityType(typeof(VideoTranscriptChunk));
         chunkEntity.Should().NotBeNull();
 
-        var searchVectorIndex = chunkEntity!.GetIndexes()
+        chunkEntity!.FindProperty(nameof(VideoTranscriptChunk.Embedding))!
+            .GetColumnType()
+            .Should()
+            .Be("vector");
+
+        var searchVectorIndex = chunkEntity.GetIndexes()
             .FirstOrDefault(index => index.Properties.Select(property => property.Name)
                 .SequenceEqual(new[] { "SearchVector" }));
         searchVectorIndex.Should().NotBeNull();
@@ -85,12 +91,19 @@ public sealed class EfModelConfigurationTests
         contentTrigramIndex.Should().NotBeNull();
         contentTrigramIndex!.GetDatabaseName().Should().Be("IX_VideoTranscriptChunks_Content_Trgm");
         contentTrigramIndex!.FindAnnotation("Npgsql:IndexMethod")?.Value.Should().Be("GIN");
+
+        var embeddingIndex = chunkEntity.GetIndexes()
+            .FirstOrDefault(index => index.Properties.Select(property => property.Name)
+                .SequenceEqual(new[] { nameof(VideoTranscriptChunk.Embedding) }));
+        embeddingIndex.Should().NotBeNull();
+        embeddingIndex!.GetDatabaseName().Should().Be("IX_VideoTranscriptChunks_Embedding_Hnsw");
+        embeddingIndex.FindAnnotation("Npgsql:IndexMethod")?.Value.Should().Be("hnsw");
     }
 
     private static StreamForgeDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<StreamForgeDbContext>()
-            .UseNpgsql("Host=localhost;Database=streamforge_model_only;Username=postgres;Password=postgres")
+            .UseNpgsql("Host=localhost;Database=streamforge_model_only;Username=postgres;Password=postgres", npgsqlOptions => npgsqlOptions.UseVector())
             .Options;
 
         return new StreamForgeDbContext(options);

@@ -96,6 +96,8 @@ public sealed class EmbeddingPipelineUseCaseTests
         var chunksRepo = Substitute.For<IVideoTranscriptChunkRepository>();
         chunksRepo.GetByVideoAndLanguageAsync(videoId, "en", Arg.Any<CancellationToken>())
             .Returns(chunks);
+        chunksRepo.UpdateAsync(Arg.Any<VideoTranscriptChunk>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
 
         var settingsRepo = Substitute.For<ISystemSettingRepository>();
         settingsRepo.GetByKeysAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
@@ -145,8 +147,16 @@ public sealed class EmbeddingPipelineUseCaseTests
         result.ChunksProcessed.Should().Be(3);
         result.BatchCount.Should().Be(2);
         result.VectorSize.Should().Be(3);
+        chunks.Should().OnlyContain(chunk =>
+            chunk.Embedding != null &&
+            chunk.EmbeddingProvider == "local-sentence-transformer" &&
+            chunk.EmbeddingModel == "sentence-transformers/all-MiniLM-L6-v2" &&
+            chunk.EmbeddingDimensions == 3 &&
+            chunk.EmbeddingGeneratedAt != null);
 
         await provider.Received(2).GenerateEmbeddingsAsync(Arg.Any<TranscriptEmbeddingRequest>(), Arg.Any<CancellationToken>());
         await chunksRepo.Received(1).GetByVideoAndLanguageAsync(videoId, "en", Arg.Any<CancellationToken>());
+        await chunksRepo.Received(3).UpdateAsync(Arg.Any<VideoTranscriptChunk>(), Arg.Any<CancellationToken>());
+        await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 }

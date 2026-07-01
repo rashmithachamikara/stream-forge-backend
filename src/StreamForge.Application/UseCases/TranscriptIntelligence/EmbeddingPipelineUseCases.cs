@@ -198,8 +198,18 @@ public sealed class GenerateTranscriptEmbeddingsService
                 throw new InvalidOperationException("Embedding worker returned inconsistent vector sizes across batches.");
             }
 
+            var itemsByChunkId = result.Items.ToDictionary(item => item.ChunkId, item => item, EqualityComparer<Guid>.Default);
+            foreach (var chunk in batch)
+            {
+                var item = itemsByChunkId[chunk.Id];
+                chunk.SetEmbedding(result.Provider, result.Model, item.Embedding);
+                await _unitOfWork.VideoTranscriptChunks.UpdateAsync(chunk, cancellationToken);
+            }
+
             totalBatchCount++;
         }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
             "Generated embeddings for {ChunkCount} transcript chunk(s) across {BatchCount} batch(es) for video {VideoId} language {Language} using provider {Provider} model {Model}.",

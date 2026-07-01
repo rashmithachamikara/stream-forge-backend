@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Pgvector.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -99,7 +100,7 @@ public sealed class ApiIntegrationFixture : IAsyncLifetime
     {
         EnsureEnabled();
         var options = new DbContextOptionsBuilder<StreamForgeDbContext>()
-            .UseNpgsql(_container!.GetConnectionString())
+            .UseNpgsql(_container!.GetConnectionString(), npgsqlOptions => npgsqlOptions.UseVector())
             .Options;
 
         return new StreamForgeDbContext(options);

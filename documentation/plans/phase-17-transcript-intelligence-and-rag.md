@@ -83,8 +83,9 @@ Current implementation status:
 - `.NET` now enqueues a dedicated embedding job after canonical transcript chunks are persisted
 - Hangfire now owns the first embedding-stage runtime
 - a dedicated `services/embedding-worker/` FastAPI worker scaffold now exists with `POST /embed` and `GET /health`
-- the first slice validates batch inference round-trips through the worker contract
-- durable vector storage and semantic index persistence remain the next schema-backed step
+- transcript chunk embeddings are now persisted with provider/model/dimension metadata
+- schema v7.0 now adds `pgvector` storage support plus a first HNSW cosine index for transcript embeddings
+- semantic retrieval endpoints and ranking still remain the next step
 
 Background flow:
 

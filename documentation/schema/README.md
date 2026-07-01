@@ -4,7 +4,8 @@ This directory contains the complete database schema documentation for Stream Fo
 
 ## Files
 
-- **[schema-v6.0.md](schema-v6.0.md)** - Current database schema specification (v6.0)
+- **[schema-v7.0.md](schema-v7.0.md)** - Current database schema specification (v7.0)
+- **[schema-v6.0.md](schema-v6.0.md)** - Previous schema version with lexical transcript search
 - **[schema-v5.0.md](schema-v5.0.md)** - Previous schema version with transcript chunk persistence and system settings foundation
 - **[schema-v4.0.md](schema-v4.0.md)** - Previous schema version with transcription job metadata and caption delivery alignment
 - **[schema-v3.0.md](schema-v3.0.md)** - Earlier schema version with bookmark redesign and initial Phase 15 alignment
@@ -143,5 +144,5 @@ GROUP BY p.Id;
 
 ---
 
-**Last Updated:** June 21, 2026  
-**Schema Version:** 5.0
+**Last Updated:** July 1, 2026  
+**Schema Version:** 7.0

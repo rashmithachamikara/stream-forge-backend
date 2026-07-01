@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Pgvector.EntityFrameworkCore;
 
 namespace StreamForge.Infrastructure.Data;
 
@@ -12,7 +13,7 @@ public sealed class StreamForgeDbContextFactory : IDesignTimeDbContextFactory<St
             ?? "Host=localhost;Database=streamforge_design;Username=postgres;Password=postgres";
 
         var optionsBuilder = new DbContextOptionsBuilder<StreamForgeDbContext>();
-        optionsBuilder.UseNpgsql(connectionString);
+        optionsBuilder.UseNpgsql(connectionString, npgsqlOptions => npgsqlOptions.UseVector());
 
         return new StreamForgeDbContext(optionsBuilder.Options);
     }

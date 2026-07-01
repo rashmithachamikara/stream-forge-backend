@@ -17,6 +17,16 @@ public sealed class VideoTranscriptChunk : BaseEntity
 
     public string Content { get; private set; }
 
+    public float[]? Embedding { get; private set; }
+
+    public string? EmbeddingProvider { get; private set; }
+
+    public string? EmbeddingModel { get; private set; }
+
+    public int? EmbeddingDimensions { get; private set; }
+
+    public DateTime? EmbeddingGeneratedAt { get; private set; }
+
     public DateTime UpdatedAt { get; private set; }
 
     public Video Video { get; private set; } = null!;
@@ -78,5 +88,30 @@ public sealed class VideoTranscriptChunk : BaseEntity
             Content = content.Trim(),
             UpdatedAt = DateTime.UtcNow
         };
+    }
+
+    public void SetEmbedding(string provider, string model, IReadOnlyList<float> embedding)
+    {
+        if (string.IsNullOrWhiteSpace(provider))
+        {
+            throw new ArgumentException("Embedding provider is required.", nameof(provider));
+        }
+
+        if (string.IsNullOrWhiteSpace(model))
+        {
+            throw new ArgumentException("Embedding model is required.", nameof(model));
+        }
+
+        if (embedding is null || embedding.Count == 0)
+        {
+            throw new ArgumentException("Embedding vector is required.", nameof(embedding));
+        }
+
+        Embedding = embedding.ToArray();
+        EmbeddingProvider = provider.Trim();
+        EmbeddingModel = model.Trim();
+        EmbeddingDimensions = embedding.Count;
+        EmbeddingGeneratedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
     }
 }

@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using NpgsqlTypes;
+using Pgvector;
 using StreamForge.Domain.Entities;
 
 namespace StreamForge.Infrastructure.Data.Configurations;
@@ -10,6 +12,7 @@ public sealed class VideoTranscriptChunkConfiguration : IEntityTypeConfiguration
     private const string _trigramIndexOperator = "gin_trgm_ops";
     private const string _searchVectorPropertyName = "SearchVector";
     private const string _searchConfiguration = "english";
+    private const string _embeddingColumnType = "vector";
 
     public void Configure(EntityTypeBuilder<VideoTranscriptChunk> builder)
     {
@@ -23,6 +26,31 @@ public sealed class VideoTranscriptChunkConfiguration : IEntityTypeConfiguration
 
         builder.Property(chunk => chunk.Content)
             .IsRequired();
+
+        builder.Property(chunk => chunk.Embedding)
+            .HasConversion(
+                embedding => embedding == null ? null : new Vector(embedding),
+                embedding => embedding == null ? null : embedding.ToArray(),
+                new ValueComparer<float[]?>(
+                    (left, right) =>
+                        ReferenceEquals(left, right) ||
+                        left != null && right != null && left.SequenceEqual(right),
+                    value =>
+                        value == null
+                            ? 0
+                            : value.Aggregate(0, (current, item) => HashCode.Combine(current, item)),
+                    value => value == null ? null : value.ToArray()))
+            .HasColumnType(_embeddingColumnType);
+
+        builder.Property(chunk => chunk.EmbeddingProvider)
+            .HasMaxLength(100);
+
+        builder.Property(chunk => chunk.EmbeddingModel)
+            .HasMaxLength(200);
+
+        builder.Property(chunk => chunk.EmbeddingDimensions);
+
+        builder.Property(chunk => chunk.EmbeddingGeneratedAt);
 
         builder.Property(chunk => chunk.StartSeconds)
             .IsRequired();
@@ -48,6 +76,12 @@ public sealed class VideoTranscriptChunkConfiguration : IEntityTypeConfiguration
         builder.HasIndex(chunk => new { chunk.VideoId, chunk.Language })
             .HasDatabaseName("IX_VideoTranscriptChunks_VideoId_Language");
 
+        builder.HasIndex(chunk => new { chunk.VideoId, chunk.Language, chunk.EmbeddingGeneratedAt })
+            .HasDatabaseName("IX_VideoTranscriptChunks_VideoId_Language_EmbeddingGeneratedAt");
+
+        builder.HasIndex(chunk => new { chunk.EmbeddingProvider, chunk.EmbeddingModel })
+            .HasDatabaseName("IX_VideoTranscriptChunks_EmbeddingProvider_EmbeddingModel");
+
         builder.HasIndex(_searchVectorPropertyName)
             .HasMethod("GIN")
             .HasDatabaseName("IX_VideoTranscriptChunks_SearchVector");
@@ -56,6 +90,11 @@ public sealed class VideoTranscriptChunkConfiguration : IEntityTypeConfiguration
             .HasMethod("GIN")
             .HasOperators(_trigramIndexOperator)
             .HasDatabaseName("IX_VideoTranscriptChunks_Content_Trgm");
+
+        builder.HasIndex(chunk => chunk.Embedding)
+            .HasMethod("hnsw")
+            .HasOperators("vector_cosine_ops")
+            .HasDatabaseName("IX_VideoTranscriptChunks_Embedding_Hnsw");
 
         builder.HasOne(chunk => chunk.Video)
             .WithMany(video => video.VideoTranscriptChunks)
