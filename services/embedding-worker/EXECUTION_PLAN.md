@@ -1,6 +1,6 @@
 # Embedding Worker - Local Execution Plan
 
-Status: [ ] Not Started
+Status: [~] In Progress
 
 ## Purpose
 
@@ -245,17 +245,17 @@ The worker should be treated as a stateless inference dependency, not as an auto
 
 ## Implementation Steps
 
-- [ ] Create Python project scaffold under `services/embedding-worker/`
-- [ ] Add `requirements.txt`
-- [ ] Add FastAPI entry point
-- [ ] Add request/response models for embedding batches
-- [ ] Add `POST /embed`
-- [ ] Add `GET /health`
-- [ ] Add local configuration model
-- [ ] Add local embedding-model integration service
+- [X] Create Python project scaffold under `services/embedding-worker/`
+- [X] Add `requirements.txt`
+- [X] Add FastAPI entry point
+- [X] Add request/response models for embedding batches
+- [X] Add `POST /embed`
+- [X] Add `GET /health`
+- [X] Add local configuration model
+- [X] Add local embedding-model integration service
 - [ ] Add batching/performance safeguards for large chunk sets
-- [ ] Add Dockerfile
-- [ ] Add worker README with install/run instructions
+- [X] Add Dockerfile
+- [X] Add worker README with install/run instructions
 - [ ] Add smoke test path
 
 ## Notes
