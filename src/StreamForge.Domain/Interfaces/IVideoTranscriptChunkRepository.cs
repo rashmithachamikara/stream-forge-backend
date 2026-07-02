@@ -4,6 +4,28 @@ namespace StreamForge.Domain.Interfaces;
 
 public interface IVideoTranscriptChunkRepository : IRepository<VideoTranscriptChunk>
 {
+    Task<PagedQueryResult<TranscriptSemanticChunkMatch>> SearchSemanticByVideoAsync(
+        Guid videoId,
+        float[] queryEmbedding,
+        string embeddingProvider,
+        string embeddingModel,
+        string? language,
+        int page,
+        int pageSize,
+        int candidateCount,
+        CancellationToken cancellationToken = default);
+
+    Task<PagedQueryResult<TranscriptSemanticChunkMatch>> SearchSemanticAcrossVideosAsync(
+        IReadOnlyCollection<Guid> videoIds,
+        float[] queryEmbedding,
+        string embeddingProvider,
+        string embeddingModel,
+        string? language,
+        int page,
+        int pageSize,
+        int candidateCount,
+        CancellationToken cancellationToken = default);
+
     Task DeleteByVideoAndLanguageAsync(Guid videoId, string language, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<VideoTranscriptChunk>> GetByTranscriptionIdAsync(
@@ -23,3 +45,14 @@ public interface IVideoTranscriptChunkRepository : IRepository<VideoTranscriptCh
         int pageSize,
         CancellationToken cancellationToken = default);
 }
+
+public sealed record TranscriptSemanticChunkMatch(
+    Guid ChunkId,
+    Guid VideoId,
+    Guid TranscriptionId,
+    string Language,
+    double StartSeconds,
+    double EndSeconds,
+    string Content,
+    double Score,
+    string? VideoTitle);

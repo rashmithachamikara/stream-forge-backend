@@ -69,4 +69,88 @@ public sealed class VideoTranscriptChunkRepositoryIntegrationTests
         result.Items[0].Language.Should().Be("en");
         result.Items[0].StartSeconds.Should().Be(5);
     }
+
+    [IntegrationFact]
+    public async Task SearchSemanticByVideoAsync_ShouldReturnNearestEmbeddedChunks()
+    {
+        await _fixture.ResetDatabaseAsync();
+        await using var context = _fixture.CreateContext();
+
+        var owner = User.Create("Owner", "owner@example.com", "hash", UserRole.Editor);
+        var video = Video.Create("Semantic Video", null, owner.Id, status: VideoStatus.Ready);
+        var transcription = VideoTranscription.Create(video.Id, "en", "vtt", "videos/semantic.vtt", "local-faster-whisper");
+        var closerChunk = VideoTranscriptChunk.Create(video.Id, transcription.Id, "en", 5, 10, "closer");
+        closerChunk.SetEmbedding("local-sentence-transformer", "sentence-transformers/all-MiniLM-L6-v2", CreateEmbedding(0));
+        var fartherChunk = VideoTranscriptChunk.Create(video.Id, transcription.Id, "en", 15, 20, "farther");
+        fartherChunk.SetEmbedding("local-sentence-transformer", "sentence-transformers/all-MiniLM-L6-v2", CreateEmbedding(1));
+
+        context.AddRange(owner, video, transcription, closerChunk, fartherChunk);
+        await context.SaveChangesAsync();
+
+        var repository = new VideoTranscriptChunkRepository(context);
+
+        var result = await repository.SearchSemanticByVideoAsync(
+            video.Id,
+            CreateEmbedding(0),
+            "local-sentence-transformer",
+            "sentence-transformers/all-MiniLM-L6-v2",
+            "en",
+            1,
+            10,
+            10);
+
+        result.TotalCount.Should().Be(2);
+        result.Items.Select(item => item.Content).Should().ContainInOrder("closer", "farther");
+        result.Items[0].Score.Should().BeGreaterThan(result.Items[1].Score);
+    }
+
+    [IntegrationFact]
+    public async Task SearchSemanticAcrossVideosAsync_ShouldFilterByAuthorizedVideoIdsAndModel()
+    {
+        await _fixture.ResetDatabaseAsync();
+        await using var context = _fixture.CreateContext();
+
+        var owner = User.Create("Owner", "owner@example.com", "hash", UserRole.Editor);
+        var allowedVideo = Video.Create("Allowed Video", null, owner.Id, status: VideoStatus.Ready);
+        var deniedVideo = Video.Create("Denied Video", null, owner.Id, status: VideoStatus.Ready);
+        var allowedTranscription = VideoTranscription.Create(allowedVideo.Id, "en", "vtt", "videos/allowed.vtt", "local-faster-whisper");
+        var deniedTranscription = VideoTranscription.Create(deniedVideo.Id, "en", "vtt", "videos/denied.vtt", "local-faster-whisper");
+
+        var allowedChunk = VideoTranscriptChunk.Create(allowedVideo.Id, allowedTranscription.Id, "en", 1, 4, "allowed chunk");
+        allowedChunk.SetEmbedding("local-sentence-transformer", "sentence-transformers/all-MiniLM-L6-v2", CreateEmbedding(0));
+
+        var deniedChunk = VideoTranscriptChunk.Create(deniedVideo.Id, deniedTranscription.Id, "en", 1, 4, "denied chunk");
+        deniedChunk.SetEmbedding("local-sentence-transformer", "sentence-transformers/all-MiniLM-L6-v2", CreateEmbedding(0));
+
+        var mismatchedModelChunk = VideoTranscriptChunk.Create(allowedVideo.Id, allowedTranscription.Id, "en", 5, 8, "wrong model chunk");
+        mismatchedModelChunk.SetEmbedding("local-sentence-transformer", "other-model", CreateEmbedding(0));
+
+        context.AddRange(owner, allowedVideo, deniedVideo, allowedTranscription, deniedTranscription, allowedChunk, deniedChunk, mismatchedModelChunk);
+        await context.SaveChangesAsync();
+
+        var repository = new VideoTranscriptChunkRepository(context);
+
+        var result = await repository.SearchSemanticAcrossVideosAsync(
+            [allowedVideo.Id],
+            CreateEmbedding(0),
+            "local-sentence-transformer",
+            "sentence-transformers/all-MiniLM-L6-v2",
+            "en",
+            1,
+            10,
+            10);
+
+        result.TotalCount.Should().Be(1);
+        result.Items.Should().ContainSingle();
+        result.Items[0].VideoId.Should().Be(allowedVideo.Id);
+        result.Items[0].VideoTitle.Should().Be("Allowed Video");
+        result.Items[0].Content.Should().Be("allowed chunk");
+    }
+
+    private static float[] CreateEmbedding(int hotIndex)
+    {
+        var embedding = new float[384];
+        embedding[hotIndex] = 1f;
+        return embedding;
+    }
 }

@@ -35,6 +35,12 @@ public interface IVideoRepository : IRepository<Video>
         int pageSize,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Guid>> GetAccessibleVideoIdsAsync(
+        Guid? currentUserId,
+        UserRole? currentUserRole,
+        IReadOnlyCollection<Guid>? scopedVideoIds,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Gets videos by user ID
     /// </summary>

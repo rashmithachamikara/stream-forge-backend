@@ -151,6 +151,59 @@ public sealed class VideoRepository : BaseRepository<Video>, IVideoRepository
         return await ToPagedResultAsync(ApplySort(query, sort), page, pageSize, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetAccessibleVideoIdsAsync(
+        Guid? currentUserId,
+        UserRole? currentUserRole,
+        IReadOnlyCollection<Guid>? scopedVideoIds,
+        CancellationToken cancellationToken = default)
+    {
+        var query = DbSet
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (scopedVideoIds is { Count: > 0 })
+        {
+            var distinctIds = scopedVideoIds
+                .Where(id => id != Guid.Empty)
+                .Distinct()
+                .ToArray();
+
+            if (distinctIds.Length == 0)
+            {
+                return [];
+            }
+
+            query = query.Where(video => distinctIds.Contains(video.Id));
+        }
+
+        if (currentUserRole != UserRole.Admin)
+        {
+            query = query.Where(video => video.Status == VideoStatus.Ready);
+            query = currentUserId.HasValue
+                ? query.Where(video =>
+                    video.Visibility == VideoVisibility.Public ||
+                    video.Visibility == VideoVisibility.Internal ||
+                    video.UploaderId == currentUserId.Value ||
+                    video.AccessControls.Any(accessControl =>
+                        accessControl.IsActive &&
+                        (!accessControl.ExpiresAt.HasValue || accessControl.ExpiresAt > DateTime.UtcNow) &&
+                        accessControl.UserId == currentUserId.Value &&
+                        (accessControl.PermissionType == PermissionType.View ||
+                         accessControl.PermissionType == PermissionType.Embed ||
+                         accessControl.PermissionType == PermissionType.Download)))
+                : query.Where(video => video.Visibility == VideoVisibility.Public);
+        }
+        else
+        {
+            query = query.Where(video => video.Status != VideoStatus.Deleted);
+        }
+
+        return await query
+            .OrderBy(video => video.Id)
+            .Select(video => video.Id)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IEnumerable<Video>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default) =>
         await DbSet.Where(video => video.UploaderId == userId).ToListAsync(cancellationToken);
 

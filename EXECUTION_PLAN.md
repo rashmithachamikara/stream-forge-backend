@@ -173,7 +173,7 @@
 - [ ] [OPTIONAL] Add transcript ranking/highlighting behavior for full-text matches over persisted chunks
 - [X] Define the embedding pipeline and move embedding generation into a dedicated post-transcription stage or worker
 - [X] Add schema support for embedding storage and vector indexes in a new schema version
-- [ ] Add `pgvector`-backed semantic retrieval over transcript chunks
+- [X] Add `pgvector`-backed semantic retrieval over transcript chunks
 - [ ] Add grounded video Q&A endpoints over retrieved transcript passages with cited time ranges
 - [ ] Add retrieval/answering tests for full-text search, semantic search, citation integrity, and failure handling
 - [ ] Add docker support

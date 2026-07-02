@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using StreamForge.Application.DTOs.Content;
 using StreamForge.Application.DTOs.Transcriptions;
 using StreamForge.Application.Interfaces;
+using StreamForge.Application.UseCases.TranscriptIntelligence;
 using StreamForge.Application.UseCases.Transcriptions;
 
 namespace StreamForge.Api.Controllers.Videos;
@@ -16,6 +17,7 @@ public sealed class VideoTranscriptionsController : ControllerBase
     private readonly GetVideoTranscriptionStatusService _getVideoTranscriptionStatus;
     private readonly GetVideoTranscriptionFileService _getVideoTranscriptionFile;
     private readonly SearchVideoTranscriptService _searchVideoTranscript;
+    private readonly SearchVideoTranscriptSemanticService _searchVideoTranscriptSemantic;
     private readonly GetVideoTranscriptionChunksService _getVideoTranscriptionChunks;
     private readonly StartVideoTranscriptionService _startVideoTranscription;
 
@@ -25,6 +27,7 @@ public sealed class VideoTranscriptionsController : ControllerBase
         GetVideoTranscriptionStatusService getVideoTranscriptionStatus,
         GetVideoTranscriptionFileService getVideoTranscriptionFile,
         SearchVideoTranscriptService searchVideoTranscript,
+        SearchVideoTranscriptSemanticService searchVideoTranscriptSemantic,
         GetVideoTranscriptionChunksService getVideoTranscriptionChunks,
         StartVideoTranscriptionService startVideoTranscription)
     {
@@ -33,6 +36,7 @@ public sealed class VideoTranscriptionsController : ControllerBase
         _getVideoTranscriptionStatus = getVideoTranscriptionStatus;
         _getVideoTranscriptionFile = getVideoTranscriptionFile;
         _searchVideoTranscript = searchVideoTranscript;
+        _searchVideoTranscriptSemantic = searchVideoTranscriptSemantic;
         _getVideoTranscriptionChunks = getVideoTranscriptionChunks;
         _startVideoTranscription = startVideoTranscription;
     }
@@ -109,6 +113,20 @@ public sealed class VideoTranscriptionsController : ControllerBase
         CancellationToken cancellationToken)
     {
         return Ok(await _searchVideoTranscript.Handle(videoId, query, language, page, pageSize, shareToken, cancellationToken));
+    }
+
+    [HttpGet("/api/v1/videos/{videoId:guid}/transcript-semantic-search")]
+    [AllowAnonymous]
+    public async Task<ActionResult<PagedResponseDto<TranscriptSemanticSearchResultDto>>> SearchSemantic(
+        Guid videoId,
+        [FromQuery(Name = "q")] string query,
+        [FromQuery] string? language,
+        [FromQuery] int page,
+        [FromQuery] int pageSize,
+        [FromQuery] string? shareToken,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _searchVideoTranscriptSemantic.Handle(videoId, query, language, page, pageSize, shareToken, cancellationToken));
     }
 
     [HttpPost]

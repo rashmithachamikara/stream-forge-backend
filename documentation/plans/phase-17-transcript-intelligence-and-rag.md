@@ -88,7 +88,8 @@ Current implementation status:
 - the embedding column is now fixed to `vector(384)` to match the current default embedding model `sentence-transformers/all-MiniLM-L6-v2`
 - a follow-up migration now removes the previously-added redundant `EmbeddingDimensions` column
 - runtime retrieval settings now include semantic/full-text candidate sizes plus starter hybrid weighting controls
-- semantic retrieval endpoints and ranking still remain the next step
+- per-video and cross-video semantic search endpoints are now implemented over persisted transcript chunk embeddings
+- semantic retrieval currently remains retrieval-only; hybrid reranking for Q&A still remains the next step
 
 Background flow:
 

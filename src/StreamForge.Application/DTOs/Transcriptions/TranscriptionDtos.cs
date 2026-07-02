@@ -97,6 +97,27 @@ public sealed record TranscriptSearchResultDto(
     double EndSeconds,
     string Content);
 
+public sealed record TranscriptSemanticSearchResultDto(
+    Guid ChunkId,
+    Guid VideoId,
+    Guid TranscriptionId,
+    string Language,
+    double StartSeconds,
+    double EndSeconds,
+    string Content,
+    double Score);
+
+public sealed record CrossVideoTranscriptSemanticSearchResultDto(
+    Guid ChunkId,
+    Guid VideoId,
+    string VideoTitle,
+    Guid TranscriptionId,
+    string Language,
+    double StartSeconds,
+    double EndSeconds,
+    string Content,
+    double Score);
+
 public sealed record TranscriptChunkDto(
     Guid ChunkId,
     Guid VideoId,

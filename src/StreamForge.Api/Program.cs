@@ -240,6 +240,7 @@ builder.Services.AddScoped<IVideoProcessingQueue, HangfireVideoProcessingQueue>(
 builder.Services.AddScoped<IVideoProcessingRuntimeMonitor, HangfireVideoProcessingRuntimeMonitor>();
 builder.Services.AddScoped<ITranscriptionQueue, HangfireTranscriptionQueue>();
 builder.Services.AddScoped<ITranscriptEmbeddingQueue, HangfireTranscriptEmbeddingQueue>();
+builder.Services.AddScoped<ITranscriptSearchProvider, PostgresTranscriptSearchProvider>();
 builder.Services.AddHttpClient<ITranscriptionProvider, LocalFasterWhisperTranscriptionProvider>((serviceProvider, client) =>
 {
     var options = serviceProvider.GetRequiredService<IOptions<TranscriptionOptions>>().Value;
@@ -265,6 +266,8 @@ builder.Services.AddScoped<ResyncAdminVideoProcessingJobService>();
 builder.Services.AddScoped<ResolveTranscriptionSettingsService>();
 builder.Services.AddScoped<ResolveRagSettingsService>();
 builder.Services.AddScoped<GenerateTranscriptEmbeddingsService>();
+builder.Services.AddScoped<SearchVideoTranscriptSemanticService>();
+builder.Services.AddScoped<SearchTranscriptSemanticAcrossVideosService>();
 builder.Services.AddScoped<GetPlaybackManifestService>();
 builder.Services.AddScoped<GetStreamingAssetService>();
 builder.Services.AddScoped<GetVideoThumbnailService>();
