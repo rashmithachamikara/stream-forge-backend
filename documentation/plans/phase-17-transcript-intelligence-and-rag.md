@@ -89,7 +89,8 @@ Current implementation status:
 - a follow-up migration now removes the previously-added redundant `EmbeddingDimensions` column
 - runtime retrieval settings now include semantic/full-text candidate sizes plus starter hybrid weighting controls
 - per-video and cross-video semantic search endpoints are now implemented over persisted transcript chunk embeddings
-- semantic retrieval currently remains retrieval-only; hybrid reranking for Q&A still remains the next step
+- per-video and cross-video hybrid search endpoints are now implemented over combined lexical + semantic retrieval
+- retrieval currently remains search-only; grounded answer generation and citation synthesis still remain the next step
 
 Background flow:
 
@@ -212,7 +213,7 @@ For direct search endpoints:
 
 - per-video `transcript-search` remains lexical/full-text
 - per-video and cross-video semantic endpoints remain semantic-first
-- hybrid behavior is primarily required for Q&A and can be added to dedicated search later if needed
+- dedicated per-video and cross-video hybrid endpoints provide combined retrieval without changing the legacy lexical route
 
 ### 7. Grounded Q&A
 
@@ -361,6 +362,8 @@ Those should remain in app configuration, environment variables, or a secret sto
 
 - `GET /api/v1/videos/{videoId}/transcript-semantic-search?q=...`
 - `GET /api/v1/transcript-semantic-search?q=...`
+- `GET /api/v1/videos/{videoId}/transcript-hybrid-search?q=...`
+- `GET /api/v1/transcript-hybrid-search?q=...`
 - `POST /api/v1/videos/{videoId}/questions`
 - `POST /api/v1/questions`
 

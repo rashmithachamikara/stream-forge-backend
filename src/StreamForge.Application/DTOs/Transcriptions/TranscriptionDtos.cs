@@ -118,6 +118,31 @@ public sealed record CrossVideoTranscriptSemanticSearchResultDto(
     string Content,
     double Score);
 
+public sealed record TranscriptHybridSearchResultDto(
+    Guid ChunkId,
+    Guid VideoId,
+    Guid TranscriptionId,
+    string Language,
+    double StartSeconds,
+    double EndSeconds,
+    string Content,
+    double Score,
+    double? LexicalScore,
+    double? SemanticScore);
+
+public sealed record CrossVideoTranscriptHybridSearchResultDto(
+    Guid ChunkId,
+    Guid VideoId,
+    string VideoTitle,
+    Guid TranscriptionId,
+    string Language,
+    double StartSeconds,
+    double EndSeconds,
+    string Content,
+    double Score,
+    double? LexicalScore,
+    double? SemanticScore);
+
 public sealed record TranscriptChunkDto(
     Guid ChunkId,
     Guid VideoId,

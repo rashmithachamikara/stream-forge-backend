@@ -11,11 +11,14 @@ namespace StreamForge.Api.Controllers;
 public sealed class TranscriptSearchController : ControllerBase
 {
     private readonly SearchTranscriptSemanticAcrossVideosService _searchTranscriptSemanticAcrossVideos;
+    private readonly SearchTranscriptHybridAcrossVideosService _searchTranscriptHybridAcrossVideos;
 
     public TranscriptSearchController(
-        SearchTranscriptSemanticAcrossVideosService searchTranscriptSemanticAcrossVideos)
+        SearchTranscriptSemanticAcrossVideosService searchTranscriptSemanticAcrossVideos,
+        SearchTranscriptHybridAcrossVideosService searchTranscriptHybridAcrossVideos)
     {
         _searchTranscriptSemanticAcrossVideos = searchTranscriptSemanticAcrossVideos;
+        _searchTranscriptHybridAcrossVideos = searchTranscriptHybridAcrossVideos;
     }
 
     [HttpGet("transcript-semantic-search")]
@@ -29,6 +32,25 @@ public sealed class TranscriptSearchController : ControllerBase
         CancellationToken cancellationToken)
     {
         return Ok(await _searchTranscriptSemanticAcrossVideos.Handle(
+            query,
+            language,
+            videoIds,
+            page,
+            pageSize,
+            cancellationToken));
+    }
+
+    [HttpGet("transcript-hybrid-search")]
+    [Authorize]
+    public async Task<ActionResult<PagedResponseDto<CrossVideoTranscriptHybridSearchResultDto>>> SearchHybridAcrossVideos(
+        [FromQuery(Name = "q")] string query,
+        [FromQuery] string? language,
+        [FromQuery] Guid[]? videoIds,
+        [FromQuery] int page,
+        [FromQuery] int pageSize,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _searchTranscriptHybridAcrossVideos.Handle(
             query,
             language,
             videoIds,

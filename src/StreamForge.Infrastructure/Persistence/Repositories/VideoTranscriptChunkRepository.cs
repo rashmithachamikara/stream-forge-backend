@@ -57,6 +57,74 @@ public sealed class VideoTranscriptChunkRepository : BaseRepository<VideoTranscr
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<PagedQueryResult<TranscriptLexicalChunkMatch>> SearchLexicalByVideoAsync(
+        Guid videoId,
+        string searchTerm,
+        string? language,
+        int page,
+        int pageSize,
+        int candidateCount,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedSearchTerm = searchTerm.Trim();
+        var normalizedLanguage = string.IsNullOrWhiteSpace(language) ? null : language.Trim().ToLowerInvariant();
+
+        var query = DbContext.VideoTranscriptChunks
+            .AsNoTracking()
+            .Where(chunk => chunk.VideoId == videoId);
+
+        if (!string.IsNullOrWhiteSpace(normalizedLanguage))
+        {
+            query = query.Where(chunk => chunk.Language == normalizedLanguage);
+        }
+
+        return await SearchLexicalAsync(
+            query,
+            normalizedSearchTerm,
+            page,
+            pageSize,
+            candidateCount,
+            includeVideoTitle: false,
+            cancellationToken);
+    }
+
+    public async Task<PagedQueryResult<TranscriptLexicalChunkMatch>> SearchLexicalAcrossVideosAsync(
+        IReadOnlyCollection<Guid> videoIds,
+        string searchTerm,
+        string? language,
+        int page,
+        int pageSize,
+        int candidateCount,
+        CancellationToken cancellationToken = default)
+    {
+        if (videoIds.Count == 0)
+        {
+            return new PagedQueryResult<TranscriptLexicalChunkMatch>([], 0, page, pageSize);
+        }
+
+        var normalizedSearchTerm = searchTerm.Trim();
+        var normalizedLanguage = string.IsNullOrWhiteSpace(language) ? null : language.Trim().ToLowerInvariant();
+        var scopedIds = videoIds.Distinct().ToArray();
+
+        var query = DbContext.VideoTranscriptChunks
+            .AsNoTracking()
+            .Where(chunk => scopedIds.Contains(chunk.VideoId));
+
+        if (!string.IsNullOrWhiteSpace(normalizedLanguage))
+        {
+            query = query.Where(chunk => chunk.Language == normalizedLanguage);
+        }
+
+        return await SearchLexicalAsync(
+            query,
+            normalizedSearchTerm,
+            page,
+            pageSize,
+            candidateCount,
+            includeVideoTitle: true,
+            cancellationToken);
+    }
+
     public async Task<PagedQueryResult<TranscriptSemanticChunkMatch>> SearchSemanticByVideoAsync(
         Guid videoId,
         float[] queryEmbedding,
@@ -177,6 +245,73 @@ public sealed class VideoTranscriptChunkRepository : BaseRepository<VideoTranscr
         return new PagedQueryResult<VideoTranscriptChunk>(fallbackItems, fallbackTotalCount, page, pageSize);
     }
 
+    private async Task<PagedQueryResult<TranscriptLexicalChunkMatch>> SearchLexicalAsync(
+        IQueryable<VideoTranscriptChunk> baseQuery,
+        string normalizedSearchTerm,
+        int page,
+        int pageSize,
+        int candidateCount,
+        bool includeVideoTitle,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(normalizedSearchTerm))
+        {
+            return new PagedQueryResult<TranscriptLexicalChunkMatch>([], 0, page, pageSize);
+        }
+
+        var rankedQuery = baseQuery
+            .Select(chunk => new TranscriptLexicalChunkProjection
+            {
+                ChunkId = chunk.Id,
+                VideoId = chunk.VideoId,
+                TranscriptionId = chunk.TranscriptionId,
+                Language = chunk.Language,
+                StartSeconds = chunk.StartSeconds,
+                EndSeconds = chunk.EndSeconds,
+                Content = chunk.Content,
+                IsFullTextMatch = EF.Property<NpgsqlTsVector>(chunk, _searchVectorPropertyName)
+                    .Matches(EF.Functions.WebSearchToTsQuery(_searchConfiguration, normalizedSearchTerm)),
+                FullTextRank = EF.Property<NpgsqlTsVector>(chunk, _searchVectorPropertyName)
+                    .RankCoverDensity(EF.Functions.WebSearchToTsQuery(_searchConfiguration, normalizedSearchTerm)),
+                TrigramWordSimilarity = EF.Functions.TrigramsWordSimilarity(normalizedSearchTerm, chunk.Content),
+                VideoTitle = includeVideoTitle ? chunk.Video.Title : null
+            })
+            .Where(item => item.IsFullTextMatch || item.TrigramWordSimilarity >= _trigramWordSimilarityThreshold);
+
+        var totalCount = await rankedQuery.CountAsync(cancellationToken);
+        if (totalCount == 0)
+        {
+            return new PagedQueryResult<TranscriptLexicalChunkMatch>([], 0, page, pageSize);
+        }
+
+        var items = await rankedQuery
+            .OrderByDescending(item => item.IsFullTextMatch)
+            .ThenByDescending(item => item.FullTextRank)
+            .ThenByDescending(item => item.TrigramWordSimilarity)
+            .ThenBy(item => item.StartSeconds)
+            .ThenBy(item => item.ChunkId)
+            .Take(candidateCount)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return new PagedQueryResult<TranscriptLexicalChunkMatch>(
+            items.Select(item => new TranscriptLexicalChunkMatch(
+                    item.ChunkId,
+                    item.VideoId,
+                    item.TranscriptionId,
+                    item.Language,
+                    item.StartSeconds,
+                    item.EndSeconds,
+                    item.Content,
+                    NormalizeLexicalScore(item.IsFullTextMatch, item.FullTextRank, item.TrigramWordSimilarity),
+                    item.VideoTitle))
+                .ToArray(),
+            totalCount,
+            page,
+            pageSize);
+    }
+
     private async Task<PagedQueryResult<TranscriptSemanticChunkMatch>> SearchSemanticAsync(
         string scopePredicate,
         IReadOnlyList<NpgsqlParameter> parameters,
@@ -280,6 +415,43 @@ public sealed class VideoTranscriptChunkRepository : BaseRepository<VideoTranscr
 
     private static NpgsqlParameter CreateQueryEmbeddingParameter(float[] queryEmbedding) =>
         new("queryEmbedding", new Vector(queryEmbedding));
+
+    private static double NormalizeLexicalScore(bool isFullTextMatch, float fullTextRank, double trigramWordSimilarity)
+    {
+        var normalizedRank = Math.Clamp(fullTextRank, 0f, 1f);
+        var normalizedTrigram = Math.Clamp(trigramWordSimilarity, 0f, 1f);
+
+        var score = isFullTextMatch
+            ? 0.7d + (normalizedRank * 0.2d) + (normalizedTrigram * 0.1d)
+            : normalizedTrigram * 0.5d;
+
+        return Math.Clamp(score, 0d, 1d);
+    }
+
+    private sealed class TranscriptLexicalChunkProjection
+    {
+        public Guid ChunkId { get; init; }
+
+        public Guid VideoId { get; init; }
+
+        public Guid TranscriptionId { get; init; }
+
+        public string Language { get; init; } = string.Empty;
+
+        public double StartSeconds { get; init; }
+
+        public double EndSeconds { get; init; }
+
+        public string Content { get; init; } = string.Empty;
+
+        public bool IsFullTextMatch { get; init; }
+
+        public float FullTextRank { get; init; }
+
+        public double TrigramWordSimilarity { get; init; }
+
+        public string? VideoTitle { get; init; }
+    }
 
     private sealed class TranscriptSemanticChunkRow
     {

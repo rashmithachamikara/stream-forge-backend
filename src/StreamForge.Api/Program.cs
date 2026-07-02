@@ -268,6 +268,8 @@ builder.Services.AddScoped<ResolveRagSettingsService>();
 builder.Services.AddScoped<GenerateTranscriptEmbeddingsService>();
 builder.Services.AddScoped<SearchVideoTranscriptSemanticService>();
 builder.Services.AddScoped<SearchTranscriptSemanticAcrossVideosService>();
+builder.Services.AddScoped<SearchVideoTranscriptHybridService>();
+builder.Services.AddScoped<SearchTranscriptHybridAcrossVideosService>();
 builder.Services.AddScoped<GetPlaybackManifestService>();
 builder.Services.AddScoped<GetStreamingAssetService>();
 builder.Services.AddScoped<GetVideoThumbnailService>();

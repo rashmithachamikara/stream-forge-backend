@@ -71,6 +71,40 @@ public sealed class VideoTranscriptChunkRepositoryIntegrationTests
     }
 
     [IntegrationFact]
+    public async Task SearchLexicalAcrossVideosAsync_ShouldReturnScopedMatchesWithVideoTitles()
+    {
+        await _fixture.ResetDatabaseAsync();
+        await using var context = _fixture.CreateContext();
+
+        var owner = User.Create("Owner", "owner@example.com", "hash", UserRole.Editor);
+        var allowedVideo = Video.Create("Allowed Video", null, owner.Id, status: VideoStatus.Ready);
+        var deniedVideo = Video.Create("Denied Video", null, owner.Id, status: VideoStatus.Ready);
+        var allowedTranscription = VideoTranscription.Create(allowedVideo.Id, "en", "vtt", "videos/allowed.vtt", "local-faster-whisper");
+        var deniedTranscription = VideoTranscription.Create(deniedVideo.Id, "en", "vtt", "videos/denied.vtt", "local-faster-whisper");
+        var allowedChunk = VideoTranscriptChunk.Create(allowedVideo.Id, allowedTranscription.Id, "en", 3, 8, "broadcast special coverage");
+        var deniedChunk = VideoTranscriptChunk.Create(deniedVideo.Id, deniedTranscription.Id, "en", 4, 9, "broadcast special coverage");
+
+        context.AddRange(owner, allowedVideo, deniedVideo, allowedTranscription, deniedTranscription, allowedChunk, deniedChunk);
+        await context.SaveChangesAsync();
+
+        var repository = new VideoTranscriptChunkRepository(context);
+
+        var result = await repository.SearchLexicalAcrossVideosAsync(
+            [allowedVideo.Id],
+            "broadcast",
+            "en",
+            1,
+            10,
+            10);
+
+        result.TotalCount.Should().Be(1);
+        result.Items.Should().ContainSingle();
+        result.Items[0].VideoId.Should().Be(allowedVideo.Id);
+        result.Items[0].VideoTitle.Should().Be("Allowed Video");
+        result.Items[0].Content.Should().Be("broadcast special coverage");
+    }
+
+    [IntegrationFact]
     public async Task SearchSemanticByVideoAsync_ShouldReturnNearestEmbeddedChunks()
     {
         await _fixture.ResetDatabaseAsync();

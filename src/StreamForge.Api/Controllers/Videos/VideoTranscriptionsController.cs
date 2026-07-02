@@ -18,6 +18,7 @@ public sealed class VideoTranscriptionsController : ControllerBase
     private readonly GetVideoTranscriptionFileService _getVideoTranscriptionFile;
     private readonly SearchVideoTranscriptService _searchVideoTranscript;
     private readonly SearchVideoTranscriptSemanticService _searchVideoTranscriptSemantic;
+    private readonly SearchVideoTranscriptHybridService _searchVideoTranscriptHybrid;
     private readonly GetVideoTranscriptionChunksService _getVideoTranscriptionChunks;
     private readonly StartVideoTranscriptionService _startVideoTranscription;
 
@@ -28,6 +29,7 @@ public sealed class VideoTranscriptionsController : ControllerBase
         GetVideoTranscriptionFileService getVideoTranscriptionFile,
         SearchVideoTranscriptService searchVideoTranscript,
         SearchVideoTranscriptSemanticService searchVideoTranscriptSemantic,
+        SearchVideoTranscriptHybridService searchVideoTranscriptHybrid,
         GetVideoTranscriptionChunksService getVideoTranscriptionChunks,
         StartVideoTranscriptionService startVideoTranscription)
     {
@@ -37,6 +39,7 @@ public sealed class VideoTranscriptionsController : ControllerBase
         _getVideoTranscriptionFile = getVideoTranscriptionFile;
         _searchVideoTranscript = searchVideoTranscript;
         _searchVideoTranscriptSemantic = searchVideoTranscriptSemantic;
+        _searchVideoTranscriptHybrid = searchVideoTranscriptHybrid;
         _getVideoTranscriptionChunks = getVideoTranscriptionChunks;
         _startVideoTranscription = startVideoTranscription;
     }
@@ -127,6 +130,20 @@ public sealed class VideoTranscriptionsController : ControllerBase
         CancellationToken cancellationToken)
     {
         return Ok(await _searchVideoTranscriptSemantic.Handle(videoId, query, language, page, pageSize, shareToken, cancellationToken));
+    }
+
+    [HttpGet("/api/v1/videos/{videoId:guid}/transcript-hybrid-search")]
+    [AllowAnonymous]
+    public async Task<ActionResult<PagedResponseDto<TranscriptHybridSearchResultDto>>> SearchHybrid(
+        Guid videoId,
+        [FromQuery(Name = "q")] string query,
+        [FromQuery] string? language,
+        [FromQuery] int page,
+        [FromQuery] int pageSize,
+        [FromQuery] string? shareToken,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _searchVideoTranscriptHybrid.Handle(videoId, query, language, page, pageSize, shareToken, cancellationToken));
     }
 
     [HttpPost]
