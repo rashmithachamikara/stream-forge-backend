@@ -38,6 +38,15 @@ public sealed class RagOptions
     [Range(1, 1000)]
     public int FullTextTopK { get; set; } = 8;
 
+    [Range(0, 1)]
+    public double HybridSemanticWeight { get; set; } = 0.6d;
+
+    [Range(0, 1)]
+    public double HybridLexicalWeight { get; set; } = 0.4d;
+
+    [Range(1, 1000)]
+    public int HybridMaxCandidates { get; set; } = 12;
+
     [Required]
     public string QaProvider { get; set; } = "disabled";
 

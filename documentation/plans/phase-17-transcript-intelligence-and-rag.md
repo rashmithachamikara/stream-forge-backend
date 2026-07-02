@@ -1,6 +1,6 @@
 # Phase 17 - Transcript Intelligence and RAG
 
-Status: [ ] Not Started
+Status: [~] In Progress
 
 ## Purpose
 
@@ -83,8 +83,11 @@ Current implementation status:
 - `.NET` now enqueues a dedicated embedding job after canonical transcript chunks are persisted
 - Hangfire now owns the first embedding-stage runtime
 - a dedicated `services/embedding-worker/` FastAPI worker scaffold now exists with `POST /embed` and `GET /health`
-- transcript chunk embeddings are now persisted with provider/model/dimension metadata
+- transcript chunk embeddings are now persisted with provider/model metadata
 - schema v7.0 now adds `pgvector` storage support plus a first HNSW cosine index for transcript embeddings
+- the embedding column is now fixed to `vector(384)` to match the current default embedding model `sentence-transformers/all-MiniLM-L6-v2`
+- a follow-up migration now removes the previously-added redundant `EmbeddingDimensions` column
+- runtime retrieval settings now include semantic/full-text candidate sizes plus starter hybrid weighting controls
 - semantic retrieval endpoints and ranking still remain the next step
 
 Background flow:
@@ -108,7 +111,7 @@ Add a new schema version before implementing semantic retrieval.
 Schema additions should include:
 
 - embedding/vector storage on `VideoTranscriptChunks`
-- any provider/model metadata needed to know how vectors were produced
+- provider/model metadata needed to know how vectors were produced
 - PostgreSQL full-text search support for chunk content
 - `pgvector` indexes for semantic retrieval
 
@@ -285,6 +288,15 @@ Add settings groups for:
   - max retrieved chunks
   - max citations
 
+Current implemented runtime retrieval keys:
+
+- `rag.retrieval.defaultMode`
+- `rag.retrieval.semanticTopK`
+- `rag.retrieval.fullTextTopK`
+- `rag.retrieval.hybridSemanticWeight`
+- `rag.retrieval.hybridLexicalWeight`
+- `rag.retrieval.hybridMaxCandidates`
+
 Keep these separate from Phase 15 transcription-generation settings even though both live under the broader admin settings surface.
 
 ### Good First `SystemSettings` Key Set
@@ -301,6 +313,9 @@ The first persisted Phase 17 key set should include:
 - `rag.retrieval.defaultMode`
 - `rag.retrieval.semanticTopK`
 - `rag.retrieval.fullTextTopK`
+- `rag.retrieval.hybridSemanticWeight`
+- `rag.retrieval.hybridLexicalWeight`
+- `rag.retrieval.hybridMaxCandidates`
 - `rag.qa.provider`
 - `rag.qa.model`
 - `rag.qa.maxContextChunks`
@@ -321,6 +336,9 @@ Recommended intent for these keys:
   - `rag.retrieval.defaultMode`
   - `rag.retrieval.semanticTopK`
   - `rag.retrieval.fullTextTopK`
+  - `rag.retrieval.hybridSemanticWeight`
+  - `rag.retrieval.hybridLexicalWeight`
+  - `rag.retrieval.hybridMaxCandidates`
 - Q&A runtime:
   - `rag.qa.provider`
   - `rag.qa.model`

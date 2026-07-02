@@ -26,6 +26,9 @@ public sealed class EmbeddingPipelineUseCaseTests
             RetrievalDefaultMode = "hybrid",
             SemanticTopK = 8,
             FullTextTopK = 8,
+            HybridSemanticWeight = 0.6d,
+            HybridLexicalWeight = 0.4d,
+            HybridMaxCandidates = 12,
             QaProvider = "disabled",
             QaModel = string.Empty,
             QaMaxContextChunks = 8,
@@ -40,6 +43,9 @@ public sealed class EmbeddingPipelineUseCaseTests
                 SystemSetting.Create("rag.semanticSearch.enabled", "true"),
                 SystemSetting.Create("rag.embedding.model", "mixedbread-ai/mxbai-embed-large-v1"),
                 SystemSetting.Create("rag.embedding.batchSize", "32"),
+                SystemSetting.Create("rag.retrieval.hybridSemanticWeight", "0.7"),
+                SystemSetting.Create("rag.retrieval.hybridLexicalWeight", "0.3"),
+                SystemSetting.Create("rag.retrieval.hybridMaxCandidates", "16"),
                 SystemSetting.Create("rag.qa.maxCitations", "7")
             ]);
 
@@ -55,6 +61,9 @@ public sealed class EmbeddingPipelineUseCaseTests
         result.EmbeddingProvider.Should().Be("local-sentence-transformer");
         result.EmbeddingModel.Should().Be("mixedbread-ai/mxbai-embed-large-v1");
         result.EmbeddingBatchSize.Should().Be(32);
+        result.HybridSemanticWeight.Should().Be(0.7d);
+        result.HybridLexicalWeight.Should().Be(0.3d);
+        result.HybridMaxCandidates.Should().Be(16);
         result.QaMaxCitations.Should().Be(7);
         result.IsEmbeddingPipelineEnabled.Should().BeTrue();
     }

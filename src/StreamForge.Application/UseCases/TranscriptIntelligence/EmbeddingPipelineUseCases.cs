@@ -18,6 +18,9 @@ internal static class RagSettingKeys
     public const string RetrievalDefaultMode = "rag.retrieval.defaultMode";
     public const string RetrievalSemanticTopK = "rag.retrieval.semanticTopK";
     public const string RetrievalFullTextTopK = "rag.retrieval.fullTextTopK";
+    public const string RetrievalHybridSemanticWeight = "rag.retrieval.hybridSemanticWeight";
+    public const string RetrievalHybridLexicalWeight = "rag.retrieval.hybridLexicalWeight";
+    public const string RetrievalHybridMaxCandidates = "rag.retrieval.hybridMaxCandidates";
     public const string QaProvider = "rag.qa.provider";
     public const string QaModel = "rag.qa.model";
     public const string QaMaxContextChunks = "rag.qa.maxContextChunks";
@@ -35,6 +38,9 @@ internal static class RagSettingKeys
         RetrievalDefaultMode,
         RetrievalSemanticTopK,
         RetrievalFullTextTopK,
+        RetrievalHybridSemanticWeight,
+        RetrievalHybridLexicalWeight,
+        RetrievalHybridMaxCandidates,
         QaProvider,
         QaModel,
         QaMaxContextChunks,
@@ -66,6 +72,9 @@ public sealed record EffectiveRagSettings(
     string RetrievalDefaultMode,
     int SemanticTopK,
     int FullTextTopK,
+    double HybridSemanticWeight,
+    double HybridLexicalWeight,
+    int HybridMaxCandidates,
     string QaProvider,
     string QaModel,
     int QaMaxContextChunks,
@@ -109,6 +118,9 @@ public sealed class ResolveRagSettingsService
             GetString(map, RagSettingKeys.RetrievalDefaultMode, _defaults.RetrievalDefaultMode),
             GetInt(map, RagSettingKeys.RetrievalSemanticTopK, _defaults.SemanticTopK),
             GetInt(map, RagSettingKeys.RetrievalFullTextTopK, _defaults.FullTextTopK),
+            GetDouble(map, RagSettingKeys.RetrievalHybridSemanticWeight, _defaults.HybridSemanticWeight),
+            GetDouble(map, RagSettingKeys.RetrievalHybridLexicalWeight, _defaults.HybridLexicalWeight),
+            GetInt(map, RagSettingKeys.RetrievalHybridMaxCandidates, _defaults.HybridMaxCandidates),
             GetString(map, RagSettingKeys.QaProvider, _defaults.QaProvider),
             GetString(map, RagSettingKeys.QaModel, _defaults.QaModel),
             GetInt(map, RagSettingKeys.QaMaxContextChunks, _defaults.QaMaxContextChunks),
@@ -122,6 +134,11 @@ public sealed class ResolveRagSettingsService
 
     private static int GetInt(IReadOnlyDictionary<string, string> map, string key, int fallback) =>
         map.TryGetValue(key, out var value) && int.TryParse(value, out var parsed)
+            ? parsed
+            : fallback;
+
+    private static double GetDouble(IReadOnlyDictionary<string, string> map, string key, double fallback) =>
+        map.TryGetValue(key, out var value) && double.TryParse(value, out var parsed)
             ? parsed
             : fallback;
 
