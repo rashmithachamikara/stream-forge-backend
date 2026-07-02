@@ -120,9 +120,9 @@ public sealed class EmbeddingPipelineUseCaseTests
                 return new TranscriptEmbeddingBatchResult(
                     request.Provider,
                     request.Model,
-                    3,
+                    384,
                     request.Items
-                        .Select(item => new TranscriptEmbeddingResultItem(item.ChunkId, [0.1f, 0.2f, 0.3f]))
+                        .Select(item => new TranscriptEmbeddingResultItem(item.ChunkId, Enumerable.Repeat(0.1f, 384).ToArray()))
                         .ToArray());
             });
 
@@ -146,12 +146,11 @@ public sealed class EmbeddingPipelineUseCaseTests
         result.Executed.Should().BeTrue();
         result.ChunksProcessed.Should().Be(3);
         result.BatchCount.Should().Be(2);
-        result.VectorSize.Should().Be(3);
+        result.VectorSize.Should().Be(384);
         chunks.Should().OnlyContain(chunk =>
             chunk.Embedding != null &&
             chunk.EmbeddingProvider == "local-sentence-transformer" &&
             chunk.EmbeddingModel == "sentence-transformers/all-MiniLM-L6-v2" &&
-            chunk.EmbeddingDimensions == 3 &&
             chunk.EmbeddingGeneratedAt != null);
 
         await provider.Received(2).GenerateEmbeddingsAsync(Arg.Any<TranscriptEmbeddingRequest>(), Arg.Any<CancellationToken>());

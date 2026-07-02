@@ -20,7 +20,7 @@ namespace StreamForge.Infrastructure.Migrations
             migrationBuilder.AddColumn<Vector>(
                 name: "Embedding",
                 table: "VideoTranscriptChunks",
-                type: "vector",
+                type: "vector(384)",
                 nullable: true);
 
             migrationBuilder.AddColumn<int>(

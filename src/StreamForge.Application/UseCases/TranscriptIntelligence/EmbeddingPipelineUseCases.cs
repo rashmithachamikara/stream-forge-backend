@@ -42,6 +42,19 @@ internal static class RagSettingKeys
     ];
 }
 
+internal static class RagEmbeddingModelDimensions
+{
+    private static readonly Dictionary<string, int> _knownDimensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["sentence-transformers/all-MiniLM-L6-v2"] = 384
+    };
+
+    public static int? GetExpectedDimension(string model) =>
+        _knownDimensions.TryGetValue(model.Trim(), out var dimension)
+            ? dimension
+            : null;
+}
+
 public sealed record EffectiveRagSettings(
     bool Enabled,
     bool SemanticSearchEnabled,
@@ -196,6 +209,13 @@ public sealed class GenerateTranscriptEmbeddingsService
             else if (vectorSize.Value != result.VectorSize)
             {
                 throw new InvalidOperationException("Embedding worker returned inconsistent vector sizes across batches.");
+            }
+
+            var expectedDimension = RagEmbeddingModelDimensions.GetExpectedDimension(settings.EmbeddingModel);
+            if (expectedDimension.HasValue && expectedDimension.Value != result.VectorSize)
+            {
+                throw new InvalidOperationException(
+                    $"Embedding worker returned vector size {result.VectorSize} for model '{settings.EmbeddingModel}', but the application expects {expectedDimension.Value}.");
             }
 
             var itemsByChunkId = result.Items.ToDictionary(item => item.ChunkId, item => item, EqualityComparer<Guid>.Default);

@@ -77,7 +77,7 @@ public sealed class EfModelConfigurationTests
         chunkEntity!.FindProperty(nameof(VideoTranscriptChunk.Embedding))!
             .GetColumnType()
             .Should()
-            .Be("vector");
+            .Be("vector(384)");
 
         var searchVectorIndex = chunkEntity.GetIndexes()
             .FirstOrDefault(index => index.Properties.Select(property => property.Name)

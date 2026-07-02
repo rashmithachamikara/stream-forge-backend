@@ -12,7 +12,7 @@ public sealed class VideoTranscriptChunkConfiguration : IEntityTypeConfiguration
     private const string _trigramIndexOperator = "gin_trgm_ops";
     private const string _searchVectorPropertyName = "SearchVector";
     private const string _searchConfiguration = "english";
-    private const string _embeddingColumnType = "vector";
+    private const string _embeddingColumnType = "vector(384)";
 
     public void Configure(EntityTypeBuilder<VideoTranscriptChunk> builder)
     {
@@ -47,8 +47,6 @@ public sealed class VideoTranscriptChunkConfiguration : IEntityTypeConfiguration
 
         builder.Property(chunk => chunk.EmbeddingModel)
             .HasMaxLength(200);
-
-        builder.Property(chunk => chunk.EmbeddingDimensions);
 
         builder.Property(chunk => chunk.EmbeddingGeneratedAt);
 

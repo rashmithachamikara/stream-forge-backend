@@ -37,10 +37,9 @@ Searchable transcript chunks derived from transcription segment data, now extend
 | EndSeconds | DOUBLE PRECISION | NOT NULL | Chunk end time |
 | Content | TEXT | NOT NULL | Transcript text for the chunk |
 | SearchVector | TSVECTOR | GENERATED, NOT NULL | PostgreSQL full-text search vector derived from `Content` |
-| Embedding | VECTOR | NULL | `pgvector` embedding for semantic retrieval |
+| Embedding | VECTOR(384) | NULL | `pgvector` embedding for semantic retrieval using the current default `sentence-transformers/all-MiniLM-L6-v2` model |
 | EmbeddingProvider | VARCHAR(100) | NULL | Provider used to generate the embedding |
 | EmbeddingModel | VARCHAR(200) | NULL | Model used to generate the embedding |
-| EmbeddingDimensions | INTEGER | NULL | Stored vector dimension count |
 | EmbeddingGeneratedAt | TIMESTAMP | NULL | When the embedding was last generated |
 | CreatedAt | TIMESTAMP | NOT NULL | Creation timestamp |
 | UpdatedAt | TIMESTAMP | NOT NULL | Last update timestamp |
@@ -59,6 +58,7 @@ Searchable transcript chunks derived from transcription segment data, now extend
 **Notes:**
 - lexical retrieval from v6.0 remains intact
 - `Embedding` is nullable because transcript chunks may exist before embedding generation completes
+- `Embedding` is currently stored as `vector(384)` to match the default embedding model `sentence-transformers/all-MiniLM-L6-v2`
 - embedding metadata is stored on each chunk row so the system can reason about model/provider provenance and re-embedding behavior
 - the first vector index is optimized for cosine similarity search over transcript chunk embeddings
 
@@ -87,7 +87,7 @@ VideoTranscriptions (1) -> (N) VideoTranscriptChunks
 ### Embedding storage model
 
 - embeddings are stored directly on `VideoTranscriptChunks`
-- provider/model/dimension/generation-time metadata is stored alongside the vector
+- provider/model/generation-time metadata is stored alongside the vector
 - re-transcription of a `(VideoId, Language)` set replaces the old chunk set, and the replacement set gets re-embedded
 
 ### PostgreSQL extension requirements

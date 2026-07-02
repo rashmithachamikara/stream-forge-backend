@@ -23,8 +23,6 @@ public sealed class VideoTranscriptChunk : BaseEntity
 
     public string? EmbeddingModel { get; private set; }
 
-    public int? EmbeddingDimensions { get; private set; }
-
     public DateTime? EmbeddingGeneratedAt { get; private set; }
 
     public DateTime UpdatedAt { get; private set; }
@@ -110,7 +108,6 @@ public sealed class VideoTranscriptChunk : BaseEntity
         Embedding = embedding.ToArray();
         EmbeddingProvider = provider.Trim();
         EmbeddingModel = model.Trim();
-        EmbeddingDimensions = embedding.Count;
         EmbeddingGeneratedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
     }

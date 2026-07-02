@@ -983,7 +983,7 @@ namespace StreamForge.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Vector>("Embedding")
-                        .HasColumnType("vector");
+                        .HasColumnType("vector(384)");
 
                     b.Property<int?>("EmbeddingDimensions")
                         .HasColumnType("integer");
