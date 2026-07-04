@@ -6,14 +6,13 @@ services:
       Transcription__WorkerBaseUrl: http://transcription-worker:8090
       Transcription__CallbackBaseUrl: http://api:8080
       Transcription__WorkerCallbackSecret: ${STREAMFORGE_TRANSCRIPTION_CALLBACK_SECRET:-}
+      Transcription__WorkerCallbackAuthHeader: ${STREAMFORGE_TRANSCRIPTION_CALLBACK_HEADER:-X-StreamForge-Worker-Secret}
       Transcription__LocalFasterWhisper__Model: ${STREAMFORGE_TRANSCRIPTION_MODEL:-small}
       Transcription__LocalFasterWhisper__Device: ${STREAMFORGE_TRANSCRIPTION_DEVICE:-cpu}
       Transcription__LocalFasterWhisper__ComputeType: ${STREAMFORGE_TRANSCRIPTION_COMPUTE_TYPE:-int8}
       Transcription__LocalFasterWhisper__BeamSize: ${STREAMFORGE_TRANSCRIPTION_BEAM_SIZE:-5}
       Transcription__LocalFasterWhisper__EnableVad: ${STREAMFORGE_TRANSCRIPTION_ENABLE_VAD:-true}
       Transcription__LocalFasterWhisper__EnableWordTimestamps: ${STREAMFORGE_TRANSCRIPTION_ENABLE_WORD_TIMESTAMPS:-false}
-    volumes:
-      - streamforge_transcription_output:/app/data/transcription-output
 
   transcription-worker:
     build:
@@ -27,6 +26,7 @@ services:
       STREAMFORGE_LOCAL_STORAGE_ROOT: /app/data
       TRANSCRIPTION_WORKER_SHARED_MEDIA_ROOT: /app/data/uploads
       TRANSCRIPTION_WORKER_OUTPUT_ROOT: /app/data/transcription-output
+      TRANSCRIPTION_WORKER_CALLBACK_AUTH_HEADER: ${STREAMFORGE_TRANSCRIPTION_CALLBACK_HEADER:-X-StreamForge-Worker-Secret}
       TRANSCRIPTION_WORKER_CALLBACK_SECRET: ${STREAMFORGE_TRANSCRIPTION_CALLBACK_SECRET:-}
       TRANSCRIPTION_WORKER_DEFAULT_MODEL: ${STREAMFORGE_TRANSCRIPTION_MODEL:-small}
       TRANSCRIPTION_WORKER_DEFAULT_DEVICE: ${STREAMFORGE_TRANSCRIPTION_DEVICE:-cpu}
@@ -37,8 +37,7 @@ services:
     ports:
       - "${STREAMFORGE_TRANSCRIPTION_WORKER_PORT:-8090}:8090"
     volumes:
-      - streamforge_media:/app/data/uploads
-      - streamforge_transcription_output:/app/data/transcription-output
+      - streamforge_shared_data:/app/data
       - streamforge_transcription_models:/root/.cache
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health').read()"]
@@ -48,5 +47,4 @@ services:
       start_period: 20s
 
 volumes:
-  streamforge_transcription_output:
   streamforge_transcription_models:

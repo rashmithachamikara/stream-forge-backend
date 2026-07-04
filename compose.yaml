@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16
+    image: pgvector/pgvector:pg16
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-streamforge}
@@ -16,6 +16,30 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+
+  migrate:
+    image: mcr.microsoft.com/dotnet/sdk:9.0
+    profiles: ["migration"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    working_dir: /workspace
+    environment:
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-streamforge};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
+      Jwt__Issuer: ${STREAMFORGE_JWT_ISSUER:-StreamForge}
+      Jwt__Audience: ${STREAMFORGE_JWT_AUDIENCE:-StreamForge.Api}
+      Jwt__SigningKey: ${STREAMFORGE_JWT_SIGNING_KEY}
+    volumes:
+      - .:/workspace
+      - streamforge_dotnet_tools:/root/.dotnet
+      - streamforge_nuget:/root/.nuget/packages
+    command:
+      - /bin/bash
+      - -lc
+      - |
+        dotnet tool install --global dotnet-ef --version 9.* &&
+        export PATH="$PATH:/root/.dotnet/tools" &&
+        dotnet ef database update --project src/StreamForge.Infrastructure --startup-project src/StreamForge.Api
 
   api:
     build:
@@ -37,16 +61,29 @@ services:
       Jwt__SigningKey: ${STREAMFORGE_JWT_SIGNING_KEY}
       Jwt__AccessTokenMinutes: ${STREAMFORGE_JWT_ACCESS_TOKEN_MINUTES:-15}
       Jwt__RefreshTokenDays: ${STREAMFORGE_JWT_REFRESH_TOKEN_DAYS:-30}
+      RateLimiter__PermitLimit: ${STREAMFORGE_RATE_LIMITER_PERMIT_LIMIT:-1000}
+      RateLimiter__WindowMinutes: ${STREAMFORGE_RATE_LIMITER_WINDOW_MINUTES:-1}
+      RateLimiter__SegmentsPerWindow: ${STREAMFORGE_RATE_LIMITER_SEGMENTS_PER_WINDOW:-8}
+      RateLimiter__UploadPermitLimit: ${STREAMFORGE_RATE_LIMITER_UPLOAD_PERMIT_LIMIT:-5000}
+      RateLimiter__UploadWindowMinutes: ${STREAMFORGE_RATE_LIMITER_UPLOAD_WINDOW_MINUTES:-1}
+      RateLimiter__UploadSegmentsPerWindow: ${STREAMFORGE_RATE_LIMITER_UPLOAD_SEGMENTS_PER_WINDOW:-8}
+      RateLimiter__PlaybackPermitLimit: ${STREAMFORGE_RATE_LIMITER_PLAYBACK_PERMIT_LIMIT:-10000}
+      RateLimiter__PlaybackWindowMinutes: ${STREAMFORGE_RATE_LIMITER_PLAYBACK_WINDOW_MINUTES:-1}
+      RateLimiter__PlaybackSegmentsPerWindow: ${STREAMFORGE_RATE_LIMITER_PLAYBACK_SEGMENTS_PER_WINDOW:-8}
       Storage__ProviderType: local
       Storage__Local__RootPath: /app/data
+      Storage__Local__UploadsRelativePath: uploads
+      Storage__Local__TranscriptionOutputRelativePath: transcription-output
       VideoProcessing__FfmpegPath: /usr/bin/ffmpeg
       VideoProcessing__FfprobePath: /usr/bin/ffprobe
-      Transcription__CallbackBaseUrl: http://api:8080
+      DataProtection__ApplicationName: ${STREAMFORGE_DATA_PROTECTION_APP_NAME:-StreamForge}
+      DataProtection__KeysPath: /app/data/keys
       Cors__AllowedOrigins__0: ${STREAMFORGE_CORS_ORIGIN:-http://localhost:3000}
     ports:
       - "${STREAMFORGE_API_PORT:-8080}:8080"
     volumes:
-      - streamforge_media:/app/data/uploads
+      - streamforge_shared_data:/app/data
+      - streamforge_dataprotection_keys:/app/data/keys
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health/ready"]
       interval: 15s
@@ -56,4 +93,7 @@ services:
 
 volumes:
   streamforge_postgres:
-  streamforge_media:
+  streamforge_shared_data:
+  streamforge_dataprotection_keys:
+  streamforge_dotnet_tools:
+  streamforge_nuget:

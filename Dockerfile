@@ -18,10 +18,10 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-RUN mkdir -p /app/data/uploads
+RUN mkdir -p /app/data/uploads /app/data/transcription-output /app/data/keys
 
 ENV ASPNETCORE_URLS=http://+:8080
-ENV Upload__StoragePath=/app/data/uploads
+ENV Storage__Local__RootPath=/app/data
 ENV VideoProcessing__FfmpegPath=/usr/bin/ffmpeg
 ENV VideoProcessing__FfprobePath=/usr/bin/ffprobe
 

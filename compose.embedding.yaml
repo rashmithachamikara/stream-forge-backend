@@ -1,0 +1,35 @@
+services:
+  api:
+    environment:
+      Rag__Enabled: ${STREAMFORGE_RAG_ENABLED:-true}
+      Rag__SemanticSearchEnabled: ${STREAMFORGE_RAG_SEMANTIC_SEARCH_ENABLED:-true}
+      Rag__VideoQuestionsEnabled: ${STREAMFORGE_RAG_VIDEO_QUESTIONS_ENABLED:-true}
+      Rag__CrossVideoQuestionsEnabled: ${STREAMFORGE_RAG_CROSS_VIDEO_QUESTIONS_ENABLED:-true}
+      Rag__WorkerBaseUrl: http://embedding-worker:8091
+      Rag__EmbeddingProvider: ${STREAMFORGE_RAG_EMBEDDING_PROVIDER:-local-sentence-transformer}
+      Rag__EmbeddingModel: ${STREAMFORGE_RAG_EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      Rag__QaProvider: ${STREAMFORGE_RAG_QA_PROVIDER:-disabled}
+
+  embedding-worker:
+    build:
+      context: ./services/embedding-worker
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      EMBEDDING_DEFAULT_PROVIDER: ${STREAMFORGE_RAG_EMBEDDING_PROVIDER:-local-sentence-transformer}
+      EMBEDDING_DEFAULT_MODEL: ${STREAMFORGE_RAG_EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      EMBEDDING_DEVICE: ${STREAMFORGE_RAG_EMBEDDING_DEVICE:-cpu}
+      HF_HOME: /root/.cache/huggingface
+    ports:
+      - "${STREAMFORGE_EMBEDDING_WORKER_PORT:-8091}:8091"
+    volumes:
+      - streamforge_embedding_models:/root/.cache
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8091/health').read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  streamforge_embedding_models:

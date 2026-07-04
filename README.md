@@ -248,8 +248,12 @@ GET /health/ready
 The repo includes:
 
 - `Dockerfile` for the API runtime
-- `compose.yaml` with `api` and `postgres` services
-- `compose.transcription.yaml` for the optional Python transcription worker
+- `compose.yaml` with the core deployment stack:
+  - `postgres`
+  - `migrate` profile for explicit schema updates
+  - `api`
+- `compose.transcription.yaml` for the optional transcription worker
+- `compose.embedding.yaml` for the optional embedding worker / RAG pipeline
 - `compose.host-paths.yaml` for optional bind mounts to host folders
 - `.env.example` for deployment-time environment values
 
@@ -261,7 +265,11 @@ The repo includes:
 cp .env.example .env
 ```
 
-2. Set at least a real `STREAMFORGE_JWT_SIGNING_KEY` and PostgreSQL password in `.env`
+2. Set at least these real values in `.env`
+
+- `STREAMFORGE_JWT_SIGNING_KEY`
+- `POSTGRES_PASSWORD`
+- any provider/API secrets you actually intend to use later through the UI or config
 
 3. Start PostgreSQL
 
@@ -269,23 +277,16 @@ cp .env.example .env
 docker compose up -d postgres
 ```
 
-4. Choose a migration strategy
-
-Default, explicit migration step:
+4. Run database migrations explicitly
 
 ```bash
-dotnet ef database update --project src/StreamForge.Infrastructure --startup-project src/StreamForge.Api
+docker compose --profile migration run --rm migrate
 ```
 
-Optional startup auto-migration:
-
-- Set `STREAMFORGE_DB_APPLY_MIGRATIONS_ON_STARTUP=true` in `.env`
-- Then the API container can apply migrations itself on startup
-
-5. Start the API container
+5. Start the core application stack
 
 ```bash
-docker compose up -d api
+docker compose up -d
 ```
 
 6. Verify readiness
@@ -296,7 +297,7 @@ curl http://localhost:8080/health/ready
 
 ### Optional Transcription Worker
 
-To run the local Python transcription worker alongside the core stack, add the transcription compose layer:
+To add the transcription worker:
 
 ```bash
 docker compose -f compose.yaml -f compose.transcription.yaml up -d
@@ -305,23 +306,48 @@ docker compose -f compose.yaml -f compose.transcription.yaml up -d
 This adds:
 
 - `transcription-worker` on port `8090`
-- shared media and transcription-output volumes between the API and worker
 - API overrides so transcription submission uses `http://transcription-worker:8090`
-- API callback override so the worker calls back to `http://api:8080`
+- shared `/app/data` visibility between API and worker
 
-If you want transcription enabled in Docker, keep these env values set appropriately in `.env`:
+### Optional Embedding Worker / RAG
 
-```text
-STREAMFORGE_TRANSCRIPTION_ENABLED=true
-STREAMFORGE_TRANSCRIPTION_AUTO_ON_READY=true
+To add the embedding worker and RAG worker wiring:
+
+```bash
+docker compose -f compose.yaml -f compose.embedding.yaml up -d
 ```
+
+This adds:
+
+- `embedding-worker` on port `8091`
+- API overrides so embedding generation uses `http://embedding-worker:8091`
+
+### Optional Full AI Stack
+
+To run both workers together:
+
+```bash
+docker compose -f compose.yaml -f compose.transcription.yaml -f compose.embedding.yaml up -d
+```
+
+When the worker layers are enabled, the API is wired internally through:
+
+- `Transcription__WorkerBaseUrl=http://transcription-worker:8090`
+- `Rag__WorkerBaseUrl=http://embedding-worker:8091`
+
+### Why the stack is shaped this way
+
+- PostgreSQL uses a `pgvector`-enabled image because the app expects the `vector` extension during migrations and semantic retrieval.
+- The API and worker layers share `/app/data` so uploads and generated artifacts are visible across services when the worker overlays are enabled.
+- ASP.NET Core Data Protection keys are persisted on a dedicated volume so encrypted `SystemSecrets` remain decryptable after container restarts.
 
 ### Notes
 
 - The container image includes `ffmpeg`, `ffprobe`, and `curl`.
-- By default, PostgreSQL and media files are stored in named Docker volumes.
+- By default, PostgreSQL, shared media data, Data Protection keys, and worker model caches are stored in named Docker volumes.
 - The current deployment model uses local filesystem media storage, so horizontal scaling is limited until a shared or remote storage provider is added.
-- The app now supports startup migration behavior through the `Database` settings, but the default remains conservative:
+- The app still supports startup migration behavior through the `Database` settings, but the recommended container flow is the explicit `migrate` profile rather than startup auto-migration.
+- The default app behavior remains conservative:
   - `ApplyMigrationsOnStartup=false`
   - `SeedOnStartup=true`
   - `WarnOnPendingMigrations=true`
@@ -335,26 +361,38 @@ If you want to inspect files directly on your machine instead of using named Doc
 docker compose -f compose.yaml -f compose.host-paths.yaml up -d
 ```
 
-If you want both host-path mounts and the transcription worker:
+If you also want transcription with host paths:
 
 ```bash
 docker compose -f compose.yaml -f compose.transcription.yaml -f compose.host-paths.yaml up -d
 ```
 
+If you also want embedding with host paths:
+
+```bash
+docker compose -f compose.yaml -f compose.embedding.yaml -f compose.host-paths.yaml up -d
+```
+
+If you want the full AI stack with host paths:
+
+```bash
+docker compose -f compose.yaml -f compose.transcription.yaml -f compose.embedding.yaml -f compose.host-paths.yaml up -d
+```
+
 By default, the override maps:
 
 - `./docker-data/postgres` -> PostgreSQL data directory
-- `./docker-data/uploads` -> uploaded and generated media
-- `./docker-data/transcription-output` -> staged worker transcription artifacts
-- `./docker-data/transcription-models` -> downloaded Whisper/model cache
+- `./docker-data/shared-data` -> shared API/worker media root
+- `./docker-data/data-protection-keys` -> ASP.NET Core Data Protection key ring
+
+The base host-path override intentionally does not create optional worker services by itself. If you enable the transcription or embedding overlays, their model caches remain on named volumes unless you add a dedicated override later.
 
 You can change those paths through `.env`:
 
 ```text
 STREAMFORGE_POSTGRES_HOST_PATH=./docker-data/postgres
-STREAMFORGE_MEDIA_HOST_PATH=./docker-data/uploads
-STREAMFORGE_TRANSCRIPTION_OUTPUT_HOST_PATH=./docker-data/transcription-output
-STREAMFORGE_TRANSCRIPTION_MODEL_CACHE_HOST_PATH=./docker-data/transcription-models
+STREAMFORGE_SHARED_DATA_HOST_PATH=./docker-data/shared-data
+STREAMFORGE_DATA_PROTECTION_KEYS_HOST_PATH=./docker-data/data-protection-keys
 ```
 
 Use the base `compose.yaml` alone when you want the default named-volume setup.
