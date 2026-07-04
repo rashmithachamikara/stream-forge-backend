@@ -23,6 +23,9 @@ internal static class RagSettingKeys
     public const string RetrievalHybridLexicalWeight = "rag.retrieval.hybridLexicalWeight";
     public const string RetrievalHybridMaxCandidates = "rag.retrieval.hybridMaxCandidates";
     public const string QaProvider = "rag.qa.provider";
+    public const string GeminiQaModel = "rag.qa.providers.gemini.model";
+    public const string GrokQaModel = "rag.qa.providers.grok.model";
+    public const string GroqQaModel = "rag.qa.providers.groq.model";
     public const string QaMaxContextChunks = "rag.qa.maxContextChunks";
     public const string QaMaxCitations = "rag.qa.maxCitations";
     public const string QaTemperature = "rag.qa.temperature";
@@ -44,6 +47,9 @@ internal static class RagSettingKeys
         RetrievalHybridLexicalWeight,
         RetrievalHybridMaxCandidates,
         QaProvider,
+        GeminiQaModel,
+        GrokQaModel,
+        GroqQaModel,
         QaMaxContextChunks,
         QaMaxCitations,
         QaTemperature,
@@ -78,6 +84,80 @@ internal static class RagEmbeddingModelDimensions
         _knownDimensions.TryGetValue(model.Trim(), out var dimension)
             ? dimension
             : null;
+}
+
+internal sealed record QaProviderModelCatalogEntry(
+    string Provider,
+    string DefaultModel,
+    IReadOnlyCollection<string> Models);
+
+internal static class RagQaModelCatalog
+{
+    private static readonly IReadOnlyDictionary<string, QaProviderModelCatalogEntry> _entries =
+        new Dictionary<string, QaProviderModelCatalogEntry>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["gemini"] = new(
+                "gemini",
+                "gemini-3.1-flash-lite",
+                [
+                    "gemini-2.5-flash",
+                    "gemini-3.1-flash-lite",
+                    "gemini-3.5-flash",
+                    "gemini-2.5-pro",
+                    "gemini-3-flash"
+                ]),
+            ["grok"] = new(
+                "grok",
+                "grok-3-mini",
+                ["grok-3-mini", "grok-3"]),
+            ["groq"] = new(
+                "groq",
+                "llama-3.3-70b-versatile",
+                [
+                    "llama-3.1-8b-instant",
+                    "llama-3.3-70b-versatile",
+                    "openai/gpt-oss-120b",
+                    "openai/gpt-oss-20b",
+                    "qwen/qwen3-32b",
+                    "qwen/qwen3.6-27b"
+                ])
+        };
+
+    public static IReadOnlyCollection<QaProviderModelCatalogEntry> All =>
+        _entries.Values.ToArray();
+
+    public static bool SupportsProvider(string provider) =>
+        _entries.ContainsKey(provider.Trim());
+
+    public static bool IsAllowed(string provider, string model)
+    {
+        if (!_entries.TryGetValue(provider.Trim(), out var entry))
+        {
+            return false;
+        }
+
+        return entry.Models.Contains(model.Trim(), StringComparer.OrdinalIgnoreCase);
+    }
+
+    public static string ResolveEffectiveModel(string provider, string? persistedValue, string? configuredDefault)
+    {
+        if (!_entries.TryGetValue(provider.Trim(), out var entry))
+        {
+            throw new ArgumentException($"Unsupported question answering provider '{provider}'.", nameof(provider));
+        }
+
+        if (!string.IsNullOrWhiteSpace(persistedValue) && IsAllowed(provider, persistedValue))
+        {
+            return persistedValue.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(configuredDefault) && IsAllowed(provider, configuredDefault))
+        {
+            return configuredDefault.Trim();
+        }
+
+        return entry.DefaultModel;
+    }
 }
 
 public sealed record EffectiveRagSettings(
@@ -188,6 +268,9 @@ public sealed class GetAdminRagSettingsService
             RagSecretKeys.GroqApiKey,
             _defaults.QaProviderConfigs.Groq.ApiKey,
             cancellationToken);
+        var modelCatalog = RagQaModelCatalog.All
+            .Select(entry => new QaProviderModelCatalogDto(entry.Provider, entry.DefaultModel, entry.Models))
+            .ToArray();
 
         return new AdminRagSettingsDto(
             settings.Enabled,
@@ -204,10 +287,14 @@ public sealed class GetAdminRagSettingsService
             settings.HybridLexicalWeight,
             settings.HybridMaxCandidates,
             settings.QaProvider,
+            settings.GeminiQaModel,
+            settings.GrokQaModel,
+            settings.GroqQaModel,
             settings.QaMaxContextChunks,
             settings.QaMaxCitations,
             settings.QaTemperature,
             settings.QaMaxOutputTokens,
+            modelCatalog,
             new SystemSecretStatusDto(geminiStatus.IsConfigured, geminiStatus.MaskedValue),
             new SystemSecretStatusDto(grokStatus.IsConfigured, grokStatus.MaskedValue),
             new SystemSecretStatusDto(groqStatus.IsConfigured, groqStatus.MaskedValue));
@@ -268,6 +355,10 @@ public sealed class UpdateAdminRagSettingsService
             throw new ArgumentException($"Unsupported question answering provider '{request.QaProvider}'.", nameof(request.QaProvider));
         }
 
+        ValidateQaModel("gemini", request.GeminiQaModel, nameof(request.GeminiQaModel));
+        ValidateQaModel("grok", request.GrokQaModel, nameof(request.GrokQaModel));
+        ValidateQaModel("groq", request.GroqQaModel, nameof(request.GroqQaModel));
+
         await UpsertSettingAsync(RagSettingKeys.Enabled, request.Enabled.ToString(), cancellationToken);
         await UpsertSettingAsync(RagSettingKeys.SemanticSearchEnabled, request.SemanticSearchEnabled.ToString(), cancellationToken);
         await UpsertSettingAsync(RagSettingKeys.VideoQuestionsEnabled, request.VideoQuestionsEnabled.ToString(), cancellationToken);
@@ -282,6 +373,9 @@ public sealed class UpdateAdminRagSettingsService
         await UpsertSettingAsync(RagSettingKeys.RetrievalHybridLexicalWeight, request.HybridLexicalWeight.ToString(), cancellationToken);
         await UpsertSettingAsync(RagSettingKeys.RetrievalHybridMaxCandidates, request.HybridMaxCandidates.ToString(), cancellationToken);
         await UpsertSettingAsync(RagSettingKeys.QaProvider, normalizedQaProvider, cancellationToken);
+        await UpsertOptionalSettingAsync(RagSettingKeys.GeminiQaModel, request.GeminiQaModel, cancellationToken);
+        await UpsertOptionalSettingAsync(RagSettingKeys.GrokQaModel, request.GrokQaModel, cancellationToken);
+        await UpsertOptionalSettingAsync(RagSettingKeys.GroqQaModel, request.GroqQaModel, cancellationToken);
         await UpsertSettingAsync(RagSettingKeys.QaMaxContextChunks, request.QaMaxContextChunks.ToString(), cancellationToken);
         await UpsertSettingAsync(RagSettingKeys.QaMaxCitations, request.QaMaxCitations.ToString(), cancellationToken);
         await UpsertSettingAsync(RagSettingKeys.QaTemperature, request.QaTemperature.ToString(), cancellationToken);
@@ -309,6 +403,16 @@ public sealed class UpdateAdminRagSettingsService
         await _unitOfWork.SystemSettings.UpdateAsync(existing, cancellationToken);
     }
 
+    private async Task UpsertOptionalSettingAsync(string key, string? value, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        await UpsertSettingAsync(key, value.Trim(), cancellationToken);
+    }
+
     private async Task HandleSecretUpdateAsync(
         string key,
         string? plaintextValue,
@@ -324,6 +428,21 @@ public sealed class UpdateAdminRagSettingsService
         if (!string.IsNullOrWhiteSpace(plaintextValue))
         {
             await _systemSecretStoreService.SetAsync(key, plaintextValue, cancellationToken);
+        }
+    }
+
+    private static void ValidateQaModel(string provider, string? model, string paramName)
+    {
+        if (string.IsNullOrWhiteSpace(model))
+        {
+            return;
+        }
+
+        if (!RagQaModelCatalog.IsAllowed(provider, model))
+        {
+            throw new ArgumentException(
+                $"Unsupported model '{model}' for provider '{provider}'.",
+                paramName);
         }
     }
 }
@@ -377,9 +496,18 @@ public sealed class ResolveRagSettingsService
             GetDouble(map, RagSettingKeys.RetrievalHybridLexicalWeight, _defaults.HybridLexicalWeight),
             GetInt(map, RagSettingKeys.RetrievalHybridMaxCandidates, _defaults.HybridMaxCandidates),
             GetString(map, RagSettingKeys.QaProvider, _defaults.QaProvider),
-            _defaults.QaProviderConfigs.Gemini.Model,
-            _defaults.QaProviderConfigs.Grok.Model,
-            _defaults.QaProviderConfigs.Groq.Model,
+            RagQaModelCatalog.ResolveEffectiveModel(
+                "gemini",
+                GetNullableString(map, RagSettingKeys.GeminiQaModel),
+                _defaults.QaProviderConfigs.Gemini.Model),
+            RagQaModelCatalog.ResolveEffectiveModel(
+                "grok",
+                GetNullableString(map, RagSettingKeys.GrokQaModel),
+                _defaults.QaProviderConfigs.Grok.Model),
+            RagQaModelCatalog.ResolveEffectiveModel(
+                "groq",
+                GetNullableString(map, RagSettingKeys.GroqQaModel),
+                _defaults.QaProviderConfigs.Groq.Model),
             geminiApiKey,
             grokApiKey,
             groqApiKey,
@@ -421,6 +549,11 @@ public sealed class ResolveRagSettingsService
         map.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value)
             ? value.Trim()
             : fallback;
+
+    private static string? GetNullableString(IReadOnlyDictionary<string, string> map, string key) =>
+        map.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value)
+            ? value.Trim()
+            : null;
 }
 
 public sealed class GenerateTranscriptEmbeddingsService

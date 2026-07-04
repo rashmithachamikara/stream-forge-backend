@@ -39,7 +39,7 @@ public sealed class EmbeddingPipelineUseCaseTests
             {
                 Gemini = new RagGeminiQaOptions
                 {
-                    Model = "gemini-2.5-flash"
+                    Model = "gemini-3.1-flash-lite"
                 }
             }
         };
@@ -75,6 +75,7 @@ public sealed class EmbeddingPipelineUseCaseTests
         result.HybridSemanticWeight.Should().Be(0.7d);
         result.HybridLexicalWeight.Should().Be(0.3d);
         result.HybridMaxCandidates.Should().Be(16);
+        result.GeminiQaModel.Should().Be("gemini-3.1-flash-lite");
         result.QaMaxCitations.Should().Be(7);
         result.QaTemperature.Should().Be(0.1d);
         result.QaMaxOutputTokens.Should().Be(256);
@@ -157,6 +158,8 @@ public sealed class EmbeddingPipelineUseCaseTests
 
         var result = await service.Handle(CancellationToken.None);
 
+        result.GeminiQaModel.Should().Be("gemini-3.1-flash-lite");
+        result.QaModelCatalog.Should().Contain(entry => entry.Provider == "gemini" && entry.Models.Contains("gemini-2.5-flash"));
         result.GeminiApiKey.Should().Be(new SystemSecretStatusDto(true, "****1234"));
         result.GrokApiKey.Should().Be(new SystemSecretStatusDto(false, null));
         result.GroqApiKey.Should().Be(new SystemSecretStatusDto(true, "****5678"));
@@ -236,6 +239,9 @@ public sealed class EmbeddingPipelineUseCaseTests
             0.3d,
             16,
             "groq",
+            "gemini-2.5-pro",
+            null,
+            "llama-3.3-70b-versatile",
             6,
             4,
             0.1d,
@@ -250,12 +256,96 @@ public sealed class EmbeddingPipelineUseCaseTests
         var result = await service.Handle(request, CancellationToken.None);
 
         result.QaProvider.Should().Be("groq");
+        result.GeminiQaModel.Should().Be("gemini-2.5-pro");
+        result.GroqQaModel.Should().Be("llama-3.3-70b-versatile");
         updatedSettings.Should().ContainSingle(setting => setting.Key == "rag.enabled" && setting.Value == "True");
         addedSettings.Should().Contain(setting => setting.Key == "rag.qa.provider" && setting.Value == "groq");
+        addedSettings.Should().Contain(setting => setting.Key == "rag.qa.providers.gemini.model" && setting.Value == "gemini-2.5-pro");
+        addedSettings.Should().Contain(setting => setting.Key == "rag.qa.providers.groq.model" && setting.Value == "llama-3.3-70b-versatile");
         await store.Received(1).SetAsync(RagSecretKeys.GeminiApiKey, "gemini-secret", Arg.Any<CancellationToken>());
         await store.Received(1).ClearAsync(RagSecretKeys.GrokApiKey, Arg.Any<CancellationToken>());
         await store.Received(1).SetAsync(RagSecretKeys.GroqApiKey, "groq-secret", Arg.Any<CancellationToken>());
         await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateAdminRagSettings_ShouldRejectUnsupportedProviderModel()
+    {
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        unitOfWork.SystemSettings.Returns(Substitute.For<ISystemSettingRepository>());
+
+        var store = Substitute.For<ISystemSecretStoreService>();
+        var defaults = new RagOptions();
+        var getService = new GetAdminRagSettingsService(
+            new ResolveRagSettingsService(unitOfWork, defaults, store),
+            defaults,
+            store);
+
+        var service = new UpdateAdminRagSettingsService(unitOfWork, getService, store);
+        var request = new UpdateAdminRagSettingsRequestDto(
+            false,
+            false,
+            false,
+            false,
+            "local-sentence-transformer",
+            "sentence-transformers/all-MiniLM-L6-v2",
+            100,
+            "hybrid",
+            8,
+            8,
+            0.6d,
+            0.4d,
+            12,
+            "gemini",
+            "made-up-model",
+            null,
+            null,
+            8,
+            5,
+            0d,
+            512,
+            null,
+            false,
+            null,
+            false,
+            null,
+            false);
+
+        var act = () => service.Handle(request, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*Unsupported model*gemini*");
+    }
+
+    [Fact]
+    public async Task ResolveRagSettings_ShouldPreferValidStoredQaModelAndFallbackWhenStoredModelIsInvalid()
+    {
+        var settingsRepo = Substitute.For<ISystemSettingRepository>();
+        settingsRepo.GetByKeysAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns(
+            [
+                SystemSetting.Create("rag.qa.providers.gemini.model", "not-a-real-model"),
+                SystemSetting.Create("rag.qa.providers.groq.model", "llama-3.3-70b-versatile")
+            ]);
+
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+        unitOfWork.SystemSettings.Returns(settingsRepo);
+
+        var service = new ResolveRagSettingsService(
+            unitOfWork,
+            new RagOptions
+            {
+                QaProviderConfigs = new RagQaProviderConfigs
+                {
+                    Gemini = new RagGeminiQaOptions { Model = "gemini-3.1-flash-lite" },
+                    Groq = new RagGroqQaOptions { Model = "llama-3.3-70b-versatile" }
+                }
+            });
+
+        var result = await service.Handle(CancellationToken.None);
+
+        result.GeminiQaModel.Should().Be("gemini-3.1-flash-lite");
+        result.GroqQaModel.Should().Be("llama-3.3-70b-versatile");
     }
 
     [Fact]
