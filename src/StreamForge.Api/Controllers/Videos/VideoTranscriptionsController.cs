@@ -19,6 +19,7 @@ public sealed class VideoTranscriptionsController : ControllerBase
     private readonly SearchVideoTranscriptService _searchVideoTranscript;
     private readonly SearchVideoTranscriptSemanticService _searchVideoTranscriptSemantic;
     private readonly SearchVideoTranscriptHybridService _searchVideoTranscriptHybrid;
+    private readonly AskVideoQuestionService _askVideoQuestion;
     private readonly GetVideoTranscriptionChunksService _getVideoTranscriptionChunks;
     private readonly StartVideoTranscriptionService _startVideoTranscription;
 
@@ -30,6 +31,7 @@ public sealed class VideoTranscriptionsController : ControllerBase
         SearchVideoTranscriptService searchVideoTranscript,
         SearchVideoTranscriptSemanticService searchVideoTranscriptSemantic,
         SearchVideoTranscriptHybridService searchVideoTranscriptHybrid,
+        AskVideoQuestionService askVideoQuestion,
         GetVideoTranscriptionChunksService getVideoTranscriptionChunks,
         StartVideoTranscriptionService startVideoTranscription)
     {
@@ -40,6 +42,7 @@ public sealed class VideoTranscriptionsController : ControllerBase
         _searchVideoTranscript = searchVideoTranscript;
         _searchVideoTranscriptSemantic = searchVideoTranscriptSemantic;
         _searchVideoTranscriptHybrid = searchVideoTranscriptHybrid;
+        _askVideoQuestion = askVideoQuestion;
         _getVideoTranscriptionChunks = getVideoTranscriptionChunks;
         _startVideoTranscription = startVideoTranscription;
     }
@@ -144,6 +147,22 @@ public sealed class VideoTranscriptionsController : ControllerBase
         CancellationToken cancellationToken)
     {
         return Ok(await _searchVideoTranscriptHybrid.Handle(videoId, query, language, page, pageSize, shareToken, cancellationToken));
+    }
+
+    [HttpPost("/api/v1/videos/{videoId:guid}/questions")]
+    [AllowAnonymous]
+    public async Task<ActionResult<GroundedQuestionAnswerDto>> AskQuestion(
+        Guid videoId,
+        [FromBody] AskVideoQuestionRequestDto request,
+        [FromQuery] string? shareToken,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _askVideoQuestion.Handle(
+            videoId,
+            request.Question,
+            request.Language,
+            shareToken,
+            cancellationToken));
     }
 
     [HttpPost]

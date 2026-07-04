@@ -50,11 +50,36 @@ public sealed class RagOptions
     [Required]
     public string QaProvider { get; set; } = "disabled";
 
-    public string QaModel { get; set; } = string.Empty;
-
     [Range(1, 100)]
     public int QaMaxContextChunks { get; set; } = 8;
 
     [Range(1, 100)]
     public int QaMaxCitations { get; set; } = 5;
+
+    [Range(0, 2)]
+    public double QaTemperature { get; set; } = 0d;
+
+    [Range(1, 8192)]
+    public int QaMaxOutputTokens { get; set; } = 512;
+
+    public RagQaProviderConfigs QaProviderConfigs { get; set; } = new();
+}
+
+public sealed class RagQaProviderConfigs
+{
+    public RagGeminiQaOptions Gemini { get; set; } = new();
+}
+
+public sealed class RagGeminiQaOptions
+{
+    [Required]
+    public string BaseUrl { get; set; } = "https://generativelanguage.googleapis.com";
+
+    [Required]
+    public string Model { get; set; } = "gemini-2.5-flash";
+
+    public string ApiKey { get; set; } = string.Empty;
+
+    [Range(1, 300)]
+    public int TimeoutSeconds { get; set; } = 60;
 }

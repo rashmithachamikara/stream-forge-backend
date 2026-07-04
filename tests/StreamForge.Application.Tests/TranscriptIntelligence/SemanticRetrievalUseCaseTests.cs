@@ -21,7 +21,19 @@ public sealed class SemanticRetrievalUseCaseTests
         FullTextTopK = 8,
         HybridSemanticWeight = 0.6d,
         HybridLexicalWeight = 0.4d,
-        HybridMaxCandidates = 12
+        HybridMaxCandidates = 12,
+        QaProvider = "gemini",
+        QaMaxContextChunks = 8,
+        QaMaxCitations = 5,
+        QaTemperature = 0d,
+        QaMaxOutputTokens = 512,
+        QaProviderConfigs = new RagQaProviderConfigs
+        {
+            Gemini = new RagGeminiQaOptions
+            {
+                Model = "gemini-2.5-flash"
+            }
+        }
     };
 
     [Fact]

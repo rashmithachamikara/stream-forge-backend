@@ -22,9 +22,10 @@ internal static class RagSettingKeys
     public const string RetrievalHybridLexicalWeight = "rag.retrieval.hybridLexicalWeight";
     public const string RetrievalHybridMaxCandidates = "rag.retrieval.hybridMaxCandidates";
     public const string QaProvider = "rag.qa.provider";
-    public const string QaModel = "rag.qa.model";
     public const string QaMaxContextChunks = "rag.qa.maxContextChunks";
     public const string QaMaxCitations = "rag.qa.maxCitations";
+    public const string QaTemperature = "rag.qa.temperature";
+    public const string QaMaxOutputTokens = "rag.qa.maxOutputTokens";
 
     public static readonly string[] All =
     [
@@ -42,9 +43,10 @@ internal static class RagSettingKeys
         RetrievalHybridLexicalWeight,
         RetrievalHybridMaxCandidates,
         QaProvider,
-        QaModel,
         QaMaxContextChunks,
-        QaMaxCitations
+        QaMaxCitations,
+        QaTemperature,
+        QaMaxOutputTokens
     ];
 }
 
@@ -76,9 +78,11 @@ public sealed record EffectiveRagSettings(
     double HybridLexicalWeight,
     int HybridMaxCandidates,
     string QaProvider,
-    string QaModel,
+    string GeminiQaModel,
     int QaMaxContextChunks,
-    int QaMaxCitations)
+    int QaMaxCitations,
+    double QaTemperature,
+    int QaMaxOutputTokens)
 {
     public bool IsEmbeddingPipelineEnabled =>
         Enabled && (SemanticSearchEnabled || VideoQuestionsEnabled || CrossVideoQuestionsEnabled);
@@ -122,9 +126,11 @@ public sealed class ResolveRagSettingsService
             GetDouble(map, RagSettingKeys.RetrievalHybridLexicalWeight, _defaults.HybridLexicalWeight),
             GetInt(map, RagSettingKeys.RetrievalHybridMaxCandidates, _defaults.HybridMaxCandidates),
             GetString(map, RagSettingKeys.QaProvider, _defaults.QaProvider),
-            GetString(map, RagSettingKeys.QaModel, _defaults.QaModel),
+            _defaults.QaProviderConfigs.Gemini.Model,
             GetInt(map, RagSettingKeys.QaMaxContextChunks, _defaults.QaMaxContextChunks),
-            GetInt(map, RagSettingKeys.QaMaxCitations, _defaults.QaMaxCitations));
+            GetInt(map, RagSettingKeys.QaMaxCitations, _defaults.QaMaxCitations),
+            GetDouble(map, RagSettingKeys.QaTemperature, _defaults.QaTemperature),
+            GetInt(map, RagSettingKeys.QaMaxOutputTokens, _defaults.QaMaxOutputTokens));
     }
 
     private static bool GetBool(IReadOnlyDictionary<string, string> map, string key, bool fallback) =>

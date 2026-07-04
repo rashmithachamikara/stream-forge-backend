@@ -241,6 +241,7 @@ builder.Services.AddScoped<IVideoProcessingRuntimeMonitor, HangfireVideoProcessi
 builder.Services.AddScoped<ITranscriptionQueue, HangfireTranscriptionQueue>();
 builder.Services.AddScoped<ITranscriptEmbeddingQueue, HangfireTranscriptEmbeddingQueue>();
 builder.Services.AddScoped<ITranscriptSearchProvider, PostgresTranscriptSearchProvider>();
+builder.Services.AddScoped<IVideoQuestionAnsweringProviderFactory, VideoQuestionAnsweringProviderFactory>();
 builder.Services.AddHttpClient<ITranscriptionProvider, LocalFasterWhisperTranscriptionProvider>((serviceProvider, client) =>
 {
     var options = serviceProvider.GetRequiredService<IOptions<TranscriptionOptions>>().Value;
@@ -253,6 +254,13 @@ builder.Services.AddHttpClient<ITranscriptEmbeddingProvider, LocalSentenceTransf
     client.BaseAddress = new Uri(options.WorkerBaseUrl.TrimEnd('/'));
     client.Timeout = TimeSpan.FromMinutes(options.JobTimeoutMinutes);
 });
+builder.Services.AddHttpClient<GeminiVideoQuestionAnsweringProvider>((serviceProvider, client) =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<RagOptions>>().Value;
+    client.BaseAddress = new Uri(options.QaProviderConfigs.Gemini.BaseUrl.TrimEnd('/'));
+    client.Timeout = TimeSpan.FromSeconds(options.QaProviderConfigs.Gemini.TimeoutSeconds);
+});
+builder.Services.AddTransient<IVideoQuestionAnsweringProvider>(sp => sp.GetRequiredService<GeminiVideoQuestionAnsweringProvider>());
 builder.Services.AddScoped<CreateUploadSessionService>();
 builder.Services.AddScoped<GetUploadTargetService>();
 builder.Services.AddScoped<UploadPartService>();
@@ -270,6 +278,8 @@ builder.Services.AddScoped<SearchVideoTranscriptSemanticService>();
 builder.Services.AddScoped<SearchTranscriptSemanticAcrossVideosService>();
 builder.Services.AddScoped<SearchVideoTranscriptHybridService>();
 builder.Services.AddScoped<SearchTranscriptHybridAcrossVideosService>();
+builder.Services.AddScoped<AskVideoQuestionService>();
+builder.Services.AddScoped<AskQuestionAcrossVideosService>();
 builder.Services.AddScoped<GetPlaybackManifestService>();
 builder.Services.AddScoped<GetStreamingAssetService>();
 builder.Services.AddScoped<GetVideoThumbnailService>();

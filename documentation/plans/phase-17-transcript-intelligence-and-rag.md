@@ -90,7 +90,8 @@ Current implementation status:
 - runtime retrieval settings now include semantic/full-text candidate sizes plus starter hybrid weighting controls
 - per-video and cross-video semantic search endpoints are now implemented over persisted transcript chunk embeddings
 - per-video and cross-video hybrid search endpoints are now implemented over combined lexical + semantic retrieval
-- retrieval currently remains search-only; grounded answer generation and citation synthesis still remain the next step
+- grounded per-video and cross-video Q&A endpoints are now implemented over hybrid retrieval with backend-validated chunk citations
+- the first answer-generation provider path now supports direct Gemini Developer API integration from the `.NET` backend
 
 Background flow:
 
@@ -319,9 +320,10 @@ The first persisted Phase 17 key set should include:
 - `rag.retrieval.hybridLexicalWeight`
 - `rag.retrieval.hybridMaxCandidates`
 - `rag.qa.provider`
-- `rag.qa.model`
 - `rag.qa.maxContextChunks`
 - `rag.qa.maxCitations`
+- `rag.qa.temperature`
+- `rag.qa.maxOutputTokens`
 
 Recommended intent for these keys:
 
@@ -343,9 +345,10 @@ Recommended intent for these keys:
   - `rag.retrieval.hybridMaxCandidates`
 - Q&A runtime:
   - `rag.qa.provider`
-  - `rag.qa.model`
   - `rag.qa.maxContextChunks`
   - `rag.qa.maxCitations`
+  - `rag.qa.temperature`
+  - `rag.qa.maxOutputTokens`
 
 Keep secrets and deployment-specific infrastructure values out of `SystemSettings`.
 Those should remain in app configuration, environment variables, or a secret store.

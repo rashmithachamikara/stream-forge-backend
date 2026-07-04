@@ -143,6 +143,31 @@ public sealed record CrossVideoTranscriptHybridSearchResultDto(
     double? LexicalScore,
     double? SemanticScore);
 
+public sealed record AskVideoQuestionRequestDto(
+    string Question,
+    string? Language);
+
+public sealed record AskQuestionAcrossVideosRequestDto(
+    string Question,
+    string? Language,
+    IReadOnlyCollection<Guid>? VideoIds);
+
+public sealed record GroundedQuestionCitationDto(
+    Guid VideoId,
+    string VideoTitle,
+    Guid TranscriptionId,
+    Guid ChunkId,
+    double StartSeconds,
+    double EndSeconds,
+    string Content);
+
+public sealed record GroundedQuestionAnswerDto(
+    string Question,
+    string RetrievalMode,
+    string Answer,
+    int UsedChunkCount,
+    IReadOnlyList<GroundedQuestionCitationDto> Citations);
+
 public sealed record TranscriptChunkDto(
     Guid ChunkId,
     Guid VideoId,

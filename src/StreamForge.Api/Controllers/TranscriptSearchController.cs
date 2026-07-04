@@ -12,13 +12,16 @@ public sealed class TranscriptSearchController : ControllerBase
 {
     private readonly SearchTranscriptSemanticAcrossVideosService _searchTranscriptSemanticAcrossVideos;
     private readonly SearchTranscriptHybridAcrossVideosService _searchTranscriptHybridAcrossVideos;
+    private readonly AskQuestionAcrossVideosService _askQuestionAcrossVideos;
 
     public TranscriptSearchController(
         SearchTranscriptSemanticAcrossVideosService searchTranscriptSemanticAcrossVideos,
-        SearchTranscriptHybridAcrossVideosService searchTranscriptHybridAcrossVideos)
+        SearchTranscriptHybridAcrossVideosService searchTranscriptHybridAcrossVideos,
+        AskQuestionAcrossVideosService askQuestionAcrossVideos)
     {
         _searchTranscriptSemanticAcrossVideos = searchTranscriptSemanticAcrossVideos;
         _searchTranscriptHybridAcrossVideos = searchTranscriptHybridAcrossVideos;
+        _askQuestionAcrossVideos = askQuestionAcrossVideos;
     }
 
     [HttpGet("transcript-semantic-search")]
@@ -56,6 +59,19 @@ public sealed class TranscriptSearchController : ControllerBase
             videoIds,
             page,
             pageSize,
+            cancellationToken));
+    }
+
+    [HttpPost("questions")]
+    [Authorize]
+    public async Task<ActionResult<GroundedQuestionAnswerDto>> AskAcrossVideos(
+        [FromBody] AskQuestionAcrossVideosRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _askQuestionAcrossVideos.Handle(
+            request.Question,
+            request.Language,
+            request.VideoIds,
             cancellationToken));
     }
 }

@@ -30,9 +30,17 @@ public sealed class EmbeddingPipelineUseCaseTests
             HybridLexicalWeight = 0.4d,
             HybridMaxCandidates = 12,
             QaProvider = "disabled",
-            QaModel = string.Empty,
             QaMaxContextChunks = 8,
-            QaMaxCitations = 5
+            QaMaxCitations = 5,
+            QaTemperature = 0d,
+            QaMaxOutputTokens = 512,
+            QaProviderConfigs = new RagQaProviderConfigs
+            {
+                Gemini = new RagGeminiQaOptions
+                {
+                    Model = "gemini-2.5-flash"
+                }
+            }
         };
 
         var settingsRepo = Substitute.For<ISystemSettingRepository>();
@@ -46,7 +54,9 @@ public sealed class EmbeddingPipelineUseCaseTests
                 SystemSetting.Create("rag.retrieval.hybridSemanticWeight", "0.7"),
                 SystemSetting.Create("rag.retrieval.hybridLexicalWeight", "0.3"),
                 SystemSetting.Create("rag.retrieval.hybridMaxCandidates", "16"),
-                SystemSetting.Create("rag.qa.maxCitations", "7")
+                SystemSetting.Create("rag.qa.maxCitations", "7"),
+                SystemSetting.Create("rag.qa.temperature", "0.1"),
+                SystemSetting.Create("rag.qa.maxOutputTokens", "256")
             ]);
 
         var unitOfWork = Substitute.For<IUnitOfWork>();
@@ -65,6 +75,8 @@ public sealed class EmbeddingPipelineUseCaseTests
         result.HybridLexicalWeight.Should().Be(0.3d);
         result.HybridMaxCandidates.Should().Be(16);
         result.QaMaxCitations.Should().Be(7);
+        result.QaTemperature.Should().Be(0.1d);
+        result.QaMaxOutputTokens.Should().Be(256);
         result.IsEmbeddingPipelineEnabled.Should().BeTrue();
     }
 

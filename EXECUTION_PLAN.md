@@ -175,7 +175,7 @@
 - [X] Add schema support for embedding storage and vector indexes in a new schema version
 - [X] Add `pgvector`-backed semantic retrieval over transcript chunks
 - [X] Add dedicated hybrid transcript search endpoints over combined lexical + semantic retrieval
-- [ ] Add grounded video Q&A endpoints over retrieved transcript passages with cited time ranges
+- [X] Add grounded video Q&A endpoints over retrieved transcript passages with cited time ranges
 - [ ] Add retrieval/answering tests for full-text search, semantic search, citation integrity, and failure handling
 - [ ] Add docker support
 
