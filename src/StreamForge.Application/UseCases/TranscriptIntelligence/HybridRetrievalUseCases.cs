@@ -66,7 +66,7 @@ public sealed class SearchVideoTranscriptHybridService
         var semanticCandidateCount = TranscriptHybridSearchComposer.CalculateSemanticCandidateCount(settings, retrievalWindow, normalizedPageSize);
         var mergedCandidateCount = TranscriptHybridSearchComposer.CalculateMergedCandidateCount(settings, retrievalWindow, normalizedPageSize);
 
-        var lexicalTask = _unitOfWork.VideoTranscriptChunks.SearchLexicalByVideoAsync(
+        var lexicalResult = await _unitOfWork.VideoTranscriptChunks.SearchLexicalByVideoAsync(
             videoId,
             query.Trim(),
             normalizedLanguage,
@@ -75,7 +75,7 @@ public sealed class SearchVideoTranscriptHybridService
             lexicalCandidateCount,
             cancellationToken);
 
-        var semanticTask = _transcriptSearchProvider.SearchSemanticAsync(
+        var semanticResult = await _transcriptSearchProvider.SearchSemanticAsync(
             new TranscriptSemanticSearchRequest(
                 query.Trim(),
                 settings.EmbeddingProvider,
@@ -88,11 +88,9 @@ public sealed class SearchVideoTranscriptHybridService
                 null),
             cancellationToken);
 
-        await Task.WhenAll(lexicalTask, semanticTask);
-
         var merged = TranscriptHybridSearchComposer.Merge(
-            lexicalTask.Result.Items,
-            semanticTask.Result.Items,
+            lexicalResult.Items,
+            semanticResult.Items,
             settings.HybridLexicalWeight,
             settings.HybridSemanticWeight,
             mergedCandidateCount);
@@ -173,7 +171,7 @@ public sealed class SearchTranscriptHybridAcrossVideosService
         var semanticCandidateCount = TranscriptHybridSearchComposer.CalculateSemanticCandidateCount(settings, retrievalWindow, normalizedPageSize);
         var mergedCandidateCount = TranscriptHybridSearchComposer.CalculateMergedCandidateCount(settings, retrievalWindow, normalizedPageSize);
 
-        var lexicalTask = _unitOfWork.VideoTranscriptChunks.SearchLexicalAcrossVideosAsync(
+        var lexicalResult = await _unitOfWork.VideoTranscriptChunks.SearchLexicalAcrossVideosAsync(
             accessibleVideoIds,
             query.Trim(),
             normalizedLanguage,
@@ -182,7 +180,7 @@ public sealed class SearchTranscriptHybridAcrossVideosService
             lexicalCandidateCount,
             cancellationToken);
 
-        var semanticTask = _transcriptSearchProvider.SearchSemanticAsync(
+        var semanticResult = await _transcriptSearchProvider.SearchSemanticAsync(
             new TranscriptSemanticSearchRequest(
                 query.Trim(),
                 settings.EmbeddingProvider,
@@ -195,11 +193,9 @@ public sealed class SearchTranscriptHybridAcrossVideosService
                 accessibleVideoIds),
             cancellationToken);
 
-        await Task.WhenAll(lexicalTask, semanticTask);
-
         var merged = TranscriptHybridSearchComposer.Merge(
-            lexicalTask.Result.Items,
-            semanticTask.Result.Items,
+            lexicalResult.Items,
+            semanticResult.Items,
             settings.HybridLexicalWeight,
             settings.HybridSemanticWeight,
             mergedCandidateCount);
