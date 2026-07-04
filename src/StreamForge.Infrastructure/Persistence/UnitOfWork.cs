@@ -33,6 +33,7 @@ public sealed class UnitOfWork : IUnitOfWork
         Notifications = new NotificationRepository(dbContext);
         AnalyticsEvents = new AnalyticsEventRepository(dbContext);
         SystemSettings = new SystemSettingRepository(dbContext);
+        SystemSecrets = new SystemSecretRepository(dbContext);
         AccessControls = new AccessControlRepository(dbContext);
         UploadSessions = new UploadSessionRepository(dbContext);
         UploadSessionParts = new UploadSessionPartRepository(dbContext);
@@ -58,6 +59,7 @@ public sealed class UnitOfWork : IUnitOfWork
     public INotificationRepository Notifications { get; }
     public IAnalyticsEventRepository AnalyticsEvents { get; }
     public ISystemSettingRepository SystemSettings { get; }
+    public ISystemSecretRepository SystemSecrets { get; }
     public IAccessControlRepository AccessControls { get; }
     public IUploadSessionRepository UploadSessions { get; }
     public IUploadSessionPartRepository UploadSessionParts { get; }

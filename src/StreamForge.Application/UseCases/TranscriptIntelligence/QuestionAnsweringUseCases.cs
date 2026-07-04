@@ -77,7 +77,7 @@ public sealed class AskVideoQuestionService
         var result = await provider.AnswerAsync(
             new GroundedQuestionAnsweringRequest(
                 settings.QaProvider,
-                QuestionAnsweringSupport.ResolveQaModel(settings),
+                settings.ResolveQaModel(),
                 question.Trim(),
                 evidence,
                 settings.QaMaxCitations,
@@ -161,7 +161,7 @@ public sealed class AskQuestionAcrossVideosService
         var result = await provider.AnswerAsync(
             new GroundedQuestionAnsweringRequest(
                 settings.QaProvider,
-                QuestionAnsweringSupport.ResolveQaModel(settings),
+                settings.ResolveQaModel(),
                 question.Trim(),
                 evidence,
                 settings.QaMaxCitations,
@@ -184,26 +184,6 @@ internal static class QuestionAnsweringSupport
         {
             throw new ArgumentException("Question is required.", nameof(question));
         }
-    }
-
-    public static string ResolveQaModel(EffectiveRagSettings settings)
-    {
-        if (settings.QaProvider.Equals("gemini", StringComparison.OrdinalIgnoreCase))
-        {
-            return settings.GeminiQaModel;
-        }
-
-        if (settings.QaProvider.Equals("grok", StringComparison.OrdinalIgnoreCase))
-        {
-            return settings.GrokQaModel;
-        }
-
-        if (settings.QaProvider.Equals("groq", StringComparison.OrdinalIgnoreCase))
-        {
-            return settings.GroqQaModel;
-        }
-
-        throw new ArgumentException($"Unsupported question answering provider '{settings.QaProvider}'.");
     }
 
     public static void EnsureVideoQuestionsEnabled(EffectiveRagSettings settings)

@@ -1,6 +1,8 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.DataProtection;
+using AppDataProtectionOptions = StreamForge.Application.Common.DataProtectionOptions;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -32,6 +34,7 @@ using StreamForge.Infrastructure.Authentication;
 using StreamForge.Infrastructure.Data;
 using StreamForge.Infrastructure.Persistence;
 using StreamForge.Infrastructure.Processing;
+using StreamForge.Infrastructure.Security;
 using StreamForge.Infrastructure.Storage;
 using StreamForge.Infrastructure.TranscriptIntelligence;
 using StreamForge.Infrastructure.Transcription;
@@ -134,6 +137,11 @@ builder.Services
     .ValidateOnStart();
 
 builder.Services
+    .Configure<AppDataProtectionOptions>(builder.Configuration.GetSection(AppDataProtectionOptions.SectionName))
+    .AddOptions<AppDataProtectionOptions>()
+    .ValidateOnStart();
+
+builder.Services
     .Configure<AnalyticsOptions>(builder.Configuration.GetSection(AnalyticsOptions.SectionName))
     .AddOptions<AnalyticsOptions>()
     .ValidateDataAnnotations()
@@ -166,6 +174,10 @@ var databaseOptions = builder.Configuration.GetSection(DatabaseOptions.SectionNa
 var corsOptions = builder.Configuration.GetSection(CorsOptions.SectionName)
     .Get<CorsOptions>()
     ?? new CorsOptions();
+
+var dataProtectionOptions = builder.Configuration.GetSection(AppDataProtectionOptions.SectionName)
+    .Get<AppDataProtectionOptions>()
+    ?? new AppDataProtectionOptions();
 
 builder.Services.AddCors(options =>
 {
@@ -213,6 +225,7 @@ builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<StorageOptions>>
 builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<VideoProcessingOptions>>().Value);
 builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<TranscriptionOptions>>().Value);
 builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<RagOptions>>().Value);
+builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<AppDataProtectionOptions>>().Value);
 builder.Services.AddScoped(sp => sp.GetRequiredService<IOptions<AnalyticsOptions>>().Value);
 builder.Services.AddScoped<IAnalyticsQueryService, AnalyticsQueryService>();
 builder.Services.AddScoped<IStorageService>(sp =>
@@ -242,6 +255,8 @@ builder.Services.AddScoped<ITranscriptionQueue, HangfireTranscriptionQueue>();
 builder.Services.AddScoped<ITranscriptEmbeddingQueue, HangfireTranscriptEmbeddingQueue>();
 builder.Services.AddScoped<ITranscriptSearchProvider, PostgresTranscriptSearchProvider>();
 builder.Services.AddScoped<IVideoQuestionAnsweringProviderFactory, VideoQuestionAnsweringProviderFactory>();
+builder.Services.AddScoped<ISecretProtectionService, DataProtectionSecretProtectionService>();
+builder.Services.AddScoped<ISystemSecretStoreService, SystemSecretStoreService>();
 builder.Services.AddHttpClient<ITranscriptionProvider, LocalFasterWhisperTranscriptionProvider>((serviceProvider, client) =>
 {
     var options = serviceProvider.GetRequiredService<IOptions<TranscriptionOptions>>().Value;
@@ -287,6 +302,8 @@ builder.Services.AddScoped<RetryAdminVideoProcessingJobService>();
 builder.Services.AddScoped<ResyncAdminVideoProcessingJobService>();
 builder.Services.AddScoped<ResolveTranscriptionSettingsService>();
 builder.Services.AddScoped<ResolveRagSettingsService>();
+builder.Services.AddScoped<GetAdminRagSettingsService>();
+builder.Services.AddScoped<UpdateAdminRagSettingsService>();
 builder.Services.AddScoped<GenerateTranscriptEmbeddingsService>();
 builder.Services.AddScoped<SearchVideoTranscriptSemanticService>();
 builder.Services.AddScoped<SearchTranscriptSemanticAcrossVideosService>();
@@ -482,6 +499,22 @@ static bool ShouldUseHttpsRedirection(IConfiguration configuration)
 // Configure database
 builder.Services.AddDbContext<StreamForgeDbContext>(options =>
     options.UseNpgsql(connectionStrings.DefaultConnection, npgsqlOptions => npgsqlOptions.UseVector()));
+
+var dataProtectionBuilder = builder.Services
+    .AddDataProtection()
+    .SetApplicationName(string.IsNullOrWhiteSpace(dataProtectionOptions.ApplicationName)
+        ? "StreamForge"
+        : dataProtectionOptions.ApplicationName.Trim());
+
+if (!string.IsNullOrWhiteSpace(dataProtectionOptions.KeysPath))
+{
+    var configuredPath = dataProtectionOptions.KeysPath.Trim();
+    var resolvedPath = Path.IsPathRooted(configuredPath)
+        ? configuredPath
+        : Path.Combine(builder.Environment.ContentRootPath, configuredPath);
+    Directory.CreateDirectory(resolvedPath);
+    dataProtectionBuilder.PersistKeysToFileSystem(new DirectoryInfo(resolvedPath));
+}
 
 var app = builder.Build();
 

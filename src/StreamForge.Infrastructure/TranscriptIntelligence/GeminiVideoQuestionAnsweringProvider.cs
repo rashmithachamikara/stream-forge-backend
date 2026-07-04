@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using StreamForge.Application.Common;
 using StreamForge.Application.Interfaces;
+using StreamForge.Application.UseCases.TranscriptIntelligence;
 using StreamForge.Domain.Exceptions;
 
 namespace StreamForge.Infrastructure.TranscriptIntelligence;
@@ -13,16 +14,16 @@ public sealed class GeminiVideoQuestionAnsweringProvider : IVideoQuestionAnsweri
 {
     private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
     private readonly HttpClient _httpClient;
-    private readonly RagOptions _options;
+    private readonly ResolveRagSettingsService _resolveRagSettingsService;
     private readonly ILogger<GeminiVideoQuestionAnsweringProvider> _logger;
 
     public GeminiVideoQuestionAnsweringProvider(
         HttpClient httpClient,
-        RagOptions options,
+        ResolveRagSettingsService resolveRagSettingsService,
         ILogger<GeminiVideoQuestionAnsweringProvider> logger)
     {
         _httpClient = httpClient;
-        _options = options;
+        _resolveRagSettingsService = resolveRagSettingsService;
         _logger = logger;
     }
 
@@ -32,8 +33,9 @@ public sealed class GeminiVideoQuestionAnsweringProvider : IVideoQuestionAnsweri
         GroundedQuestionAnsweringRequest request,
         CancellationToken cancellationToken = default)
     {
-        var geminiOptions = _options.QaProviderConfigs.Gemini;
-        if (string.IsNullOrWhiteSpace(geminiOptions.ApiKey))
+        var settings = await _resolveRagSettingsService.Handle(cancellationToken);
+        var apiKey = settings.ResolveQaApiKey();
+        if (string.IsNullOrWhiteSpace(apiKey))
         {
             throw new InvalidOperationException("Gemini API key is not configured.");
         }
@@ -44,7 +46,7 @@ public sealed class GeminiVideoQuestionAnsweringProvider : IVideoQuestionAnsweri
         }
 
         var prompt = BuildPrompt(request);
-        var endpoint = $"/v1beta/models/{Uri.EscapeDataString(request.Model)}:generateContent?key={Uri.EscapeDataString(geminiOptions.ApiKey)}";
+        var endpoint = $"/v1beta/models/{Uri.EscapeDataString(request.Model)}:generateContent?key={Uri.EscapeDataString(apiKey)}";
         var payload = new GeminiGenerateContentRequest(
             [new GeminiContent("user", [new GeminiPart(prompt)])],
             new GeminiGenerationConfig(

@@ -6,6 +6,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using StreamForge.Application.Common;
 using StreamForge.Application.Interfaces;
+using StreamForge.Application.UseCases.TranscriptIntelligence;
 using StreamForge.Domain.Exceptions;
 
 namespace StreamForge.Infrastructure.TranscriptIntelligence;
@@ -14,16 +15,16 @@ public sealed class GrokVideoQuestionAnsweringProvider : IVideoQuestionAnswering
 {
     private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
     private readonly HttpClient _httpClient;
-    private readonly RagOptions _options;
+    private readonly ResolveRagSettingsService _resolveRagSettingsService;
     private readonly ILogger<GrokVideoQuestionAnsweringProvider> _logger;
 
     public GrokVideoQuestionAnsweringProvider(
         HttpClient httpClient,
-        RagOptions options,
+        ResolveRagSettingsService resolveRagSettingsService,
         ILogger<GrokVideoQuestionAnsweringProvider> logger)
     {
         _httpClient = httpClient;
-        _options = options;
+        _resolveRagSettingsService = resolveRagSettingsService;
         _logger = logger;
     }
 
@@ -33,8 +34,9 @@ public sealed class GrokVideoQuestionAnsweringProvider : IVideoQuestionAnswering
         GroundedQuestionAnsweringRequest request,
         CancellationToken cancellationToken = default)
     {
-        var grokOptions = _options.QaProviderConfigs.Grok;
-        if (string.IsNullOrWhiteSpace(grokOptions.ApiKey))
+        var settings = await _resolveRagSettingsService.Handle(cancellationToken);
+        var apiKey = settings.ResolveQaApiKey();
+        if (string.IsNullOrWhiteSpace(apiKey))
         {
             throw new InvalidOperationException("Grok API key is not configured.");
         }
@@ -58,7 +60,7 @@ public sealed class GrokVideoQuestionAnsweringProvider : IVideoQuestionAnswering
         {
             Content = JsonContent.Create(payload, options: _jsonOptions)
         };
-        httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", grokOptions.ApiKey);
+        httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
         using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
         if (!response.IsSuccessStatusCode)

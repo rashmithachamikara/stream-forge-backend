@@ -4,7 +4,10 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using StreamForge.Application.Common;
 using StreamForge.Application.Interfaces;
+using StreamForge.Application.UseCases.TranscriptIntelligence;
+using StreamForge.Domain.Entities;
 using StreamForge.Domain.Exceptions;
+using StreamForge.Domain.Interfaces;
 using StreamForge.Infrastructure.TranscriptIntelligence;
 
 namespace StreamForge.Infrastructure.Tests.TranscriptIntelligence;
@@ -42,18 +45,7 @@ public sealed class GrokVideoQuestionAnsweringProviderTests
 
         var provider = new GrokVideoQuestionAnsweringProvider(
             httpClient,
-            new RagOptions
-            {
-                QaProviderConfigs = new RagQaProviderConfigs
-                {
-                    Grok = new RagGrokQaOptions
-                    {
-                        ApiKey = "test-key",
-                        BaseUrl = "https://api.x.ai",
-                        TimeoutSeconds = 60
-                    }
-                }
-            },
+            CreateSettingsResolver("test-key"),
             NullLogger<GrokVideoQuestionAnsweringProvider>.Instance);
 
         var result = await provider.AnswerAsync(
@@ -109,18 +101,7 @@ public sealed class GrokVideoQuestionAnsweringProviderTests
 
         var provider = new GrokVideoQuestionAnsweringProvider(
             httpClient,
-            new RagOptions
-            {
-                QaProviderConfigs = new RagQaProviderConfigs
-                {
-                    Grok = new RagGrokQaOptions
-                    {
-                        ApiKey = "test-key",
-                        BaseUrl = "https://api.x.ai",
-                        TimeoutSeconds = 60
-                    }
-                }
-            },
+            CreateSettingsResolver("test-key"),
             NullLogger<GrokVideoQuestionAnsweringProvider>.Instance);
 
         var act = () => provider.AnswerAsync(
@@ -162,19 +143,7 @@ public sealed class GrokVideoQuestionAnsweringProviderTests
 
         var provider = new GrokVideoQuestionAnsweringProvider(
             httpClient,
-            new RagOptions
-            {
-                QaProviderConfigs = new RagQaProviderConfigs
-                {
-                    Grok = new RagGrokQaOptions
-                    {
-                        ApiKey = "test-key",
-                        BaseUrl = "https://api.x.ai",
-                        TimeoutSeconds = 60,
-                        Model = "grok-3-mini"
-                    }
-                }
-            },
+            CreateSettingsResolver("test-key"),
             NullLogger<GrokVideoQuestionAnsweringProvider>.Instance);
 
         var act = () => provider.AnswerAsync(
@@ -213,5 +182,78 @@ public sealed class GrokVideoQuestionAnsweringProviderTests
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
             Task.FromResult(_handler(request));
+    }
+
+    private static ResolveRagSettingsService CreateSettingsResolver(string apiKey)
+    {
+        var unitOfWork = new FixedUnitOfWork();
+        return new ResolveRagSettingsService(unitOfWork, new RagOptions(), new FixedSecretStoreService(apiKey));
+    }
+
+    private sealed class FixedUnitOfWork : IUnitOfWork
+    {
+        public IUserRepository Users => throw new NotSupportedException();
+        public IVideoRepository Videos => throw new NotSupportedException();
+        public IVideoVersionRepository VideoVersions => throw new NotSupportedException();
+        public IVideoFileRepository VideoFiles => throw new NotSupportedException();
+        public IVideoThumbnailRepository VideoThumbnails => throw new NotSupportedException();
+        public IVideoProcessingJobRepository VideoProcessingJobs => throw new NotSupportedException();
+        public IVideoTranscriptionRepository VideoTranscriptions => throw new NotSupportedException();
+        public IVideoTranscriptChunkRepository VideoTranscriptChunks => throw new NotSupportedException();
+        public IVideoReactionRepository VideoReactions => throw new NotSupportedException();
+        public IVideoCommentRepository VideoComments => throw new NotSupportedException();
+        public IBookmarkRepository Bookmarks => throw new NotSupportedException();
+        public IVideoTagRepository VideoTags => throw new NotSupportedException();
+        public IStorageProviderRepository StorageProviders => throw new NotSupportedException();
+        public ICategoryRepository Categories => throw new NotSupportedException();
+        public ITagRepository Tags => throw new NotSupportedException();
+        public IPlaylistRepository Playlists => throw new NotSupportedException();
+        public IPlaylistVideoRepository PlaylistVideos => throw new NotSupportedException();
+        public INotificationRepository Notifications => throw new NotSupportedException();
+        public IAnalyticsEventRepository AnalyticsEvents => throw new NotSupportedException();
+        public IUploadSessionRepository UploadSessions => throw new NotSupportedException();
+        public IUploadSessionPartRepository UploadSessionParts => throw new NotSupportedException();
+        public ISystemSettingRepository SystemSettings { get; } = new EmptySystemSettingRepository();
+        public ISystemSecretRepository SystemSecrets => throw new NotSupportedException();
+        public IAccessControlRepository AccessControls => throw new NotSupportedException();
+        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) => Task.FromResult(0);
+        public Task BeginTransactionAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task CommitTransactionAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task RollbackTransactionAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public void Dispose() { }
+    }
+
+    private sealed class EmptySystemSettingRepository : ISystemSettingRepository
+    {
+        public Task<SystemSetting?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<SystemSetting?>(null);
+        public Task<IEnumerable<SystemSetting>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IEnumerable<SystemSetting>>([]);
+        public Task<SystemSetting> AddAsync(SystemSetting entity, CancellationToken cancellationToken = default) => Task.FromResult(entity);
+        public Task UpdateAsync(SystemSetting entity, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task DeleteAsync(SystemSetting entity, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(false);
+        public Task<SystemSetting?> GetByKeyAsync(string key, CancellationToken cancellationToken = default) => Task.FromResult<SystemSetting?>(null);
+        public Task<IReadOnlyList<SystemSetting>> GetByKeysAsync(IReadOnlyCollection<string> keys, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<SystemSetting>>([]);
+    }
+
+    private sealed class FixedSecretStoreService : ISystemSecretStoreService
+    {
+        private readonly string _apiKey;
+
+        public FixedSecretStoreService(string apiKey)
+        {
+            _apiKey = apiKey;
+        }
+
+        public Task<string?> ResolveAsync(string key, string? fallbackValue, CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(_apiKey);
+
+        public Task<SecretConfigurationStatus> GetStatusAsync(string key, string? fallbackValue, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new SecretConfigurationStatus(true, "****key"));
+
+        public Task SetAsync(string key, string plaintextValue, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task ClearAsync(string key, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 }

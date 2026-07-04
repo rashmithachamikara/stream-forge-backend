@@ -80,6 +80,8 @@ public interface IUnitOfWork : IDisposable
 
     ISystemSettingRepository SystemSettings { get; }
 
+    ISystemSecretRepository SystemSecrets { get; }
+
     IAccessControlRepository AccessControls { get; }
 
     /// <summary>

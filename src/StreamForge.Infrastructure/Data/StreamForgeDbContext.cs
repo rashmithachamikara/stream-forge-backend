@@ -44,6 +44,7 @@ public class StreamForgeDbContext : DbContext
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<AnalyticsEvent> AnalyticsEvents => Set<AnalyticsEvent>();
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
+    public DbSet<SystemSecret> SystemSecrets => Set<SystemSecret>();
 
     // Upload Entities
     public DbSet<UploadSession> UploadSessions => Set<UploadSession>();
