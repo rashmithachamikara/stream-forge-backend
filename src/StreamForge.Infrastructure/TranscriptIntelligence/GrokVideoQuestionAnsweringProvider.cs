@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -9,63 +10,70 @@ using StreamForge.Domain.Exceptions;
 
 namespace StreamForge.Infrastructure.TranscriptIntelligence;
 
-public sealed class GeminiVideoQuestionAnsweringProvider : IVideoQuestionAnsweringProvider
+public sealed class GrokVideoQuestionAnsweringProvider : IVideoQuestionAnsweringProvider
 {
     private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
     private readonly HttpClient _httpClient;
     private readonly RagOptions _options;
-    private readonly ILogger<GeminiVideoQuestionAnsweringProvider> _logger;
+    private readonly ILogger<GrokVideoQuestionAnsweringProvider> _logger;
 
-    public GeminiVideoQuestionAnsweringProvider(
+    public GrokVideoQuestionAnsweringProvider(
         HttpClient httpClient,
         RagOptions options,
-        ILogger<GeminiVideoQuestionAnsweringProvider> logger)
+        ILogger<GrokVideoQuestionAnsweringProvider> logger)
     {
         _httpClient = httpClient;
         _options = options;
         _logger = logger;
     }
 
-    public string ProviderKey => "gemini";
+    public string ProviderKey => "grok";
 
     public async Task<GroundedQuestionAnsweringResult> AnswerAsync(
         GroundedQuestionAnsweringRequest request,
         CancellationToken cancellationToken = default)
     {
-        var geminiOptions = _options.QaProviderConfigs.Gemini;
-        if (string.IsNullOrWhiteSpace(geminiOptions.ApiKey))
+        var grokOptions = _options.QaProviderConfigs.Grok;
+        if (string.IsNullOrWhiteSpace(grokOptions.ApiKey))
         {
-            throw new InvalidOperationException("Gemini API key is not configured.");
+            throw new InvalidOperationException("Grok API key is not configured.");
         }
 
         if (string.IsNullOrWhiteSpace(request.Model))
         {
-            throw new ArgumentException("A Gemini model is required for question answering.", nameof(request));
+            throw new ArgumentException("A Grok model is required for question answering.", nameof(request));
         }
 
         var prompt = BuildPrompt(request);
-        var endpoint = $"/v1beta/models/{Uri.EscapeDataString(request.Model)}:generateContent?key={Uri.EscapeDataString(geminiOptions.ApiKey)}";
-        var payload = new GeminiGenerateContentRequest(
-            [new GeminiContent("user", [new GeminiPart(prompt)])],
-            new GeminiGenerationConfig(
-                Math.Clamp(request.Temperature, 0d, 2d),
-                Math.Max(request.MaxOutputTokens, 1),
-                "application/json"));
+        var payload = new GrokChatCompletionsRequest(
+            request.Model,
+            [
+                new GrokChatMessage("system", "You are a grounded transcript question answering assistant. Return JSON only."),
+                new GrokChatMessage("user", prompt)
+            ],
+            Math.Clamp(request.Temperature, 0d, 2d),
+            Math.Max(request.MaxOutputTokens, 1));
 
-        using var response = await _httpClient.PostAsJsonAsync(endpoint, payload, _jsonOptions, cancellationToken);
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/v1/chat/completions")
+        {
+            Content = JsonContent.Create(payload, options: _jsonOptions)
+        };
+        httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", grokOptions.ApiKey);
+
+        using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             await HandleFailedResponseAsync(response, request.Model, cancellationToken);
         }
 
-        var apiResponse = await response.Content.ReadFromJsonAsync<GeminiGenerateContentResponse>(_jsonOptions, cancellationToken)
-            ?? throw new InvalidOperationException("Gemini returned an empty response.");
+        var apiResponse = await response.Content.ReadFromJsonAsync<GrokChatCompletionsResponse>(_jsonOptions, cancellationToken)
+            ?? throw new InvalidOperationException("Grok returned an empty response.");
 
         var rawText = ExtractText(apiResponse);
-        var answerPayload = StructuredQuestionAnsweringResponseParser.Parse("Gemini", rawText, request.Model, _logger);
+        var answerPayload = StructuredQuestionAnsweringResponseParser.Parse("Grok", rawText, request.Model, _logger);
 
         _logger.LogInformation(
-            "Generated grounded answer through Gemini model {Model} with {EvidenceCount} evidence chunk(s).",
+            "Generated grounded answer through Grok model {Model} with {EvidenceCount} evidence chunk(s).",
             request.Model,
             request.Evidence.Count);
 
@@ -111,16 +119,15 @@ public sealed class GeminiVideoQuestionAnsweringProvider : IVideoQuestionAnsweri
         return builder.ToString();
     }
 
-    private static string ExtractText(GeminiGenerateContentResponse response)
+    private static string ExtractText(GrokChatCompletionsResponse response)
     {
-        var text = response.Candidates?
-            .SelectMany(candidate => candidate.Content?.Parts ?? [])
-            .Select(part => part.Text)
+        var text = response.Choices?
+            .Select(choice => choice.Message?.Content)
             .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
 
         if (string.IsNullOrWhiteSpace(text))
         {
-            throw new InvalidOperationException("Gemini did not return structured text content.");
+            throw new InvalidOperationException("Grok did not return structured text content.");
         }
 
         return text.Trim();
@@ -140,103 +147,66 @@ public sealed class GeminiVideoQuestionAnsweringProvider : IVideoQuestionAnsweri
             {
                 var retryAfter = response.Headers.RetryAfter?.Delta;
                 _logger.LogWarning(
-                    "Gemini rate limited request for model {Model}. RetryAfter: {RetryAfter}. Body preview: {BodyPreview}.",
+                    "Grok rate limited request for model {Model}. RetryAfter: {RetryAfter}. Body preview: {BodyPreview}.",
                     model,
                     retryAfter,
                     preview);
 
                 throw new ExternalServiceThrottledException(
-                    "Gemini",
+                    "Grok",
                     "The question-answering provider is temporarily rate-limiting requests. Please try again shortly.",
                     retryAfter);
             }
             case 401:
             case 403:
                 _logger.LogError(
-                    "Gemini authentication/authorization failure for model {Model}. Status: {StatusCode}. Body preview: {BodyPreview}.",
+                    "Grok authentication/authorization failure for model {Model}. Status: {StatusCode}. Body preview: {BodyPreview}.",
                     model,
                     (int)response.StatusCode,
                     preview);
                 throw new ExternalServiceException(
-                    "Gemini",
+                    "Grok",
                     "The question-answering provider rejected the request due to provider authentication or authorization settings.");
             default:
                 if ((int)response.StatusCode >= 500)
                 {
                     _logger.LogWarning(
-                        "Gemini upstream failure for model {Model}. Status: {StatusCode}. Body preview: {BodyPreview}.",
+                        "Grok upstream failure for model {Model}. Status: {StatusCode}. Body preview: {BodyPreview}.",
                         model,
                         (int)response.StatusCode,
                         preview);
                     throw new ExternalServiceException(
-                        "Gemini",
+                        "Grok",
                         "The question-answering provider is temporarily unavailable. Please try again shortly.");
                 }
 
                 _logger.LogWarning(
-                    "Gemini request failed for model {Model}. Status: {StatusCode}. Body preview: {BodyPreview}.",
+                    "Grok request failed for model {Model}. Status: {StatusCode}. Body preview: {BodyPreview}.",
                     model,
                     (int)response.StatusCode,
                     preview);
                 throw new ExternalServiceException(
-                    "Gemini",
+                    "Grok",
                     $"The question-answering provider request failed with status {(int)response.StatusCode}.");
         }
     }
 
-    private sealed record GeminiGenerateContentRequest(
-        [property: JsonPropertyName("contents")] IReadOnlyCollection<GeminiContent> Contents,
-        [property: JsonPropertyName("generationConfig")] GeminiGenerationConfig GenerationConfig);
-
-    private sealed record GeminiContent(
-        [property: JsonPropertyName("role")] string Role,
-        [property: JsonPropertyName("parts")] IReadOnlyCollection<GeminiPart> Parts);
-
-    private sealed record GeminiPart(
-        [property: JsonPropertyName("text")] string Text);
-
-    private sealed record GeminiGenerationConfig(
+    private sealed record GrokChatCompletionsRequest(
+        [property: JsonPropertyName("model")] string Model,
+        [property: JsonPropertyName("messages")] IReadOnlyCollection<GrokChatMessage> Messages,
         [property: JsonPropertyName("temperature")] double Temperature,
-        [property: JsonPropertyName("maxOutputTokens")] int MaxOutputTokens,
-        [property: JsonPropertyName("responseMimeType")] string ResponseMimeType);
+        [property: JsonPropertyName("max_tokens")] int MaxTokens);
 
-    private sealed record GeminiGenerateContentResponse(
-        [property: JsonPropertyName("candidates")] GeminiCandidate[]? Candidates);
+    private sealed record GrokChatMessage(
+        [property: JsonPropertyName("role")] string Role,
+        [property: JsonPropertyName("content")] string Content);
 
-    private sealed record GeminiCandidate(
-        [property: JsonPropertyName("content")] GeminiCandidateContent? Content);
+    private sealed record GrokChatCompletionsResponse(
+        [property: JsonPropertyName("choices")] GrokChatChoice[]? Choices);
 
-    private sealed record GeminiCandidateContent(
-        [property: JsonPropertyName("parts")] GeminiCandidatePart[]? Parts);
+    private sealed record GrokChatChoice(
+        [property: JsonPropertyName("message")] GrokChatChoiceMessage? Message);
 
-    private sealed record GeminiCandidatePart(
-        [property: JsonPropertyName("text")] string? Text);
-}
-
-public sealed class VideoQuestionAnsweringProviderFactory : IVideoQuestionAnsweringProviderFactory
-{
-    private readonly IReadOnlyDictionary<string, IVideoQuestionAnsweringProvider> _providers;
-
-    public VideoQuestionAnsweringProviderFactory(IEnumerable<IVideoQuestionAnsweringProvider> providers)
-    {
-        _providers = providers.ToDictionary(
-            provider => provider.ProviderKey,
-            provider => provider,
-            StringComparer.OrdinalIgnoreCase);
-    }
-
-    public IVideoQuestionAnsweringProvider Resolve(string provider)
-    {
-        if (string.IsNullOrWhiteSpace(provider) || provider.Equals("disabled", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new ArgumentException("Question answering provider is disabled.");
-        }
-
-        if (_providers.TryGetValue(provider.Trim(), out var resolved))
-        {
-            return resolved;
-        }
-
-        throw new ArgumentException($"Unsupported question answering provider '{provider}'.");
-    }
+    private sealed record GrokChatChoiceMessage(
+        [property: JsonPropertyName("content")] string? Content);
 }

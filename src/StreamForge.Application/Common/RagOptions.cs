@@ -68,6 +68,7 @@ public sealed class RagOptions
 public sealed class RagQaProviderConfigs
 {
     public RagGeminiQaOptions Gemini { get; set; } = new();
+    public RagGrokQaOptions Grok { get; set; } = new();
 }
 
 public sealed class RagGeminiQaOptions
@@ -77,6 +78,20 @@ public sealed class RagGeminiQaOptions
 
     [Required]
     public string Model { get; set; } = "gemini-2.5-flash";
+
+    public string ApiKey { get; set; } = string.Empty;
+
+    [Range(1, 300)]
+    public int TimeoutSeconds { get; set; } = 60;
+}
+
+public sealed class RagGrokQaOptions
+{
+    [Required]
+    public string BaseUrl { get; set; } = "https://api.x.ai";
+
+    [Required]
+    public string Model { get; set; } = "grok-3-mini";
 
     public string ApiKey { get; set; } = string.Empty;
 

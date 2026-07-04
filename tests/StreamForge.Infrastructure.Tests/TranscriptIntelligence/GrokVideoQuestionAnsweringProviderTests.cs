@@ -9,7 +9,7 @@ using StreamForge.Infrastructure.TranscriptIntelligence;
 
 namespace StreamForge.Infrastructure.Tests.TranscriptIntelligence;
 
-public sealed class GeminiVideoQuestionAnsweringProviderTests
+public sealed class GrokVideoQuestionAnsweringProviderTests
 {
     [Fact]
     public async Task AnswerAsync_ShouldParseStructuredJsonResponse()
@@ -18,14 +18,10 @@ public sealed class GeminiVideoQuestionAnsweringProviderTests
         var responseJson =
             $$"""
               {
-                "candidates": [
+                "choices": [
                   {
-                    "content": {
-                      "parts": [
-                        {
-                          "text": "{\"canAnswer\":true,\"answer\":\"Grounded answer\",\"citations\":[\"{{chunkId}}\"]}"
-                        }
-                      ]
+                    "message": {
+                      "content": "{\"canAnswer\":true,\"answer\":\"Grounded answer\",\"citations\":[\"{{chunkId}}\"]}"
                     }
                   }
                 ]
@@ -41,29 +37,29 @@ public sealed class GeminiVideoQuestionAnsweringProviderTests
                     "application/json")
             }))
         {
-            BaseAddress = new Uri("https://generativelanguage.googleapis.com")
+            BaseAddress = new Uri("https://api.x.ai")
         };
 
-        var provider = new GeminiVideoQuestionAnsweringProvider(
+        var provider = new GrokVideoQuestionAnsweringProvider(
             httpClient,
             new RagOptions
             {
                 QaProviderConfigs = new RagQaProviderConfigs
                 {
-                    Gemini = new RagGeminiQaOptions
+                    Grok = new RagGrokQaOptions
                     {
                         ApiKey = "test-key",
-                        BaseUrl = "https://generativelanguage.googleapis.com",
+                        BaseUrl = "https://api.x.ai",
                         TimeoutSeconds = 60
                     }
                 }
             },
-            NullLogger<GeminiVideoQuestionAnsweringProvider>.Instance);
+            NullLogger<GrokVideoQuestionAnsweringProvider>.Instance);
 
         var result = await provider.AnswerAsync(
             new GroundedQuestionAnsweringRequest(
-                "gemini",
-                "gemini-2.5-flash",
+                "grok",
+                "grok-3-mini",
                 "What happened?",
                 [
                     new GroundedQuestionEvidenceChunk(
@@ -95,14 +91,10 @@ public sealed class GeminiVideoQuestionAnsweringProviderTests
                 Content = new StringContent(
                     """
                     {
-                      "candidates": [
+                      "choices": [
                         {
-                          "content": {
-                            "parts": [
-                              {
-                                "text": "not-json"
-                              }
-                            ]
+                          "message": {
+                            "content": "not-json"
                           }
                         }
                       ]
@@ -112,29 +104,29 @@ public sealed class GeminiVideoQuestionAnsweringProviderTests
                     "application/json")
             }))
         {
-            BaseAddress = new Uri("https://generativelanguage.googleapis.com")
+            BaseAddress = new Uri("https://api.x.ai")
         };
 
-        var provider = new GeminiVideoQuestionAnsweringProvider(
+        var provider = new GrokVideoQuestionAnsweringProvider(
             httpClient,
             new RagOptions
             {
                 QaProviderConfigs = new RagQaProviderConfigs
                 {
-                    Gemini = new RagGeminiQaOptions
+                    Grok = new RagGrokQaOptions
                     {
                         ApiKey = "test-key",
-                        BaseUrl = "https://generativelanguage.googleapis.com",
+                        BaseUrl = "https://api.x.ai",
                         TimeoutSeconds = 60
                     }
                 }
             },
-            NullLogger<GeminiVideoQuestionAnsweringProvider>.Instance);
+            NullLogger<GrokVideoQuestionAnsweringProvider>.Instance);
 
         var act = () => provider.AnswerAsync(
             new GroundedQuestionAnsweringRequest(
-                "gemini",
-                "gemini-2.5-flash",
+                "grok",
+                "grok-3-mini",
                 "What happened?",
                 [
                     new GroundedQuestionEvidenceChunk(
@@ -162,33 +154,33 @@ public sealed class GeminiVideoQuestionAnsweringProviderTests
         using var httpClient = new HttpClient(new StubHttpMessageHandler(_ =>
             new HttpResponseMessage(HttpStatusCode.TooManyRequests)
             {
-                Content = new StringContent("{\"error\":\"quota exceeded\"}", Encoding.UTF8, "application/json")
+                Content = new StringContent("{\"error\":\"rate limit\"}", Encoding.UTF8, "application/json")
             }))
         {
-            BaseAddress = new Uri("https://generativelanguage.googleapis.com")
+            BaseAddress = new Uri("https://api.x.ai")
         };
 
-        var provider = new GeminiVideoQuestionAnsweringProvider(
+        var provider = new GrokVideoQuestionAnsweringProvider(
             httpClient,
             new RagOptions
             {
                 QaProviderConfigs = new RagQaProviderConfigs
                 {
-                    Gemini = new RagGeminiQaOptions
+                    Grok = new RagGrokQaOptions
                     {
                         ApiKey = "test-key",
-                        BaseUrl = "https://generativelanguage.googleapis.com",
+                        BaseUrl = "https://api.x.ai",
                         TimeoutSeconds = 60,
-                        Model = "gemini-2.5-flash"
+                        Model = "grok-3-mini"
                     }
                 }
             },
-            NullLogger<GeminiVideoQuestionAnsweringProvider>.Instance);
+            NullLogger<GrokVideoQuestionAnsweringProvider>.Instance);
 
         var act = () => provider.AnswerAsync(
             new GroundedQuestionAnsweringRequest(
-                "gemini",
-                "gemini-2.5-flash",
+                "grok",
+                "grok-3-mini",
                 "What happened?",
                 [
                     new GroundedQuestionEvidenceChunk(
@@ -208,95 +200,6 @@ public sealed class GeminiVideoQuestionAnsweringProviderTests
 
         await act.Should().ThrowAsync<ExternalServiceThrottledException>()
             .WithMessage("*rate-limiting requests*");
-    }
-
-    [Fact]
-    public async Task AnswerAsync_ShouldPromptForProvidedVideosWhenEvidenceSpansMultipleVideos()
-    {
-        string? capturedRequestBody = null;
-        var chunkId = Guid.NewGuid();
-        var videoIdOne = Guid.NewGuid();
-        var videoIdTwo = Guid.NewGuid();
-
-        using var httpClient = new HttpClient(new StubHttpMessageHandler(request =>
-            {
-                capturedRequestBody = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
-                return new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent(
-                        $$"""
-                          {
-                            "candidates": [
-                              {
-                                "content": {
-                                  "parts": [
-                                    {
-                                      "text": "{\"canAnswer\":true,\"answer\":\"Grounded answer\",\"citations\":[\"{{chunkId}}\"]}"
-                                    }
-                                  ]
-                                }
-                              }
-                            ]
-                          }
-                          """,
-                        Encoding.UTF8,
-                        "application/json")
-                };
-            }))
-        {
-            BaseAddress = new Uri("https://generativelanguage.googleapis.com")
-        };
-
-        var provider = new GeminiVideoQuestionAnsweringProvider(
-            httpClient,
-            new RagOptions
-            {
-                QaProviderConfigs = new RagQaProviderConfigs
-                {
-                    Gemini = new RagGeminiQaOptions
-                    {
-                        ApiKey = "test-key",
-                        BaseUrl = "https://generativelanguage.googleapis.com",
-                        TimeoutSeconds = 60
-                    }
-                }
-            },
-            NullLogger<GeminiVideoQuestionAnsweringProvider>.Instance);
-
-        await provider.AnswerAsync(
-            new GroundedQuestionAnsweringRequest(
-                "gemini",
-                "gemini-2.5-flash",
-                "What happened?",
-                [
-                    new GroundedQuestionEvidenceChunk(
-                        chunkId,
-                        videoIdOne,
-                        "Video One",
-                        Guid.NewGuid(),
-                        "en",
-                        5,
-                        10,
-                        "First evidence"),
-                    new GroundedQuestionEvidenceChunk(
-                        Guid.NewGuid(),
-                        videoIdTwo,
-                        "Video Two",
-                        Guid.NewGuid(),
-                        "en",
-                        12,
-                        18,
-                        "Second evidence")
-                ],
-                3,
-                256,
-                0d),
-            CancellationToken.None);
-
-        capturedRequestBody.Should().NotBeNull();
-        var normalizedRequestBody = capturedRequestBody!.Replace("\\u0022", "\"", StringComparison.Ordinal);
-        normalizedRequestBody.Should().Contain("prefer phrases like \"the provided videos\"");
-        normalizedRequestBody.Should().NotContain("prefer phrases like \"the provided video\" or");
     }
 
     private sealed class StubHttpMessageHandler : HttpMessageHandler

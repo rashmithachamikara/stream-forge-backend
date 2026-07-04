@@ -193,6 +193,11 @@ internal static class QuestionAnsweringSupport
             return settings.GeminiQaModel;
         }
 
+        if (settings.QaProvider.Equals("grok", StringComparison.OrdinalIgnoreCase))
+        {
+            return settings.GrokQaModel;
+        }
+
         throw new ArgumentException($"Unsupported question answering provider '{settings.QaProvider}'.");
     }
 
