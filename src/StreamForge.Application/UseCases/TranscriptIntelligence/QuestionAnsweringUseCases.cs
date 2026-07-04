@@ -198,6 +198,11 @@ internal static class QuestionAnsweringSupport
             return settings.GrokQaModel;
         }
 
+        if (settings.QaProvider.Equals("groq", StringComparison.OrdinalIgnoreCase))
+        {
+            return settings.GroqQaModel;
+        }
+
         throw new ArgumentException($"Unsupported question answering provider '{settings.QaProvider}'.");
     }
 

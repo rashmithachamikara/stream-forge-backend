@@ -266,8 +266,15 @@ builder.Services.AddHttpClient<GrokVideoQuestionAnsweringProvider>((serviceProvi
     client.BaseAddress = new Uri(options.QaProviderConfigs.Grok.BaseUrl.TrimEnd('/'));
     client.Timeout = TimeSpan.FromSeconds(options.QaProviderConfigs.Grok.TimeoutSeconds);
 });
+builder.Services.AddHttpClient<GroqVideoQuestionAnsweringProvider>((serviceProvider, client) =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<RagOptions>>().Value;
+    client.BaseAddress = new Uri(options.QaProviderConfigs.Groq.BaseUrl.TrimEnd('/'));
+    client.Timeout = TimeSpan.FromSeconds(options.QaProviderConfigs.Groq.TimeoutSeconds);
+});
 builder.Services.AddTransient<IVideoQuestionAnsweringProvider>(sp => sp.GetRequiredService<GeminiVideoQuestionAnsweringProvider>());
 builder.Services.AddTransient<IVideoQuestionAnsweringProvider>(sp => sp.GetRequiredService<GrokVideoQuestionAnsweringProvider>());
+builder.Services.AddTransient<IVideoQuestionAnsweringProvider>(sp => sp.GetRequiredService<GroqVideoQuestionAnsweringProvider>());
 builder.Services.AddScoped<CreateUploadSessionService>();
 builder.Services.AddScoped<GetUploadTargetService>();
 builder.Services.AddScoped<UploadPartService>();

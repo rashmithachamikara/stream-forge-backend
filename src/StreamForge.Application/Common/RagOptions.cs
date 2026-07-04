@@ -69,6 +69,7 @@ public sealed class RagQaProviderConfigs
 {
     public RagGeminiQaOptions Gemini { get; set; } = new();
     public RagGrokQaOptions Grok { get; set; } = new();
+    public RagGroqQaOptions Groq { get; set; } = new();
 }
 
 public sealed class RagGeminiQaOptions
@@ -92,6 +93,20 @@ public sealed class RagGrokQaOptions
 
     [Required]
     public string Model { get; set; } = "grok-3-mini";
+
+    public string ApiKey { get; set; } = string.Empty;
+
+    [Range(1, 300)]
+    public int TimeoutSeconds { get; set; } = 60;
+}
+
+public sealed class RagGroqQaOptions
+{
+    [Required]
+    public string BaseUrl { get; set; } = "https://api.groq.com";
+
+    [Required]
+    public string Model { get; set; } = "llama-3.1-8b-instant";
 
     public string ApiKey { get; set; } = string.Empty;
 
