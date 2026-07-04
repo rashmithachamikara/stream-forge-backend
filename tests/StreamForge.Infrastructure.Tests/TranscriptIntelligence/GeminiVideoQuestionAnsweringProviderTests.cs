@@ -210,6 +210,94 @@ public sealed class GeminiVideoQuestionAnsweringProviderTests
             .WithMessage("*rate-limiting requests*");
     }
 
+    [Fact]
+    public async Task AnswerAsync_ShouldPromptForProvidedVideosWhenEvidenceSpansMultipleVideos()
+    {
+        string? capturedRequestBody = null;
+        var chunkId = Guid.NewGuid();
+        var videoIdOne = Guid.NewGuid();
+        var videoIdTwo = Guid.NewGuid();
+
+        using var httpClient = new HttpClient(new StubHttpMessageHandler(request =>
+            {
+                capturedRequestBody = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        $$"""
+                          {
+                            "candidates": [
+                              {
+                                "content": {
+                                  "parts": [
+                                    {
+                                      "text": "{\"canAnswer\":true,\"answer\":\"Grounded answer\",\"citations\":[\"{{chunkId}}\"]}"
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                          """,
+                        Encoding.UTF8,
+                        "application/json")
+                };
+            }))
+        {
+            BaseAddress = new Uri("https://generativelanguage.googleapis.com")
+        };
+
+        var provider = new GeminiVideoQuestionAnsweringProvider(
+            httpClient,
+            new RagOptions
+            {
+                QaProviderConfigs = new RagQaProviderConfigs
+                {
+                    Gemini = new RagGeminiQaOptions
+                    {
+                        ApiKey = "test-key",
+                        BaseUrl = "https://generativelanguage.googleapis.com",
+                        TimeoutSeconds = 60
+                    }
+                }
+            },
+            NullLogger<GeminiVideoQuestionAnsweringProvider>.Instance);
+
+        await provider.AnswerAsync(
+            new GroundedQuestionAnsweringRequest(
+                "gemini",
+                "gemini-2.5-flash",
+                "What happened?",
+                [
+                    new GroundedQuestionEvidenceChunk(
+                        chunkId,
+                        videoIdOne,
+                        "Video One",
+                        Guid.NewGuid(),
+                        "en",
+                        5,
+                        10,
+                        "First evidence"),
+                    new GroundedQuestionEvidenceChunk(
+                        Guid.NewGuid(),
+                        videoIdTwo,
+                        "Video Two",
+                        Guid.NewGuid(),
+                        "en",
+                        12,
+                        18,
+                        "Second evidence")
+                ],
+                3,
+                256,
+                0d),
+            CancellationToken.None);
+
+        capturedRequestBody.Should().NotBeNull();
+        capturedRequestBody.Should().Contain("prefer phrases like \\\"the provided videos\\\"");
+        capturedRequestBody.Should().NotContain("prefer phrases like \\\"the provided video\\\"");
+    }
+
     private sealed class StubHttpMessageHandler : HttpMessageHandler
     {
         private readonly Func<HttpRequestMessage, HttpResponseMessage> _handler;

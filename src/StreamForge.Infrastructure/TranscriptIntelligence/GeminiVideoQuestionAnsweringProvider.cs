@@ -83,9 +83,16 @@ public sealed class GeminiVideoQuestionAnsweringProvider : IVideoQuestionAnsweri
 
     private static string BuildPrompt(GroundedQuestionAnsweringRequest request)
     {
+        var distinctVideoCount = request.Evidence
+            .Select(chunk => chunk.VideoId)
+            .Distinct()
+            .Count();
+
+        var sourceLabel = distinctVideoCount > 1 ? "the provided videos" : "the provided video";
         var builder = new StringBuilder();
         builder.AppendLine("You answer questions using only the transcript evidence provided below.");
         builder.AppendLine("Do not use external knowledge. If the evidence is insufficient, say you cannot answer from the transcript evidence.");
+        builder.AppendLine($"When referring to the source material, prefer phrases like \"{sourceLabel}\" or the cited video title, and avoid calling it \"the provided transcript\".");
         builder.AppendLine("Return JSON only with this shape:");
         builder.AppendLine("{\"canAnswer\": boolean, \"answer\": string, \"citations\": [\"chunk-guid\"]}");
         builder.AppendLine("Only cite chunk IDs from the evidence list. Do not invent timestamps, video IDs, titles, or excerpt text.");
