@@ -254,6 +254,7 @@ The repo includes:
   - `api`
 - `compose.transcription.yaml` for the optional transcription worker
 - `compose.embedding.yaml` for the optional embedding worker / RAG pipeline
+- `compose.full.yaml` for the complete API + transcription + embedding stack in one file
 - `compose.host-paths.yaml` for optional bind mounts to host folders
 - `.env.example` for deployment-time environment values
 
@@ -328,6 +329,12 @@ To run both workers together:
 
 ```bash
 docker compose -f compose.yaml -f compose.transcription.yaml -f compose.embedding.yaml up -d
+```
+
+If you want the same full stack as a single compose file:
+
+```bash
+docker compose -f compose.full.yaml up -d
 ```
 
 When the worker layers are enabled, the API is wired internally through:
