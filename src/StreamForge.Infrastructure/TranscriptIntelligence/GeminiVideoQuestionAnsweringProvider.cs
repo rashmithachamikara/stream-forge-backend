@@ -58,7 +58,7 @@ public sealed class GeminiVideoQuestionAnsweringProvider : IVideoQuestionAnsweri
             ?? throw new InvalidOperationException("Gemini returned an empty response.");
 
         var rawText = ExtractText(apiResponse);
-        var answerPayload = ParseStructuredResponse(rawText);
+        var answerPayload = ParseStructuredResponse(rawText, request.Model, _logger);
 
         _logger.LogInformation(
             "Generated grounded answer through Gemini model {Model} with {EvidenceCount} evidence chunk(s).",
@@ -115,9 +115,18 @@ public sealed class GeminiVideoQuestionAnsweringProvider : IVideoQuestionAnsweri
         return text.Trim();
     }
 
-    private static StructuredAnswerPayload ParseStructuredResponse(string rawText)
+    private static StructuredAnswerPayload ParseStructuredResponse(
+        string rawText,
+        string model,
+        ILogger logger)
     {
         var normalized = StripCodeFence(rawText);
+
+        logger.LogDebug(
+            "Gemini structured response received for model {Model}. Raw preview: {RawPreview}. Normalized preview: {NormalizedPreview}.",
+            model,
+            CreatePreview(rawText),
+            CreatePreview(normalized));
 
         try
         {
@@ -128,6 +137,13 @@ public sealed class GeminiVideoQuestionAnsweringProvider : IVideoQuestionAnsweri
         }
         catch (JsonException exception)
         {
+            logger.LogWarning(
+                exception,
+                "Gemini returned malformed structured JSON for model {Model}. Raw preview: {RawPreview}. Normalized preview: {NormalizedPreview}.",
+                model,
+                CreatePreview(rawText),
+                CreatePreview(normalized));
+
             throw new InvalidOperationException("Gemini returned invalid structured JSON.", exception);
         }
     }
@@ -147,6 +163,23 @@ public sealed class GeminiVideoQuestionAnsweringProvider : IVideoQuestionAnsweri
         }
 
         return string.Join('\n', lines.Skip(1).Take(lines.Length - 2)).Trim();
+    }
+
+    private static string CreatePreview(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        const int maxLength = 1200;
+        var normalizedWhitespace = value
+            .Replace("\r", "\\r", StringComparison.Ordinal)
+            .Replace("\n", "\\n", StringComparison.Ordinal);
+
+        return normalizedWhitespace.Length <= maxLength
+            ? normalizedWhitespace
+            : normalizedWhitespace[..maxLength] + "...<truncated>";
     }
 
     private sealed record GeminiGenerateContentRequest(
