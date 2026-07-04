@@ -4,6 +4,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using StreamForge.Application.Common;
 using StreamForge.Application.Interfaces;
+using StreamForge.Domain.Exceptions;
 using StreamForge.Infrastructure.TranscriptIntelligence;
 
 namespace StreamForge.Infrastructure.Tests.TranscriptIntelligence;
@@ -153,6 +154,60 @@ public sealed class GeminiVideoQuestionAnsweringProviderTests
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*invalid structured JSON*");
+    }
+
+    [Fact]
+    public async Task AnswerAsync_ShouldThrowExternalServiceThrottledExceptionFor429()
+    {
+        using var httpClient = new HttpClient(new StubHttpMessageHandler(_ =>
+            new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+            {
+                Content = new StringContent("{\"error\":\"quota exceeded\"}", Encoding.UTF8, "application/json")
+            }))
+        {
+            BaseAddress = new Uri("https://generativelanguage.googleapis.com")
+        };
+
+        var provider = new GeminiVideoQuestionAnsweringProvider(
+            httpClient,
+            new RagOptions
+            {
+                QaProviderConfigs = new RagQaProviderConfigs
+                {
+                    Gemini = new RagGeminiQaOptions
+                    {
+                        ApiKey = "test-key",
+                        BaseUrl = "https://generativelanguage.googleapis.com",
+                        TimeoutSeconds = 60,
+                        Model = "gemini-2.5-flash"
+                    }
+                }
+            },
+            NullLogger<GeminiVideoQuestionAnsweringProvider>.Instance);
+
+        var act = () => provider.AnswerAsync(
+            new GroundedQuestionAnsweringRequest(
+                "gemini",
+                "gemini-2.5-flash",
+                "What happened?",
+                [
+                    new GroundedQuestionEvidenceChunk(
+                        Guid.NewGuid(),
+                        Guid.NewGuid(),
+                        "Video",
+                        Guid.NewGuid(),
+                        "en",
+                        5,
+                        10,
+                        "Grounding evidence")
+                ],
+                3,
+                256,
+                0d),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<ExternalServiceThrottledException>()
+            .WithMessage("*rate-limiting requests*");
     }
 
     private sealed class StubHttpMessageHandler : HttpMessageHandler

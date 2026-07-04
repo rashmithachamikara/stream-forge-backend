@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using StreamForge.Application.Common;
 using StreamForge.Application.Interfaces;
+using StreamForge.Domain.Exceptions;
 
 namespace StreamForge.Infrastructure.TranscriptIntelligence;
 
@@ -52,7 +53,10 @@ public sealed class GeminiVideoQuestionAnsweringProvider : IVideoQuestionAnsweri
                 "application/json"));
 
         using var response = await _httpClient.PostAsJsonAsync(endpoint, payload, _jsonOptions, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            await HandleFailedResponseAsync(response, request.Model, cancellationToken);
+        }
 
         var apiResponse = await response.Content.ReadFromJsonAsync<GeminiGenerateContentResponse>(_jsonOptions, cancellationToken)
             ?? throw new InvalidOperationException("Gemini returned an empty response.");
@@ -180,6 +184,64 @@ public sealed class GeminiVideoQuestionAnsweringProvider : IVideoQuestionAnsweri
         return normalizedWhitespace.Length <= maxLength
             ? normalizedWhitespace
             : normalizedWhitespace[..maxLength] + "...<truncated>";
+    }
+
+    private async Task HandleFailedResponseAsync(
+        HttpResponseMessage response,
+        string model,
+        CancellationToken cancellationToken)
+    {
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+        var preview = CreatePreview(body);
+
+        switch ((int)response.StatusCode)
+        {
+            case 429:
+            {
+                var retryAfter = response.Headers.RetryAfter?.Delta;
+                _logger.LogWarning(
+                    "Gemini rate limited request for model {Model}. RetryAfter: {RetryAfter}. Body preview: {BodyPreview}.",
+                    model,
+                    retryAfter,
+                    preview);
+
+                throw new ExternalServiceThrottledException(
+                    "Gemini",
+                    "The question-answering provider is temporarily rate-limiting requests. Please try again shortly.",
+                    retryAfter);
+            }
+            case 401:
+            case 403:
+                _logger.LogError(
+                    "Gemini authentication/authorization failure for model {Model}. Status: {StatusCode}. Body preview: {BodyPreview}.",
+                    model,
+                    (int)response.StatusCode,
+                    preview);
+                throw new ExternalServiceException(
+                    "Gemini",
+                    "The question-answering provider rejected the request due to provider authentication or authorization settings.");
+            default:
+                if ((int)response.StatusCode >= 500)
+                {
+                    _logger.LogWarning(
+                        "Gemini upstream failure for model {Model}. Status: {StatusCode}. Body preview: {BodyPreview}.",
+                        model,
+                        (int)response.StatusCode,
+                        preview);
+                    throw new ExternalServiceException(
+                        "Gemini",
+                        "The question-answering provider is temporarily unavailable. Please try again shortly.");
+                }
+
+                _logger.LogWarning(
+                    "Gemini request failed for model {Model}. Status: {StatusCode}. Body preview: {BodyPreview}.",
+                    model,
+                    (int)response.StatusCode,
+                    preview);
+                throw new ExternalServiceException(
+                    "Gemini",
+                    $"The question-answering provider request failed with status {(int)response.StatusCode}.");
+        }
     }
 
     private sealed record GeminiGenerateContentRequest(

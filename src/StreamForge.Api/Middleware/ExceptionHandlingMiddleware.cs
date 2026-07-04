@@ -41,6 +41,11 @@ public class ExceptionHandlingMiddleware
     {
         context.Response.ContentType = "application/json";
 
+        if (exception is ExternalServiceThrottledException throttledException && throttledException.RetryAfter.HasValue)
+        {
+            context.Response.Headers.RetryAfter = Math.Max(1, (int)Math.Ceiling(throttledException.RetryAfter.Value.TotalSeconds)).ToString();
+        }
+
         var (statusCode, message) = exception switch
         {
             DomainUnauthorizedAccessException =>
@@ -51,6 +56,10 @@ public class ExceptionHandlingMiddleware
                 (StatusCodes.Status409Conflict, exception.Message),
             EntityNotFoundException =>
                 (StatusCodes.Status404NotFound, exception.Message),
+            ExternalServiceThrottledException =>
+                (StatusCodes.Status429TooManyRequests, exception.Message),
+            ExternalServiceException =>
+                (StatusCodes.Status503ServiceUnavailable, exception.Message),
             BusinessRuleViolationException =>
                 (StatusCodes.Status400BadRequest, exception.Message),
             System.UnauthorizedAccessException =>
