@@ -79,6 +79,7 @@ public sealed class LocalFfmpegMediaProcessingService : IMediaProcessingService
             Directory.CreateDirectory(variantDirectory);
             var playlistPath = Path.Combine(variantDirectory, "index.m3u8");
             var segmentPattern = Path.Combine(variantDirectory, "segment_%05d.ts");
+            var videoEncodingArguments = BuildVideoEncodingArguments(variant.Bitrate);
 
             _logger.LogInformation(
                 "Generating HLS variant {Resolution} for video {VideoId}",
@@ -92,16 +93,19 @@ public sealed class LocalFfmpegMediaProcessingService : IMediaProcessingService
                     "-y",
                     "-i", sourcePath,
                     "-vf", $"scale=-2:{variant.Height}",
-                    "-c:v", "h264",
-                    "-preset", "veryfast",
-                    "-crf", "23",
+                    "-c:v", "libx264",
+                    "-preset", "medium",
+                }
+                .Concat(videoEncodingArguments)
+                .Concat(
+                [
                     "-c:a", "aac",
                     "-b:a", "128k",
                     "-hls_time", _options.HlsSegmentSeconds.ToString(CultureInfo.InvariantCulture),
                     "-hls_playlist_type", "vod",
                     "-hls_segment_filename", segmentPattern,
                     playlistPath
-                },
+                ]),
                 cancellationToken);
 
             results.Add(new HlsVariantResult(
@@ -181,7 +185,7 @@ public sealed class LocalFfmpegMediaProcessingService : IMediaProcessingService
     {
         var variants = new[]
         {
-            ("1080p", 1080, (int?)5000),
+            ("1080p", 1080, (int?)4600),
             ("720p", 720, (int?)2800),
             ("480p", 480, (int?)1400)
         };
@@ -217,6 +221,35 @@ public sealed class LocalFfmpegMediaProcessingService : IMediaProcessingService
 
         var width = (int)Math.Round((double)sourceWidth * targetHeight / sourceHeight);
         return Math.Max(2, width - width % 2);
+    }
+
+    private static IEnumerable<string> BuildVideoEncodingArguments(int? bitrateKbps)
+    {
+        if (!bitrateKbps.HasValue || bitrateKbps.Value <= 0)
+        {
+            return
+            [
+                "-crf", "22"
+            ];
+        }
+
+        var targetBitrate = bitrateKbps.Value;
+        var maxRate = targetBitrate;
+        var bufferSize = targetBitrate * 2;
+
+        var crf = targetBitrate switch
+        {
+            >= 5000 => 21, // 1080p
+            >= 3000 => 22, // 720p
+            _ => 23        // 480p
+        };
+
+        return
+        [
+            "-crf", crf.ToString(CultureInfo.InvariantCulture),
+            "-maxrate", $"{maxRate}k",
+            "-bufsize", $"{bufferSize}k"
+        ];
     }
 
     private async Task<ProcessResult> RunProcessAsync(

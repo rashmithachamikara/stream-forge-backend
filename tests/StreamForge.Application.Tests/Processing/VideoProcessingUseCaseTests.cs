@@ -246,7 +246,7 @@ public sealed class VideoProcessingUseCaseTests
             .Returns(new HlsOutputResult(
                 "processing/master.m3u8",
                 100,
-                [new HlsVariantResult("720p", 1280, 720, "processing/720p.m3u8", 80, 2500, "h264")]));
+                [new HlsVariantResult("720p", 1280, 720, "processing/720p.m3u8", 80, 2200, "h264")]));
         media.GenerateThumbnailAsync(video.Id, "source.mp4", Arg.Any<MediaProbeResult>(), Arg.Any<CancellationToken>())
             .Returns(new ThumbnailOutputResult("thumb.jpg", 1280, 720, 25, 5));
         var videoVersions = Substitute.For<IVideoVersionRepository>();
@@ -268,9 +268,15 @@ public sealed class VideoProcessingUseCaseTests
         job.Status.Should().Be(ProcessingJobStatus.Completed);
         job.Progress.Should().Be(100);
         originalVersion.DurationSeconds.Should().Be(120);
-        await videoVersions.Received(2).AddAsync(Arg.Is<VideoVersion>(version =>
+        await videoVersions.Received(1).AddAsync(Arg.Is<VideoVersion>(version =>
             version.VideoId == video.Id &&
-            version.Format == VideoFormat.HLS), Arg.Any<CancellationToken>());
+            version.Format == VideoFormat.HLS &&
+            version.Resolution == "adaptive"), Arg.Any<CancellationToken>());
+        await videoVersions.Received(1).AddAsync(Arg.Is<VideoVersion>(version =>
+            version.VideoId == video.Id &&
+            version.Format == VideoFormat.HLS &&
+            version.Resolution == "720p" &&
+            version.Bitrate == 2200), Arg.Any<CancellationToken>());
         await videoFiles.Received(2).AddAsync(Arg.Any<VideoFile>(), Arg.Any<CancellationToken>());
         await thumbnails.Received(1).AddAsync(Arg.Is<VideoThumbnail>(thumbnail =>
             thumbnail.VideoId == video.Id &&
