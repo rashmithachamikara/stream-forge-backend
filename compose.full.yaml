@@ -99,6 +99,7 @@ services:
       Rag__EmbeddingProvider: ${STREAMFORGE_RAG_EMBEDDING_PROVIDER:-local-sentence-transformer}
       Rag__EmbeddingModel: ${STREAMFORGE_RAG_EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
       Rag__QaProvider: ${STREAMFORGE_RAG_QA_PROVIDER:-disabled}
+      Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command: ${STREAMFORGE_EF_CORE_LOG_LEVEL:-Warning}
     ports:
       - "${STREAMFORGE_API_PORT:-8080}:8080"
     volumes:
