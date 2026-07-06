@@ -402,9 +402,23 @@ builder.Services.AddHangfire(configuration =>
         .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
         .UseSimpleAssemblyNameTypeSerializer()
         .UseRecommendedSerializerSettings()
-        .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(connectionStrings.DefaultConnection));
+        .UsePostgreSqlStorage(options =>
+        {
+            options.UseNpgsqlConnection(connectionStrings.DefaultConnection);
+        },
+        new PostgreSqlStorageOptions
+        {
+            InvisibilityTimeout = TimeSpan.FromHours(6),
+            QueuePollInterval = TimeSpan.FromSeconds(15)
+        });
 });
-builder.Services.AddHangfireServer();
+
+builder.Services.AddHangfireServer(options =>
+{
+    options.WorkerCount = 1;
+    options.Queues = new[] { "default" };
+    options.ShutdownTimeout = TimeSpan.FromMinutes(5);
+});
 
 // Configure rate limiting. Upload and playback traffic have separate buckets
 // because both can legitimately require many requests in a short burst.
