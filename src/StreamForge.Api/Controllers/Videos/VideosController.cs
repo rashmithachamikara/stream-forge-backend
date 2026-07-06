@@ -52,9 +52,11 @@ public sealed class VideosController : ControllerBase
         [FromQuery] string? sort,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 24,
+        [FromQuery] DateTime? createdFrom = null,
+        [FromQuery] DateTime? createdTo = null,
         CancellationToken cancellationToken = default)
     {
-        var query = new ListVideosQuery(search, categoryId, tagId, uploaderId, excludeUploaderId, status, visibility, sort, page, pageSize);
+        var query = new ListVideosQuery(search, categoryId, tagId, uploaderId, excludeUploaderId, status, visibility, sort, page, pageSize, createdFrom, createdTo);
         return Ok(await _listVideos.Handle(query, cancellationToken));
     }
 

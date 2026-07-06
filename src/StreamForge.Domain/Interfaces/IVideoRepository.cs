@@ -23,6 +23,8 @@ public interface IVideoRepository : IRepository<Video>
         string? sort,
         int page,
         int pageSize,
+        DateTime? createdFrom = null,
+        DateTime? createdTo = null,
         CancellationToken cancellationToken = default);
 
     Task<PagedQueryResult<Video>> GetUserLibraryAsync(

@@ -36,6 +36,8 @@ public sealed class VideoRepository : BaseRepository<Video>, IVideoRepository
         string? sort,
         int page,
         int pageSize,
+        DateTime? createdFrom = null,
+        DateTime? createdTo = null,
         CancellationToken cancellationToken = default)
     {
         var query = DbSet
@@ -47,6 +49,16 @@ public sealed class VideoRepository : BaseRepository<Video>, IVideoRepository
             .Include(video => video.VideoTags)
                 .ThenInclude(videoTag => videoTag.Tag)
             .AsQueryable();
+
+        if (createdFrom.HasValue)
+        {
+            query = query.Where(video => video.CreatedAt >= createdFrom.Value);
+        }
+
+        if (createdTo.HasValue)
+        {
+            query = query.Where(video => video.CreatedAt <= createdTo.Value);
+        }
 
         if (currentUserRole != UserRole.Admin)
         {

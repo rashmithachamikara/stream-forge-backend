@@ -18,9 +18,21 @@ public sealed class UserRepository : BaseRepository<User>, IUserRepository
         bool? isActive,
         int page,
         int pageSize,
+        DateTime? createdFrom = null,
+        DateTime? createdTo = null,
         CancellationToken cancellationToken = default)
     {
         var query = DbSet.AsNoTracking().AsQueryable();
+
+        if (createdFrom.HasValue)
+        {
+            query = query.Where(user => user.CreatedAt >= createdFrom.Value);
+        }
+
+        if (createdTo.HasValue)
+        {
+            query = query.Where(user => user.CreatedAt <= createdTo.Value);
+        }
 
         if (role.HasValue)
         {

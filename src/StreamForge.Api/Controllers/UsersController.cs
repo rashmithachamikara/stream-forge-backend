@@ -32,9 +32,11 @@ public sealed class UsersController : ControllerBase
         [FromQuery] bool? isActive,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 24,
+        [FromQuery] DateTime? createdFrom = null,
+        [FromQuery] DateTime? createdTo = null,
         CancellationToken cancellationToken = default)
     {
-        var query = new ListUsersQuery(search, role, isActive, page, pageSize);
+        var query = new ListUsersQuery(search, role, isActive, page, pageSize, createdFrom, createdTo);
         return Ok(await _listUsers.Handle(query, cancellationToken));
     }
 

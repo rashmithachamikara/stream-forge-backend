@@ -19,7 +19,9 @@ public sealed record ListVideosQuery(
     VideoVisibility? Visibility,
     string? Sort,
     int Page,
-    int PageSize);
+    int PageSize,
+    DateTime? CreatedFrom = null,
+    DateTime? CreatedTo = null);
 
 public sealed record ListMyVideosQuery(
     VideoStatus? Status,
@@ -36,7 +38,14 @@ public sealed record ListMyUploadSessionsQuery(
 
 public sealed record ListTagsQuery(string? Search, int Page, int PageSize);
 
-public sealed record ListUsersQuery(string? Search, UserRole? Role, bool? IsActive, int Page, int PageSize);
+public sealed record ListUsersQuery(
+    string? Search,
+    UserRole? Role,
+    bool? IsActive,
+    int Page,
+    int PageSize,
+    DateTime? CreatedFrom = null,
+    DateTime? CreatedTo = null);
 
 public sealed record ListVideoAccessGrantsQuery(Guid VideoId, bool? IsActive, int Page, int PageSize);
 
@@ -68,6 +77,8 @@ public sealed class ListVideosService
             query.Sort,
             page,
             pageSize,
+            query.CreatedFrom,
+            query.CreatedTo,
             cancellationToken);
 
         return Pagination.Map(result, video => ContentMapper.ToSummary(video));
@@ -653,7 +664,15 @@ public sealed class ListUsersService
 
         var page = Pagination.NormalizePage(query.Page);
         var pageSize = Pagination.NormalizePageSize(query.PageSize);
-        var result = await _unitOfWork.Users.SearchPagedAsync(query.Search, query.Role, query.IsActive, page, pageSize, cancellationToken);
+        var result = await _unitOfWork.Users.SearchPagedAsync(
+            query.Search,
+            query.Role,
+            query.IsActive,
+            page,
+            pageSize,
+            query.CreatedFrom,
+            query.CreatedTo,
+            cancellationToken);
         return Pagination.Map(result, user => ContentMapper.ToUserProfile(user, includePrivateFields: true));
     }
 }

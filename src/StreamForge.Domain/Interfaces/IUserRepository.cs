@@ -14,6 +14,8 @@ public interface IUserRepository : IRepository<User>
         bool? isActive,
         int page,
         int pageSize,
+        DateTime? createdFrom = null,
+        DateTime? createdTo = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
