@@ -94,7 +94,7 @@ public sealed class LocalFfmpegMediaProcessingService : IMediaProcessingService
                     "-i", sourcePath,
                     "-vf", $"scale=-2:{variant.Height}",
                     "-c:v", "libx264",
-                    "-preset", "medium",
+                    "-preset", "fast",
                 }
                 .Concat(videoEncodingArguments)
                 .Concat(
