@@ -23,12 +23,12 @@ public class UploadSessionPart : BaseEntity
     /// <summary>
     /// MD5 or SHA256 checksum of the part
     /// </summary>
-    public string Checksum { get; private set; }
+    public string Checksum { get; private set; } = string.Empty;
 
     /// <summary>
     /// Storage location for this part (path or S3 key)
     /// </summary>
-    public string StoragePath { get; private set; }
+    public string StoragePath { get; private set; } = string.Empty;
 
     /// <summary>
     /// Whether this part has been fully uploaded
