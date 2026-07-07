@@ -7,6 +7,8 @@ using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -640,6 +642,52 @@ app.MapGet("/api/v1/weatherforecast", () =>
     return forecast;
 })
 .WithName("GetWeatherForecast");
+
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+    var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("ApplicationStarted");
+    var addresses = app.Urls.Count > 0
+        ? app.Urls.OrderBy(address => address).ToArray()
+        : app.Services.GetRequiredService<IServer>()
+            .Features
+            .Get<IServerAddressesFeature>()?
+            .Addresses
+            .OrderBy(address => address)
+            .ToArray()
+            ?? [];
+
+    if (addresses.Length == 0)
+    {
+        logger.LogInformation("StreamForge API started, but no server addresses were discovered.");
+        return;
+    }
+
+    var lines = new List<string>
+    {
+        string.Empty,
+        "========================================================",
+        " StreamForge API started",
+        "========================================================"
+    };
+
+    foreach (var address in addresses)
+    {
+        lines.Add($" Base URL : {address}");
+        lines.Add($" Health   : {address.TrimEnd('/')}/health/ready");
+        lines.Add($" Live     : {address.TrimEnd('/')}/health/live");
+
+        if (app.Environment.IsDevelopment())
+        {
+            lines.Add($" Swagger  : {address.TrimEnd('/')}/swagger");
+            lines.Add($" Hangfire : {address.TrimEnd('/')}/hangfire");
+        }
+
+        lines.Add("--------------------------------------------------------");
+        lines.Add("");
+    }
+
+    logger.LogInformation("{Banner}", string.Join(Environment.NewLine, lines));
+});
 
 app.Run();
 
