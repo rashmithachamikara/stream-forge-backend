@@ -12,21 +12,21 @@ public sealed class CategoryRepository : BaseRepository<Category>, ICategoryRepo
     }
 
     public async Task<IEnumerable<Category>> GetRootCategoriesAsync(CancellationToken cancellationToken = default) =>
-        await DbSet.Where(category => category.ParentCategoryId == null).ToListAsync(cancellationToken);
+        await _dbSet.Where(category => category.ParentCategoryId == null).ToListAsync(cancellationToken);
 
     public async Task<IEnumerable<Category>> GetSubcategoriesAsync(Guid parentCategoryId, CancellationToken cancellationToken = default) =>
-        await DbSet.Where(category => category.ParentCategoryId == parentCategoryId).ToListAsync(cancellationToken);
+        await _dbSet.Where(category => category.ParentCategoryId == parentCategoryId).ToListAsync(cancellationToken);
 
     public Task<Category?> GetBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
-        DbSet.FirstOrDefaultAsync(category => category.Name == slug, cancellationToken);
+        _dbSet.FirstOrDefaultAsync(category => category.Name == slug, cancellationToken);
 
     public Task<bool> SlugExistsAsync(string slug, CancellationToken cancellationToken = default) =>
-        DbSet.AnyAsync(category => category.Name == slug, cancellationToken);
+        _dbSet.AnyAsync(category => category.Name == slug, cancellationToken);
 
     public Task<bool> NameExistsAsync(string name, Guid? excludeCategoryId = null, CancellationToken cancellationToken = default)
     {
         var trimmedName = name.Trim();
-        var query = DbSet.Where(category => category.Name == trimmedName);
+        var query = _dbSet.Where(category => category.Name == trimmedName);
         if (excludeCategoryId.HasValue)
         {
             query = query.Where(category => category.Id != excludeCategoryId.Value);
@@ -36,8 +36,8 @@ public sealed class CategoryRepository : BaseRepository<Category>, ICategoryRepo
     }
 
     public Task<bool> HasVideosAsync(Guid categoryId, CancellationToken cancellationToken = default) =>
-        DbContext.Videos.AnyAsync(video => video.CategoryId == categoryId, cancellationToken);
+        _dbContext.Videos.AnyAsync(video => video.CategoryId == categoryId, cancellationToken);
 
     public Task<bool> HasSubcategoriesAsync(Guid categoryId, CancellationToken cancellationToken = default) =>
-        DbSet.AnyAsync(category => category.ParentCategoryId == categoryId, cancellationToken);
+        _dbSet.AnyAsync(category => category.ParentCategoryId == categoryId, cancellationToken);
 }

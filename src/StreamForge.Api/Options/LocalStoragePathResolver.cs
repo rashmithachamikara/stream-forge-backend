@@ -4,7 +4,7 @@ namespace StreamForge.Api.Options;
 
 internal static class LocalStoragePathResolver
 {
-    private const string RepoMarkerFile = "StreamForge.sln";
+    private const string _repoMarkerFile = "StreamForge.sln";
 
     public static string ResolveEffectiveUploadStorageRoot(
         string contentRootPath,
@@ -51,7 +51,7 @@ internal static class LocalStoragePathResolver
         var current = new DirectoryInfo(Path.GetFullPath(startPath));
         while (current is not null)
         {
-            var markerPath = Path.Combine(current.FullName, RepoMarkerFile);
+            var markerPath = Path.Combine(current.FullName, _repoMarkerFile);
             if (File.Exists(markerPath))
             {
                 return current.FullName;

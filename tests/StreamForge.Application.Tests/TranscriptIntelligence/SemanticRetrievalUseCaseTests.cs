@@ -11,7 +11,7 @@ namespace StreamForge.Application.Tests.TranscriptIntelligence;
 
 public sealed class SemanticRetrievalUseCaseTests
 {
-    private static readonly RagOptions EnabledDefaults = new()
+    private static readonly RagOptions _enabledDefaults = new()
     {
         Enabled = true,
         SemanticSearchEnabled = true,
@@ -74,7 +74,7 @@ public sealed class SemanticRetrievalUseCaseTests
         var service = new SearchVideoTranscriptSemanticService(
             currentUser,
             authorization,
-            new ResolveRagSettingsService(unitOfWork, EnabledDefaults),
+            new ResolveRagSettingsService(unitOfWork, _enabledDefaults),
             searchProvider);
 
         var result = await service.Handle(videoId, "meaning", "en", 0, 999, "share-123", CancellationToken.None);
@@ -167,7 +167,7 @@ public sealed class SemanticRetrievalUseCaseTests
         var service = new SearchTranscriptSemanticAcrossVideosService(
             unitOfWork,
             currentUser,
-            new ResolveRagSettingsService(unitOfWork, EnabledDefaults),
+            new ResolveRagSettingsService(unitOfWork, _enabledDefaults),
             searchProvider);
 
         var result = await service.Handle(
@@ -215,7 +215,7 @@ public sealed class SemanticRetrievalUseCaseTests
         var service = new SearchTranscriptSemanticAcrossVideosService(
             unitOfWork,
             currentUser,
-            new ResolveRagSettingsService(unitOfWork, EnabledDefaults),
+            new ResolveRagSettingsService(unitOfWork, _enabledDefaults),
             searchProvider);
 
         var result = await service.Handle("meaning", null, null, 2, 10, CancellationToken.None);
@@ -306,7 +306,7 @@ public sealed class SemanticRetrievalUseCaseTests
             unitOfWork,
             currentUser,
             authorization,
-            new ResolveRagSettingsService(unitOfWork, EnabledDefaults),
+            new ResolveRagSettingsService(unitOfWork, _enabledDefaults),
             searchProvider);
 
         var result = await service.Handle(videoId, "meaning", "en", 1, 20, null, CancellationToken.None);
@@ -393,7 +393,7 @@ public sealed class SemanticRetrievalUseCaseTests
         var service = new SearchTranscriptHybridAcrossVideosService(
             unitOfWork,
             currentUser,
-            new ResolveRagSettingsService(unitOfWork, EnabledDefaults),
+            new ResolveRagSettingsService(unitOfWork, _enabledDefaults),
             searchProvider);
 
         var result = await service.Handle(

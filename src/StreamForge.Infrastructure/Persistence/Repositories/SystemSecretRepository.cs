@@ -14,7 +14,7 @@ public sealed class SystemSecretRepository : BaseRepository<SystemSecret>, ISyst
     public Task<SystemSecret?> GetByKeyAsync(string key, CancellationToken cancellationToken = default)
     {
         var normalizedKey = key.Trim();
-        return DbContext.SystemSecrets.FirstOrDefaultAsync(setting => setting.Key == normalizedKey, cancellationToken);
+        return _dbContext.SystemSecrets.FirstOrDefaultAsync(setting => setting.Key == normalizedKey, cancellationToken);
     }
 
     public async Task<IReadOnlyList<SystemSecret>> GetByKeysAsync(
@@ -32,7 +32,7 @@ public sealed class SystemSecretRepository : BaseRepository<SystemSecret>, ISyst
             return [];
         }
 
-        return await DbContext.SystemSecrets
+        return await _dbContext.SystemSecrets
             .Where(setting => normalizedKeys.Contains(setting.Key))
             .ToListAsync(cancellationToken);
     }

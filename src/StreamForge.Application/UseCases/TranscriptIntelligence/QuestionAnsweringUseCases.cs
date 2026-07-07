@@ -175,8 +175,8 @@ public sealed class AskQuestionAcrossVideosService
 
 internal static class QuestionAnsweringSupport
 {
-    private const string RetrievalMode = "hybrid";
-    private const string NoAnswerMessage = "I couldn't find enough transcript evidence to answer that question.";
+    private const string _retrievalMode = "hybrid";
+    private const string _noAnswerMessage = "I couldn't find enough transcript evidence to answer that question.";
 
     public static void ValidateQuestion(string question)
     {
@@ -328,8 +328,8 @@ internal static class QuestionAnsweringSupport
     public static GroundedQuestionAnswerDto CreateNoAnswerResponse(string question, int usedChunkCount = 0) =>
         new(
             question.Trim(),
-            RetrievalMode,
-            NoAnswerMessage,
+            _retrievalMode,
+            _noAnswerMessage,
             usedChunkCount,
             []);
 
@@ -382,7 +382,7 @@ internal static class QuestionAnsweringSupport
 
         return new GroundedQuestionAnswerDto(
             question.Trim(),
-            RetrievalMode,
+            _retrievalMode,
             result.Answer.Trim(),
             evidence.Count,
             citations);

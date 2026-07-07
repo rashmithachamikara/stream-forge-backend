@@ -22,7 +22,7 @@ public class UploadSessionRepository : BaseRepository<UploadSession>, IUploadSes
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        var query = DbSet
+        var query = _dbSet
             .AsNoTracking()
             .Include(session => session.Video)
             .Where(session => session.UserId == userId);
@@ -45,7 +45,7 @@ public class UploadSessionRepository : BaseRepository<UploadSession>, IUploadSes
 
     public async Task<IEnumerable<UploadSession>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        return await DbSet
+        return await _dbSet
             .Where(s => s.UserId == userId)
             .OrderByDescending(s => s.CreatedAt)
             .ToListAsync(cancellationToken);
@@ -53,7 +53,7 @@ public class UploadSessionRepository : BaseRepository<UploadSession>, IUploadSes
 
     public async Task<IEnumerable<UploadSession>> GetActiveByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        return await DbSet
+        return await _dbSet
             .Where(s => s.UserId == userId &&
                         (s.Status == UploadSessionStatus.Created ||
                          s.Status == UploadSessionStatus.Active))
@@ -63,7 +63,7 @@ public class UploadSessionRepository : BaseRepository<UploadSession>, IUploadSes
 
     public async Task<IEnumerable<UploadSession>> GetByStatusAsync(UploadSessionStatus status, CancellationToken cancellationToken = default)
     {
-        return await DbSet
+        return await _dbSet
             .Where(s => s.Status == status)
             .OrderByDescending(s => s.CreatedAt)
             .ToListAsync(cancellationToken);
@@ -72,7 +72,7 @@ public class UploadSessionRepository : BaseRepository<UploadSession>, IUploadSes
     public async Task<IEnumerable<UploadSession>> GetExpiredSessionsAsync(CancellationToken cancellationToken = default)
     {
         var now = DateTime.UtcNow;
-        return await DbSet
+        return await _dbSet
             .Where(s => s.ExpiresAt < now &&
                         s.Status != UploadSessionStatus.Completed &&
                         s.Status != UploadSessionStatus.Expired)
@@ -81,7 +81,7 @@ public class UploadSessionRepository : BaseRepository<UploadSession>, IUploadSes
 
     public async Task<UploadSession?> GetWithPartsAsync(Guid sessionId, CancellationToken cancellationToken = default)
     {
-        return await DbContext.UploadSessions
+        return await _dbContext.UploadSessions
             .AsNoTracking()
             .Include(s => s.User)
             .FirstOrDefaultAsync(s => s.Id == sessionId, cancellationToken);

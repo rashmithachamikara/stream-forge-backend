@@ -9,7 +9,7 @@ namespace StreamForge.Infrastructure.Storage;
 /// </summary>
 public class LocalFileStorageService : IStorageService
 {
-    private static readonly HashSet<string> ProtectedTopLevelDirectories = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> _protectedTopLevelDirectories = new(StringComparer.OrdinalIgnoreCase)
     {
         "sessions",
         "videos",
@@ -380,7 +380,7 @@ public class LocalFileStorageService : IStorageService
         var relativePath = Path.GetRelativePath(storageRoot, directory);
         return !relativePath.Contains(Path.DirectorySeparatorChar) &&
                !relativePath.Contains(Path.AltDirectorySeparatorChar) &&
-               ProtectedTopLevelDirectories.Contains(relativePath);
+               _protectedTopLevelDirectories.Contains(relativePath);
     }
 
     /// <summary>

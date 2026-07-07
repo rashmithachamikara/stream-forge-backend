@@ -13,7 +13,7 @@ public sealed class PlaylistRepository : BaseRepository<Playlist>, IPlaylistRepo
     }
 
     public Task<Playlist?> GetWithDetailsAsync(Guid playlistId, CancellationToken cancellationToken = default) =>
-        DbSet
+        _dbSet
             .Include(playlist => playlist.Owner)
             .Include(playlist => playlist.PlaylistVideos)
                 .ThenInclude(playlistVideo => playlistVideo.Video)
@@ -35,7 +35,7 @@ public sealed class PlaylistRepository : BaseRepository<Playlist>, IPlaylistRepo
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        var query = DbSet
+        var query = _dbSet
             .AsNoTracking()
             .Include(playlist => playlist.Owner)
             .AsQueryable();
@@ -79,7 +79,7 @@ public sealed class PlaylistRepository : BaseRepository<Playlist>, IPlaylistRepo
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        var query = DbSet
+        var query = _dbSet
             .AsNoTracking()
             .Include(playlist => playlist.Owner)
             .Where(playlist => playlist.OwnerId == ownerId)
@@ -96,11 +96,11 @@ public sealed class PlaylistRepository : BaseRepository<Playlist>, IPlaylistRepo
     }
 
     public async Task<IEnumerable<Playlist>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        await DbSet.Where(playlist => playlist.OwnerId == userId).ToListAsync(cancellationToken);
+        await _dbSet.Where(playlist => playlist.OwnerId == userId).ToListAsync(cancellationToken);
 
     public async Task<IEnumerable<Playlist>> GetPublicPlaylistsAsync(CancellationToken cancellationToken = default) =>
-        await DbSet.Where(playlist => playlist.Visibility == PlaylistVisibility.Public).ToListAsync(cancellationToken);
+        await _dbSet.Where(playlist => playlist.Visibility == PlaylistVisibility.Public).ToListAsync(cancellationToken);
 
     public async Task<IEnumerable<Playlist>> GetPlaylistsContainingVideoAsync(Guid videoId, CancellationToken cancellationToken = default) =>
-        await DbSet.Where(playlist => playlist.PlaylistVideos.Any(playlistVideo => playlistVideo.VideoId == videoId)).ToListAsync(cancellationToken);
+        await _dbSet.Where(playlist => playlist.PlaylistVideos.Any(playlistVideo => playlistVideo.VideoId == videoId)).ToListAsync(cancellationToken);
 }

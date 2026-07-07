@@ -13,7 +13,7 @@ public sealed class StorageProviderRepository : BaseRepository<StorageProvider>,
     }
 
     public Task<StorageProvider?> GetDefaultByTypeAsync(StorageProviderType type, CancellationToken cancellationToken = default) =>
-        DbSet.FirstOrDefaultAsync(provider => provider.Type == type && provider.IsDefault && provider.IsActive, cancellationToken);
+        _dbSet.FirstOrDefaultAsync(provider => provider.Type == type && provider.IsDefault && provider.IsActive, cancellationToken);
 }
 
 public sealed class VideoVersionRepository : BaseRepository<VideoVersion>, IVideoVersionRepository
@@ -23,7 +23,7 @@ public sealed class VideoVersionRepository : BaseRepository<VideoVersion>, IVide
     }
 
     public async Task<IEnumerable<VideoVersion>> GetByVideoIdAsync(Guid videoId, CancellationToken cancellationToken = default) =>
-        await DbSet.Where(version => version.VideoId == videoId).ToListAsync(cancellationToken);
+        await _dbSet.Where(version => version.VideoId == videoId).ToListAsync(cancellationToken);
 }
 
 public sealed class VideoFileRepository : BaseRepository<VideoFile>, IVideoFileRepository
@@ -33,7 +33,7 @@ public sealed class VideoFileRepository : BaseRepository<VideoFile>, IVideoFileR
     }
 
     public Task<VideoFile?> GetOriginalByVideoIdAsync(Guid videoId, CancellationToken cancellationToken = default) =>
-        DbSet
+        _dbSet
             .Include(file => file.VideoVersion)
             .Where(file => file.VideoVersion.VideoId == videoId && file.VideoVersion.Resolution == "original")
             .OrderBy(file => file.CreatedAt)
@@ -79,7 +79,7 @@ public sealed class VideoThumbnailRepository : BaseRepository<VideoThumbnail>, I
     }
 
     public Task<VideoThumbnail?> GetDefaultByVideoIdAsync(Guid videoId, CancellationToken cancellationToken = default) =>
-        DbSet.FirstOrDefaultAsync(thumbnail => thumbnail.VideoId == videoId && thumbnail.IsDefault, cancellationToken);
+        _dbSet.FirstOrDefaultAsync(thumbnail => thumbnail.VideoId == videoId && thumbnail.IsDefault, cancellationToken);
 }
 
 public sealed class VideoProcessingJobRepository : BaseRepository<VideoProcessingJob>, IVideoProcessingJobRepository
@@ -89,7 +89,7 @@ public sealed class VideoProcessingJobRepository : BaseRepository<VideoProcessin
     }
 
     public Task<VideoProcessingJob?> GetLatestByVideoIdAsync(Guid videoId, CancellationToken cancellationToken = default) =>
-        DbSet
+        _dbSet
             .Include(job => job.Video)
             .Where(job => job.VideoId == videoId)
             .OrderByDescending(job => job.CreatedAt)
@@ -97,12 +97,12 @@ public sealed class VideoProcessingJobRepository : BaseRepository<VideoProcessin
             .FirstOrDefaultAsync(cancellationToken);
 
     public Task<VideoProcessingJob?> GetWithVideoAsync(Guid jobId, CancellationToken cancellationToken = default) =>
-        DbSet
+        _dbSet
             .Include(job => job.Video)
             .FirstOrDefaultAsync(job => job.Id == jobId, cancellationToken);
 
     public async Task<IReadOnlyList<VideoProcessingJob>> GetAllOrderedAsync(CancellationToken cancellationToken = default) =>
-        await DbSet
+        await _dbSet
             .AsNoTracking()
             .Include(job => job.Video)
             .OrderByDescending(job => job.CreatedAt)
@@ -118,7 +118,7 @@ public sealed class VideoProcessingJobRepository : BaseRepository<VideoProcessin
             return [];
         }
 
-        return await DbSet
+        return await _dbSet
             .AsNoTracking()
             .Include(job => job.Video)
             .Where(job => statuses.Contains(job.Status))
@@ -131,7 +131,7 @@ public sealed class VideoProcessingJobRepository : BaseRepository<VideoProcessin
         AdminVideoProcessingJobsQuery query,
         CancellationToken cancellationToken = default)
     {
-        var itemsQuery = DbSet
+        var itemsQuery = _dbSet
             .AsNoTracking()
             .Include(job => job.Video)
             .AsQueryable();

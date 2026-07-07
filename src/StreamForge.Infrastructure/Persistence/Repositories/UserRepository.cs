@@ -22,7 +22,7 @@ public sealed class UserRepository : BaseRepository<User>, IUserRepository
         DateTime? createdTo = null,
         CancellationToken cancellationToken = default)
     {
-        var query = DbSet.AsNoTracking().AsQueryable();
+        var query = _dbSet.AsNoTracking().AsQueryable();
 
         if (createdFrom.HasValue)
         {
@@ -64,17 +64,17 @@ public sealed class UserRepository : BaseRepository<User>, IUserRepository
     }
 
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) =>
-        DbSet.FirstOrDefaultAsync(user => user.Email == email, cancellationToken);
+        _dbSet.FirstOrDefaultAsync(user => user.Email == email, cancellationToken);
 
     public Task<User?> GetByUsernameAsync(string username, CancellationToken cancellationToken = default) =>
-        DbSet.FirstOrDefaultAsync(user => user.Name == username, cancellationToken);
+        _dbSet.FirstOrDefaultAsync(user => user.Name == username, cancellationToken);
 
     public Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken = default) =>
-        DbSet.AnyAsync(user => user.Email == email, cancellationToken);
+        _dbSet.AnyAsync(user => user.Email == email, cancellationToken);
 
     public Task<bool> UsernameExistsAsync(string username, CancellationToken cancellationToken = default) =>
-        DbSet.AnyAsync(user => user.Name == username, cancellationToken);
+        _dbSet.AnyAsync(user => user.Name == username, cancellationToken);
 
     public async Task<IEnumerable<User>> GetByRoleAsync(UserRole role, CancellationToken cancellationToken = default) =>
-        await DbSet.Where(user => user.Role == role).ToListAsync(cancellationToken);
+        await _dbSet.Where(user => user.Role == role).ToListAsync(cancellationToken);
 }

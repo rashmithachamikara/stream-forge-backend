@@ -13,7 +13,7 @@ public sealed class VideoRepository : BaseRepository<Video>, IVideoRepository
     }
 
     public Task<Video?> GetWithDetailsAsync(Guid videoId, CancellationToken cancellationToken = default) =>
-        DbSet
+        _dbSet
             .AsNoTracking()
             .Include(video => video.Uploader)
             .Include(video => video.Category)
@@ -40,7 +40,7 @@ public sealed class VideoRepository : BaseRepository<Video>, IVideoRepository
         DateTime? createdTo = null,
         CancellationToken cancellationToken = default)
     {
-        var query = DbSet
+        var query = _dbSet
             .AsNoTracking()
             .Include(video => video.Uploader)
             .Include(video => video.Category)
@@ -132,7 +132,7 @@ public sealed class VideoRepository : BaseRepository<Video>, IVideoRepository
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        var query = DbSet
+        var query = _dbSet
             .AsNoTracking()
             .Include(video => video.Uploader)
             .Include(video => video.Category)
@@ -169,7 +169,7 @@ public sealed class VideoRepository : BaseRepository<Video>, IVideoRepository
         IReadOnlyCollection<Guid>? scopedVideoIds,
         CancellationToken cancellationToken = default)
     {
-        var query = DbSet
+        var query = _dbSet
             .AsNoTracking()
             .AsQueryable();
 
@@ -217,26 +217,26 @@ public sealed class VideoRepository : BaseRepository<Video>, IVideoRepository
     }
 
     public async Task<IEnumerable<Video>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        await DbSet.Where(video => video.UploaderId == userId).ToListAsync(cancellationToken);
+        await _dbSet.Where(video => video.UploaderId == userId).ToListAsync(cancellationToken);
 
     public async Task<IEnumerable<Video>> GetByCategoryIdAsync(Guid categoryId, CancellationToken cancellationToken = default) =>
-        await DbSet.Where(video => video.CategoryId == categoryId).ToListAsync(cancellationToken);
+        await _dbSet.Where(video => video.CategoryId == categoryId).ToListAsync(cancellationToken);
 
     public async Task<IEnumerable<Video>> GetByTagIdAsync(Guid tagId, CancellationToken cancellationToken = default) =>
-        await DbSet.Where(video => video.VideoTags.Any(videoTag => videoTag.TagId == tagId)).ToListAsync(cancellationToken);
+        await _dbSet.Where(video => video.VideoTags.Any(videoTag => videoTag.TagId == tagId)).ToListAsync(cancellationToken);
 
     public async Task<IEnumerable<Video>> GetByVisibilityAsync(VideoVisibility visibility, CancellationToken cancellationToken = default) =>
-        await DbSet.Where(video => video.Visibility == visibility).ToListAsync(cancellationToken);
+        await _dbSet.Where(video => video.Visibility == visibility).ToListAsync(cancellationToken);
 
     public async Task<IEnumerable<Video>> SearchAsync(string searchTerm, CancellationToken cancellationToken = default) =>
-        await DbSet.Where(video => video.Title.Contains(searchTerm) || (video.Description != null && video.Description.Contains(searchTerm)))
+        await _dbSet.Where(video => video.Title.Contains(searchTerm) || (video.Description != null && video.Description.Contains(searchTerm)))
             .ToListAsync(cancellationToken);
 
     public async Task<IEnumerable<Video>> GetMostViewedAsync(int count, CancellationToken cancellationToken = default) =>
-        await DbSet.OrderByDescending(video => video.ViewCount).Take(count).ToListAsync(cancellationToken);
+        await _dbSet.OrderByDescending(video => video.ViewCount).Take(count).ToListAsync(cancellationToken);
 
     public async Task<IEnumerable<Video>> GetRecentAsync(int count, CancellationToken cancellationToken = default) =>
-        await DbSet.OrderByDescending(video => video.CreatedAt).Take(count).ToListAsync(cancellationToken);
+        await _dbSet.OrderByDescending(video => video.CreatedAt).Take(count).ToListAsync(cancellationToken);
 
     private static IQueryable<Video> ApplySort(IQueryable<Video> query, string? sort)
     {

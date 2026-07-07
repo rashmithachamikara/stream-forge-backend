@@ -13,11 +13,11 @@ public sealed class VideoReactionRepository : BaseRepository<VideoReaction>, IVi
     }
 
     public Task<VideoReaction?> GetByUserAndVideoAsync(Guid userId, Guid videoId, CancellationToken cancellationToken = default) =>
-        DbSet.FirstOrDefaultAsync(reaction => reaction.UserId == userId && reaction.VideoId == videoId, cancellationToken);
+        _dbSet.FirstOrDefaultAsync(reaction => reaction.UserId == userId && reaction.VideoId == videoId, cancellationToken);
 
     public async Task<ReactionSummaryResult> GetSummaryAsync(Guid videoId, Guid? currentUserId, CancellationToken cancellationToken = default)
     {
-        var reactions = await DbSet
+        var reactions = await _dbSet
             .AsNoTracking()
             .Where(reaction => reaction.VideoId == videoId)
             .Select(reaction => new
@@ -47,7 +47,7 @@ public sealed class VideoCommentRepository : BaseRepository<VideoComment>, IVide
     }
 
     public Task<VideoComment?> GetByIdWithUserAsync(Guid commentId, CancellationToken cancellationToken = default) =>
-        DbSet
+        _dbSet
             .AsNoTracking()
             .Include(comment => comment.User)
             .FirstOrDefaultAsync(comment => comment.Id == commentId, cancellationToken);
@@ -59,7 +59,7 @@ public sealed class VideoCommentRepository : BaseRepository<VideoComment>, IVide
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        var query = DbSet
+        var query = _dbSet
             .AsNoTracking()
             .Include(comment => comment.User)
             .Where(comment => comment.VideoId == videoId && comment.ParentCommentId == parentCommentId)
@@ -77,7 +77,7 @@ public sealed class VideoCommentRepository : BaseRepository<VideoComment>, IVide
 
     public async Task<IReadOnlyList<VideoComment>> GetChildrenAsync(Guid parentCommentId, CancellationToken cancellationToken = default)
     {
-        return await DbSet
+        return await _dbSet
             .Where(comment => comment.ParentCommentId == parentCommentId)
             .OrderByDescending(comment => comment.CreatedAt)
             .ToListAsync(cancellationToken);
@@ -92,7 +92,7 @@ public sealed class VideoCommentRepository : BaseRepository<VideoComment>, IVide
             return new Dictionary<Guid, int>();
         }
 
-        return await DbSet
+        return await _dbSet
             .AsNoTracking()
             .Where(comment => comment.ParentCommentId.HasValue && commentIds.Contains(comment.ParentCommentId.Value))
             .GroupBy(comment => comment.ParentCommentId!.Value)
@@ -108,7 +108,7 @@ public sealed class BookmarkRepository : BaseRepository<Bookmark>, IBookmarkRepo
     }
 
     public Task<Bookmark?> GetByIdForUserAsync(Guid bookmarkId, Guid userId, CancellationToken cancellationToken = default) =>
-        DbSet
+        _dbSet
             .Include(bookmark => bookmark.Video)
                 .ThenInclude(video => video.Uploader)
             .Include(bookmark => bookmark.Video)
@@ -125,7 +125,7 @@ public sealed class BookmarkRepository : BaseRepository<Bookmark>, IBookmarkRepo
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        var query = DbSet
+        var query = _dbSet
             .AsNoTracking()
             .Where(bookmark => bookmark.UserId == userId && bookmark.VideoId == videoId)
             .OrderBy(bookmark => bookmark.TimestampSeconds)
@@ -148,7 +148,7 @@ public sealed class BookmarkRepository : BaseRepository<Bookmark>, IBookmarkRepo
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        var query = DbSet
+        var query = _dbSet
             .AsNoTracking()
             .Include(bookmark => bookmark.Video)
                 .ThenInclude(video => video.Uploader)

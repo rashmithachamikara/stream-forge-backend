@@ -12,7 +12,7 @@ public sealed class NotificationRepository : BaseRepository<Notification>, INoti
     }
 
     public Task<Notification?> GetByIdForUserAsync(Guid notificationId, Guid userId, CancellationToken cancellationToken = default) =>
-        DbSet.FirstOrDefaultAsync(notification => notification.Id == notificationId && notification.UserId == userId, cancellationToken);
+        _dbSet.FirstOrDefaultAsync(notification => notification.Id == notificationId && notification.UserId == userId, cancellationToken);
 
     public async Task<PagedQueryResult<Notification>> GetPagedByUserIdAsync(
         Guid userId,
@@ -21,7 +21,7 @@ public sealed class NotificationRepository : BaseRepository<Notification>, INoti
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        var query = DbSet
+        var query = _dbSet
             .AsNoTracking()
             .Where(notification => notification.UserId == userId);
 
@@ -42,14 +42,14 @@ public sealed class NotificationRepository : BaseRepository<Notification>, INoti
     }
 
     public async Task<IEnumerable<Notification>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        await DbSet.Where(notification => notification.UserId == userId).OrderByDescending(notification => notification.CreatedAt).ToListAsync(cancellationToken);
+        await _dbSet.Where(notification => notification.UserId == userId).OrderByDescending(notification => notification.CreatedAt).ToListAsync(cancellationToken);
 
     public async Task<IEnumerable<Notification>> GetUnreadByUserIdAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        await DbSet.Where(notification => notification.UserId == userId && !notification.IsRead).OrderByDescending(notification => notification.CreatedAt).ToListAsync(cancellationToken);
+        await _dbSet.Where(notification => notification.UserId == userId && !notification.IsRead).OrderByDescending(notification => notification.CreatedAt).ToListAsync(cancellationToken);
 
     public async Task MarkAllAsReadAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var notifications = await DbSet.Where(notification => notification.UserId == userId && !notification.IsRead).ToListAsync(cancellationToken);
+        var notifications = await _dbSet.Where(notification => notification.UserId == userId && !notification.IsRead).ToListAsync(cancellationToken);
         foreach (var notification in notifications)
         {
             notification.MarkAsRead();
@@ -58,13 +58,13 @@ public sealed class NotificationRepository : BaseRepository<Notification>, INoti
 
     public async Task DeleteReadAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var notifications = await DbSet
+        var notifications = await _dbSet
             .Where(notification => notification.UserId == userId && notification.IsRead)
             .ToListAsync(cancellationToken);
 
-        DbSet.RemoveRange(notifications);
+        _dbSet.RemoveRange(notifications);
     }
 
     public Task<int> GetUnreadCountAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        DbSet.CountAsync(notification => notification.UserId == userId && !notification.IsRead, cancellationToken);
+        _dbSet.CountAsync(notification => notification.UserId == userId && !notification.IsRead, cancellationToken);
 }

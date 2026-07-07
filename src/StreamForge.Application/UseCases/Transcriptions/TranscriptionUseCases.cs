@@ -14,7 +14,7 @@ namespace StreamForge.Application.UseCases.Transcriptions;
 
 public sealed class ReconcileTranscriptionOrphansService
 {
-    private static readonly TimeSpan PendingCorrelationGracePeriod = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan _pendingCorrelationGracePeriod = TimeSpan.FromMinutes(2);
 
     private readonly IUnitOfWork _unitOfWork;
     private readonly ITranscriptionProvider _transcriptionProvider;
@@ -170,7 +170,7 @@ public sealed class ReconcileTranscriptionOrphansService
             string.IsNullOrWhiteSpace(transcription.CorrelationId))
         {
             var updatedAt = transcription.UpdatedAt ?? transcription.CreatedAt;
-            return DateTime.UtcNow - updatedAt > PendingCorrelationGracePeriod;
+            return DateTime.UtcNow - updatedAt > _pendingCorrelationGracePeriod;
         }
 
         return false;

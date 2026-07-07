@@ -17,7 +17,7 @@ public sealed class TagRepository : BaseRepository<Tag>, ITagRepository
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        var query = DbSet.AsNoTracking().AsQueryable();
+        var query = _dbSet.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
@@ -40,18 +40,18 @@ public sealed class TagRepository : BaseRepository<Tag>, ITagRepository
     }
 
     public Task<Tag?> GetByNameAsync(string name, CancellationToken cancellationToken = default) =>
-        DbSet.FirstOrDefaultAsync(tag => tag.Name == name.Trim().ToLowerInvariant(), cancellationToken);
+        _dbSet.FirstOrDefaultAsync(tag => tag.Name == name.Trim().ToLowerInvariant(), cancellationToken);
 
     public async Task<IEnumerable<Tag>> SearchByNameAsync(string namePattern, CancellationToken cancellationToken = default) =>
-        await DbSet.Where(tag => tag.Name.Contains(namePattern.Trim().ToLowerInvariant())).ToListAsync(cancellationToken);
+        await _dbSet.Where(tag => tag.Name.Contains(namePattern.Trim().ToLowerInvariant())).ToListAsync(cancellationToken);
 
     public async Task<IEnumerable<Tag>> GetMostUsedAsync(int count, CancellationToken cancellationToken = default) =>
-        await DbSet.OrderByDescending(tag => tag.UsageCount).Take(count).ToListAsync(cancellationToken);
+        await _dbSet.OrderByDescending(tag => tag.UsageCount).Take(count).ToListAsync(cancellationToken);
 
     public Task<bool> NameExistsAsync(string name, Guid? excludeTagId = null, CancellationToken cancellationToken = default)
     {
         var normalizedName = name.Trim().ToLowerInvariant();
-        var query = DbSet.Where(tag => tag.Name == normalizedName);
+        var query = _dbSet.Where(tag => tag.Name == normalizedName);
         if (excludeTagId.HasValue)
         {
             query = query.Where(tag => tag.Id != excludeTagId.Value);
@@ -61,5 +61,5 @@ public sealed class TagRepository : BaseRepository<Tag>, ITagRepository
     }
 
     public Task<bool> IsInUseAsync(Guid tagId, CancellationToken cancellationToken = default) =>
-        DbContext.VideoTags.AnyAsync(videoTag => videoTag.TagId == tagId, cancellationToken);
+        _dbContext.VideoTags.AnyAsync(videoTag => videoTag.TagId == tagId, cancellationToken);
 }

@@ -18,7 +18,7 @@ public sealed class AccessControlRepository : BaseRepository<AccessControl>, IAc
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        var query = DbSet
+        var query = _dbSet
             .AsNoTracking()
             .Include(accessControl => accessControl.User)
             .Where(accessControl => accessControl.VideoId == videoId);

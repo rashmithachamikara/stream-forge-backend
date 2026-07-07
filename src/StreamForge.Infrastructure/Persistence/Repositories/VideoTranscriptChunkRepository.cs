@@ -21,7 +21,7 @@ public sealed class VideoTranscriptChunkRepository : BaseRepository<VideoTranscr
     public async Task DeleteByVideoAndLanguageAsync(Guid videoId, string language, CancellationToken cancellationToken = default)
     {
         var normalizedLanguage = language.Trim().ToLowerInvariant();
-        var rows = await DbContext.VideoTranscriptChunks
+        var rows = await _dbContext.VideoTranscriptChunks
             .Where(chunk => chunk.VideoId == videoId && chunk.Language == normalizedLanguage)
             .ToListAsync(cancellationToken);
 
@@ -30,14 +30,14 @@ public sealed class VideoTranscriptChunkRepository : BaseRepository<VideoTranscr
             return;
         }
 
-        DbContext.VideoTranscriptChunks.RemoveRange(rows);
+        _dbContext.VideoTranscriptChunks.RemoveRange(rows);
     }
 
     public async Task<IReadOnlyList<VideoTranscriptChunk>> GetByTranscriptionIdAsync(
         Guid transcriptionId,
         CancellationToken cancellationToken = default)
     {
-        return await DbContext.VideoTranscriptChunks
+        return await _dbContext.VideoTranscriptChunks
             .AsNoTracking()
             .Where(chunk => chunk.TranscriptionId == transcriptionId)
             .OrderBy(chunk => chunk.StartSeconds)
@@ -50,7 +50,7 @@ public sealed class VideoTranscriptChunkRepository : BaseRepository<VideoTranscr
         CancellationToken cancellationToken = default)
     {
         var normalizedLanguage = language.Trim().ToLowerInvariant();
-        return await DbContext.VideoTranscriptChunks
+        return await _dbContext.VideoTranscriptChunks
             .AsNoTracking()
             .Where(chunk => chunk.VideoId == videoId && chunk.Language == normalizedLanguage)
             .OrderBy(chunk => chunk.StartSeconds)
@@ -69,7 +69,7 @@ public sealed class VideoTranscriptChunkRepository : BaseRepository<VideoTranscr
         var normalizedSearchTerm = searchTerm.Trim();
         var normalizedLanguage = string.IsNullOrWhiteSpace(language) ? null : language.Trim().ToLowerInvariant();
 
-        var query = DbContext.VideoTranscriptChunks
+        var query = _dbContext.VideoTranscriptChunks
             .AsNoTracking()
             .Where(chunk => chunk.VideoId == videoId);
 
@@ -106,7 +106,7 @@ public sealed class VideoTranscriptChunkRepository : BaseRepository<VideoTranscr
         var normalizedLanguage = string.IsNullOrWhiteSpace(language) ? null : language.Trim().ToLowerInvariant();
         var scopedIds = videoIds.Distinct().ToArray();
 
-        var query = DbContext.VideoTranscriptChunks
+        var query = _dbContext.VideoTranscriptChunks
             .AsNoTracking()
             .Where(chunk => scopedIds.Contains(chunk.VideoId));
 
@@ -198,7 +198,7 @@ public sealed class VideoTranscriptChunkRepository : BaseRepository<VideoTranscr
     {
         var normalizedSearchTerm = searchTerm.Trim();
         var normalizedLanguage = string.IsNullOrWhiteSpace(language) ? null : language.Trim().ToLowerInvariant();
-        var query = DbContext.VideoTranscriptChunks
+        var query = _dbContext.VideoTranscriptChunks
             .AsNoTracking()
             .Where(chunk => chunk.VideoId == videoId);
 
@@ -345,7 +345,7 @@ public sealed class VideoTranscriptChunkRepository : BaseRepository<VideoTranscr
             FROM ranked
             """;
 
-        var totalCount = await DbContext.Database
+        var totalCount = await _dbContext.Database
             .SqlQueryRaw<int>(countSql, parameters.ToArray())
             .SingleAsync(cancellationToken);
 
@@ -392,7 +392,7 @@ public sealed class VideoTranscriptChunkRepository : BaseRepository<VideoTranscr
             LIMIT @pageSize
             """;
 
-        var items = await DbContext.Database
+        var items = await _dbContext.Database
             .SqlQueryRaw<TranscriptSemanticChunkRow>(itemsSql, parameters.ToArray())
             .ToListAsync(cancellationToken);
 

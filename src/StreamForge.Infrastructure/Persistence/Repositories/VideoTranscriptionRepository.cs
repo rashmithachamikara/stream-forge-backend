@@ -14,7 +14,7 @@ public sealed class VideoTranscriptionRepository : BaseRepository<VideoTranscrip
 
     public async Task<IReadOnlyList<VideoTranscription>> GetByVideoIdAsync(Guid videoId, CancellationToken cancellationToken = default)
     {
-        return await DbContext.VideoTranscriptions
+        return await _dbContext.VideoTranscriptions
             .Include(transcription => transcription.Video)
             .Where(transcription => transcription.VideoId == videoId)
             .OrderBy(transcription => transcription.Language)
@@ -23,14 +23,14 @@ public sealed class VideoTranscriptionRepository : BaseRepository<VideoTranscrip
     }
 
     public Task<VideoTranscription?> GetWithVideoAsync(Guid transcriptionId, CancellationToken cancellationToken = default) =>
-        DbContext.VideoTranscriptions
+        _dbContext.VideoTranscriptions
             .Include(transcription => transcription.Video)
             .FirstOrDefaultAsync(transcription => transcription.Id == transcriptionId, cancellationToken);
 
     public async Task<IReadOnlyList<VideoTranscription>> GetAllOrderedAsync(
         CancellationToken cancellationToken = default)
     {
-        return await DbContext.VideoTranscriptions
+        return await _dbContext.VideoTranscriptions
             .Include(transcription => transcription.Video)
             .OrderByDescending(transcription => transcription.CreatedAt)
             .ThenBy(transcription => transcription.Language)
@@ -42,7 +42,7 @@ public sealed class VideoTranscriptionRepository : BaseRepository<VideoTranscrip
         Guid videoId,
         params TranscriptionStatus[] statuses)
     {
-        return await DbContext.VideoTranscriptions
+        return await _dbContext.VideoTranscriptions
             .Where(transcription => transcription.VideoId == videoId && statuses.Contains(transcription.Status))
             .OrderBy(transcription => transcription.CreatedAt)
             .ToListAsync();
@@ -52,7 +52,7 @@ public sealed class VideoTranscriptionRepository : BaseRepository<VideoTranscrip
         CancellationToken cancellationToken = default,
         params TranscriptionStatus[] statuses)
     {
-        return await DbContext.VideoTranscriptions
+        return await _dbContext.VideoTranscriptions
             .Include(transcription => transcription.Video)
             .Where(transcription => statuses.Contains(transcription.Status))
             .OrderByDescending(transcription => transcription.CreatedAt)
@@ -70,7 +70,7 @@ public sealed class VideoTranscriptionRepository : BaseRepository<VideoTranscrip
         var normalizedLanguage = language.Trim().ToLowerInvariant();
         var normalizedFormat = format.Trim().ToUpperInvariant();
 
-        return await DbContext.VideoTranscriptions
+        return await _dbContext.VideoTranscriptions
             .Include(transcription => transcription.Video)
             .FirstOrDefaultAsync(
                 transcription => transcription.VideoId == videoId &&
@@ -85,7 +85,7 @@ public sealed class VideoTranscriptionRepository : BaseRepository<VideoTranscrip
     {
         var normalizedWorkerJobId = workerJobId.Trim();
 
-        return await DbContext.VideoTranscriptions
+        return await _dbContext.VideoTranscriptions
             .Include(transcription => transcription.Video)
             .Where(transcription => transcription.WorkerJobId == normalizedWorkerJobId)
             .OrderBy(transcription => transcription.CreatedAt)
@@ -98,7 +98,7 @@ public sealed class VideoTranscriptionRepository : BaseRepository<VideoTranscrip
     {
         var normalizedCorrelationId = correlationId.Trim();
 
-        return await DbContext.VideoTranscriptions
+        return await _dbContext.VideoTranscriptions
             .Include(transcription => transcription.Video)
             .Where(transcription => transcription.CorrelationId == normalizedCorrelationId)
             .OrderBy(transcription => transcription.CreatedAt)
@@ -109,7 +109,7 @@ public sealed class VideoTranscriptionRepository : BaseRepository<VideoTranscrip
         AdminTranscriptionJobsQuery query,
         CancellationToken cancellationToken = default)
     {
-        var itemsQuery = DbContext.VideoTranscriptions
+        var itemsQuery = _dbContext.VideoTranscriptions
             .AsNoTracking()
             .Include(transcription => transcription.Video)
             .AsQueryable();

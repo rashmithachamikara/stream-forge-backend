@@ -490,15 +490,15 @@ internal static class AnalyticsGuards
 
 internal static class AnalyticsRanges
 {
-    private const int DefaultDays = 30;
-    private const int DefaultPage = 1;
-    private const int DefaultPageSize = 24;
-    private const int MaxPageSize = 100;
+    private const int _defaultDays = 30;
+    private const int _defaultPage = 1;
+    private const int _defaultPageSize = 24;
+    private const int _maxPageSize = 100;
 
     public static (DateTime From, DateTime To) Normalize(DateTime? from, DateTime? to)
     {
         var normalizedTo = (to ?? DateTime.UtcNow).ToUniversalTime();
-        var normalizedFrom = (from ?? normalizedTo.AddDays(-DefaultDays)).ToUniversalTime();
+        var normalizedFrom = (from ?? normalizedTo.AddDays(-_defaultDays)).ToUniversalTime();
         if (normalizedFrom > normalizedTo)
         {
             throw new ArgumentException("The start date must be earlier than the end date");
@@ -507,16 +507,16 @@ internal static class AnalyticsRanges
         return (normalizedFrom, normalizedTo);
     }
 
-    public static int NormalizePage(int page) => page <= 0 ? DefaultPage : page;
+    public static int NormalizePage(int page) => page <= 0 ? _defaultPage : page;
 
     public static int NormalizePageSize(int pageSize)
     {
         if (pageSize <= 0)
         {
-            return DefaultPageSize;
+            return _defaultPageSize;
         }
 
-        return Math.Min(pageSize, MaxPageSize);
+        return Math.Min(pageSize, _maxPageSize);
     }
 
     public static PagedResponseDto<T> ToPagedResponse<T>(PagedQueryResult<T> result)

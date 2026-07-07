@@ -11,45 +11,45 @@ namespace StreamForge.Infrastructure.Persistence.Repositories;
 /// <typeparam name="T">Entity type</typeparam>
 public abstract class BaseRepository<T> : IRepository<T> where T : BaseEntity
 {
-    protected readonly StreamForgeDbContext DbContext;
-    protected readonly DbSet<T> DbSet;
+    protected readonly StreamForgeDbContext _dbContext;
+    protected readonly DbSet<T> _dbSet;
 
     protected BaseRepository(StreamForgeDbContext dbContext)
     {
-        DbContext = dbContext;
-        DbSet = dbContext.Set<T>();
+        _dbContext = dbContext;
+        _dbSet = dbContext.Set<T>();
     }
 
     public virtual async Task<T?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await DbSet.FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
+        return await _dbSet.FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
     }
 
     public virtual async Task<IEnumerable<T>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        return await DbSet.ToListAsync(cancellationToken);
+        return await _dbSet.ToListAsync(cancellationToken);
     }
 
     public virtual async Task<T> AddAsync(T entity, CancellationToken cancellationToken = default)
     {
-        await DbSet.AddAsync(entity, cancellationToken);
+        await _dbSet.AddAsync(entity, cancellationToken);
         return entity;
     }
 
     public virtual async Task AddRangeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
     {
-        await DbSet.AddRangeAsync(entities, cancellationToken);
+        await _dbSet.AddRangeAsync(entities, cancellationToken);
     }
 
     public virtual Task UpdateAsync(T entity, CancellationToken cancellationToken = default)
     {
-        DbSet.Update(entity);
+        _dbSet.Update(entity);
         return Task.CompletedTask;
     }
 
     public virtual async Task DeleteAsync(T entity, CancellationToken cancellationToken = default)
     {
-        DbSet.Remove(entity);
+        _dbSet.Remove(entity);
         await Task.CompletedTask;
     }
 
@@ -58,23 +58,23 @@ public abstract class BaseRepository<T> : IRepository<T> where T : BaseEntity
         var entity = await GetByIdAsync(id, cancellationToken);
         if (entity != null)
         {
-            DbSet.Remove(entity);
+            _dbSet.Remove(entity);
         }
     }
 
     public virtual async Task DeleteRangeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
     {
-        DbSet.RemoveRange(entities);
+        _dbSet.RemoveRange(entities);
         await Task.CompletedTask;
     }
 
     public virtual async Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await DbSet.AnyAsync(e => e.Id == id, cancellationToken);
+        return await _dbSet.AnyAsync(e => e.Id == id, cancellationToken);
     }
 
     public virtual async Task<int> CountAsync(CancellationToken cancellationToken = default)
     {
-        return await DbSet.CountAsync(cancellationToken);
+        return await _dbSet.CountAsync(cancellationToken);
     }
 }

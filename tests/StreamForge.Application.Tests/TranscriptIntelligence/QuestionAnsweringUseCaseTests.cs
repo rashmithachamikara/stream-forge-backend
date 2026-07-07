@@ -12,7 +12,7 @@ namespace StreamForge.Application.Tests.TranscriptIntelligence;
 
 public sealed class QuestionAnsweringUseCaseTests
 {
-    private static readonly RagOptions EnabledDefaults = new()
+    private static readonly RagOptions _enabledDefaults = new()
     {
         Enabled = true,
         SemanticSearchEnabled = true,
@@ -126,7 +126,7 @@ public sealed class QuestionAnsweringUseCaseTests
             unitOfWork,
             currentUser,
             authorization,
-            new ResolveRagSettingsService(unitOfWork, EnabledDefaults),
+            new ResolveRagSettingsService(unitOfWork, _enabledDefaults),
             searchProvider,
             factory);
 
@@ -229,7 +229,7 @@ public sealed class QuestionAnsweringUseCaseTests
         var service = new AskQuestionAcrossVideosService(
             unitOfWork,
             currentUser,
-            new ResolveRagSettingsService(unitOfWork, EnabledDefaults),
+            new ResolveRagSettingsService(unitOfWork, _enabledDefaults),
             searchProvider,
             factory);
 
@@ -293,7 +293,7 @@ public sealed class QuestionAnsweringUseCaseTests
             unitOfWork,
             currentUser,
             authorization,
-            new ResolveRagSettingsService(unitOfWork, EnabledDefaults),
+            new ResolveRagSettingsService(unitOfWork, _enabledDefaults),
             searchProvider,
             factory);
 
@@ -376,7 +376,7 @@ public sealed class QuestionAnsweringUseCaseTests
             unitOfWork,
             currentUser,
             authorization,
-            new ResolveRagSettingsService(unitOfWork, EnabledDefaults),
+            new ResolveRagSettingsService(unitOfWork, _enabledDefaults),
             searchProvider,
             factory);
 

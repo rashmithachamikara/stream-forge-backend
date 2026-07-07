@@ -14,7 +14,7 @@ public sealed class SystemSettingRepository : BaseRepository<SystemSetting>, ISy
     public Task<SystemSetting?> GetByKeyAsync(string key, CancellationToken cancellationToken = default)
     {
         var normalizedKey = key.Trim();
-        return DbContext.SystemSettings.FirstOrDefaultAsync(setting => setting.Key == normalizedKey, cancellationToken);
+        return _dbContext.SystemSettings.FirstOrDefaultAsync(setting => setting.Key == normalizedKey, cancellationToken);
     }
 
     public async Task<IReadOnlyList<SystemSetting>> GetByKeysAsync(
@@ -32,7 +32,7 @@ public sealed class SystemSettingRepository : BaseRepository<SystemSetting>, ISy
             return [];
         }
 
-        return await DbContext.SystemSettings
+        return await _dbContext.SystemSettings
             .Where(setting => normalizedKeys.Contains(setting.Key))
             .ToListAsync(cancellationToken);
     }

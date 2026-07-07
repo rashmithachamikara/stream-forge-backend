@@ -8,7 +8,7 @@ namespace StreamForge.Infrastructure.Processing;
 
 public sealed class HangfireVideoProcessingRuntimeMonitor : IVideoProcessingRuntimeMonitor
 {
-    private const int MaxScan = 1000;
+    private const int _maxScan = 1000;
     private readonly JobStorage _jobStorage;
 
     public HangfireVideoProcessingRuntimeMonitor(JobStorage jobStorage)
@@ -54,7 +54,7 @@ public sealed class HangfireVideoProcessingRuntimeMonitor : IVideoProcessingRunt
             return 0;
         }
 
-        return (int)Math.Min(count, MaxScan);
+        return (int)Math.Min(count, _maxScan);
     }
 
     private static bool ContainsMatchingProcessingJob(
