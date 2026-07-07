@@ -1,7 +1,7 @@
+using Microsoft.Extensions.Logging;
 using StreamForge.Application.Common;
 using StreamForge.Application.DTOs.TranscriptIntelligence;
 using StreamForge.Application.Interfaces;
-using Microsoft.Extensions.Logging;
 using StreamForge.Domain.Entities;
 using StreamForge.Domain.Interfaces;
 

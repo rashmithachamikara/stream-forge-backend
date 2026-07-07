@@ -54,8 +54,8 @@ public class UploadSessionRepository : BaseRepository<UploadSession>, IUploadSes
     public async Task<IEnumerable<UploadSession>> GetActiveByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         return await DbSet
-            .Where(s => s.UserId == userId && 
-                        (s.Status == UploadSessionStatus.Created || 
+            .Where(s => s.UserId == userId &&
+                        (s.Status == UploadSessionStatus.Created ||
                          s.Status == UploadSessionStatus.Active))
             .OrderByDescending(s => s.CreatedAt)
             .ToListAsync(cancellationToken);
@@ -73,8 +73,8 @@ public class UploadSessionRepository : BaseRepository<UploadSession>, IUploadSes
     {
         var now = DateTime.UtcNow;
         return await DbSet
-            .Where(s => s.ExpiresAt < now && 
-                        s.Status != UploadSessionStatus.Completed && 
+            .Where(s => s.ExpiresAt < now &&
+                        s.Status != UploadSessionStatus.Completed &&
                         s.Status != UploadSessionStatus.Expired)
             .ToListAsync(cancellationToken);
     }

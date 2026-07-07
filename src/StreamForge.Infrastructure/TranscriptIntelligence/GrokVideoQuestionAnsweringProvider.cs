@@ -146,19 +146,19 @@ public sealed class GrokVideoQuestionAnsweringProvider : IVideoQuestionAnswering
         switch ((int)response.StatusCode)
         {
             case 429:
-            {
-                var retryAfter = response.Headers.RetryAfter?.Delta;
-                _logger.LogWarning(
-                    "Grok rate limited request for model {Model}. RetryAfter: {RetryAfter}. Body preview: {BodyPreview}.",
-                    model,
-                    retryAfter,
-                    preview);
+                {
+                    var retryAfter = response.Headers.RetryAfter?.Delta;
+                    _logger.LogWarning(
+                        "Grok rate limited request for model {Model}. RetryAfter: {RetryAfter}. Body preview: {BodyPreview}.",
+                        model,
+                        retryAfter,
+                        preview);
 
-                throw new ExternalServiceThrottledException(
-                    "Grok",
-                    "The question-answering provider is temporarily rate-limiting requests. Please try again shortly.",
-                    retryAfter);
-            }
+                    throw new ExternalServiceThrottledException(
+                        "Grok",
+                        "The question-answering provider is temporarily rate-limiting requests. Please try again shortly.",
+                        retryAfter);
+                }
             case 401:
             case 403:
                 _logger.LogError(

@@ -40,7 +40,7 @@ public class Bookmark : BaseEntity
     }
 
     /// <summary>
-     /// Creates a new bookmark
+    /// Creates a new bookmark
     /// </summary>
     public static Bookmark Create(Guid userId, Guid videoId, int timestampSeconds, string? note)
     {

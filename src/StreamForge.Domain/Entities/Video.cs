@@ -123,9 +123,9 @@ public class Video : BaseEntity
     /// Creates a new video
     /// </summary>
     public static Video Create(
-        string title, 
-        string? description, 
-        Guid uploaderId, 
+        string title,
+        string? description,
+        Guid uploaderId,
         Guid? categoryId = null,
         VideoVisibility visibility = VideoVisibility.Public,
         VideoStatus status = VideoStatus.Ready)

@@ -1,34 +1,33 @@
+using System.Reflection;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
-using System.Reflection;
-using Microsoft.AspNetCore.DataProtection;
-using AppDataProtectionOptions = StreamForge.Application.Common.DataProtectionOptions;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
-using StreamForge.Api.Options;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using Microsoft.Extensions.Options;
+using Pgvector.EntityFrameworkCore;
 using StreamForge.Api.Authentication;
 using StreamForge.Api.Health;
 using StreamForge.Api.Middleware;
-using RateLimiterConfigOptions = StreamForge.Application.Common.RateLimiterOptions;
+using StreamForge.Api.Options;
 using StreamForge.Application.Common;
 using StreamForge.Application.DTOs.Analytics;
 using StreamForge.Application.Interfaces;
 using StreamForge.Application.UseCases.Analytics;
 using StreamForge.Application.UseCases.Content;
 using StreamForge.Application.UseCases.Engagement;
-using StreamForge.Application.UseCases.Uploads;
-using StreamForge.Application.UseCases.Uploads.CreateSession;
 using StreamForge.Application.UseCases.Processing;
 using StreamForge.Application.UseCases.TranscriptIntelligence;
 using StreamForge.Application.UseCases.Transcriptions;
+using StreamForge.Application.UseCases.Uploads;
+using StreamForge.Application.UseCases.Uploads.CreateSession;
 using StreamForge.Domain.Enums;
 using StreamForge.Domain.Interfaces;
 using StreamForge.Infrastructure.Authentication;
@@ -39,7 +38,8 @@ using StreamForge.Infrastructure.Security;
 using StreamForge.Infrastructure.Storage;
 using StreamForge.Infrastructure.TranscriptIntelligence;
 using StreamForge.Infrastructure.Transcription;
-using Pgvector.EntityFrameworkCore;
+using AppDataProtectionOptions = StreamForge.Application.Common.DataProtectionOptions;
+using RateLimiterConfigOptions = StreamForge.Application.Common.RateLimiterOptions;
 
 var builder = WebApplication.CreateBuilder(args);
 const string CorsPolicyName = "StreamForgeCors";
@@ -629,7 +629,7 @@ var summaries = new[]
 
 app.MapGet("/api/v1/weatherforecast", () =>
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
+    var forecast = Enumerable.Range(1, 5).Select(index =>
         new WeatherForecast
         (
             DateOnly.FromDateTime(DateTime.Now.AddDays(index)),

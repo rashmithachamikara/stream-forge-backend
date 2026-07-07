@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
@@ -11,7 +12,6 @@ using StreamForge.Domain.Entities;
 using StreamForge.Domain.Enums;
 using StreamForge.Domain.Exceptions;
 using StreamForge.Domain.Interfaces;
-using System.Reflection;
 
 namespace StreamForge.Application.Tests.Transcriptions;
 

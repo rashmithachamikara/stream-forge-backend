@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
-using StreamForge.Application.DTOs.Processing;
-using StreamForge.Application.Interfaces;
 using StreamForge.Application.Common;
 using StreamForge.Application.DTOs.Content;
+using StreamForge.Application.DTOs.Processing;
+using StreamForge.Application.Interfaces;
 using StreamForge.Application.UseCases.Transcriptions;
 using StreamForge.Domain.Entities;
 using StreamForge.Domain.Enums;
@@ -391,28 +391,28 @@ public sealed class ReconcileVideoProcessingOrphansService
                 break;
 
             case ProcessingJobStatus.Processing:
-            {
-                var hasActiveExecution = await _runtimeMonitor.HasActiveExecutionAsync(job.Id, cancellationToken);
-                if (!hasActiveExecution)
                 {
-                    job.Fail("Processing job was interrupted or orphaned before completion.");
-                    if (video.Status != VideoStatus.Failed)
+                    var hasActiveExecution = await _runtimeMonitor.HasActiveExecutionAsync(job.Id, cancellationToken);
+                    if (!hasActiveExecution)
                     {
-                        video.MarkAsFailed();
+                        job.Fail("Processing job was interrupted or orphaned before completion.");
+                        if (video.Status != VideoStatus.Failed)
+                        {
+                            video.MarkAsFailed();
+                        }
+
+                        changed = true;
+                        break;
                     }
 
-                    changed = true;
+                    if (video.Status != VideoStatus.Processing)
+                    {
+                        video.MarkAsProcessing();
+                        changed = true;
+                    }
+
                     break;
                 }
-
-                if (video.Status != VideoStatus.Processing)
-                {
-                    video.MarkAsProcessing();
-                    changed = true;
-                }
-
-                break;
-            }
 
             case ProcessingJobStatus.Failed:
                 if (video.Status != VideoStatus.Failed)

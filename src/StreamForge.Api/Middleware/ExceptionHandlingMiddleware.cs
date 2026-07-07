@@ -64,11 +64,11 @@ public class ExceptionHandlingMiddleware
                 (StatusCodes.Status400BadRequest, exception.Message),
             System.UnauthorizedAccessException =>
                 (StatusCodes.Status401Unauthorized, "Invalid credentials or unauthorized access."),
-            ArgumentException => 
+            ArgumentException =>
                 (StatusCodes.Status400BadRequest, exception.Message),
-            InvalidOperationException when exception.Message.Contains("not found") => 
+            InvalidOperationException when exception.Message.Contains("not found") =>
                 (StatusCodes.Status404NotFound, exception.Message),
-            _ => 
+            _ =>
                 (StatusCodes.Status500InternalServerError, "An internal error occurred. Please try again later.")
         };
 
