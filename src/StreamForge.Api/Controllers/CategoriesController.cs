@@ -5,6 +5,9 @@ using StreamForge.Application.UseCases.Content;
 
 namespace StreamForge.Api.Controllers;
 
+/// <summary>
+/// Exposes category management and category-scoped video listing endpoints.
+/// </summary>
 [ApiController]
 [Route("api/v1/categories")]
 public sealed class CategoriesController : ControllerBase
@@ -32,6 +35,9 @@ public sealed class CategoriesController : ControllerBase
         _listVideos = listVideos;
     }
 
+    /// <summary>
+    /// Lists all categories.
+    /// </summary>
     [HttpGet]
     [AllowAnonymous]
     public async Task<ActionResult<IReadOnlyList<CategoryDto>>> List(CancellationToken cancellationToken)
@@ -39,6 +45,9 @@ public sealed class CategoriesController : ControllerBase
         return Ok(await _listCategories.Handle(cancellationToken));
     }
 
+    /// <summary>
+    /// Gets a single category by identifier.
+    /// </summary>
     [HttpGet("{categoryId:guid}")]
     [AllowAnonymous]
     public async Task<ActionResult<CategoryDto>> Get(Guid categoryId, CancellationToken cancellationToken)
@@ -46,6 +55,9 @@ public sealed class CategoriesController : ControllerBase
         return Ok(await _getCategory.Handle(categoryId, cancellationToken));
     }
 
+    /// <summary>
+    /// Creates a new category.
+    /// </summary>
     [HttpPost]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<CategoryDto>> Create(
@@ -56,6 +68,9 @@ public sealed class CategoriesController : ControllerBase
         return CreatedAtAction(nameof(Get), new { categoryId = created.Id }, created);
     }
 
+    /// <summary>
+    /// Updates an existing category.
+    /// </summary>
     [HttpPatch("{categoryId:guid}")]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<CategoryDto>> Update(
@@ -66,6 +81,9 @@ public sealed class CategoriesController : ControllerBase
         return Ok(await _updateCategory.Handle(categoryId, request, cancellationToken));
     }
 
+    /// <summary>
+    /// Deletes a category.
+    /// </summary>
     [HttpDelete("{categoryId:guid}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(Guid categoryId, CancellationToken cancellationToken)
@@ -74,6 +92,9 @@ public sealed class CategoriesController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Lists videos currently associated with a category.
+    /// </summary>
     [HttpGet("{categoryId:guid}/videos")]
     [AllowAnonymous]
     public async Task<ActionResult<PagedResponseDto<VideoSummaryDto>>> ListVideos(

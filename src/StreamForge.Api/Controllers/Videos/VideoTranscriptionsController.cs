@@ -8,6 +8,9 @@ using StreamForge.Application.UseCases.Transcriptions;
 
 namespace StreamForge.Api.Controllers.Videos;
 
+/// <summary>
+/// Exposes per-video transcription metadata, artifacts, transcript search, and grounded question-answering endpoints.
+/// </summary>
 [ApiController]
 [Route("api/v1/videos/{videoId:guid}/transcriptions")]
 public sealed class VideoTranscriptionsController : ControllerBase
@@ -47,6 +50,13 @@ public sealed class VideoTranscriptionsController : ControllerBase
         _startVideoTranscription = startVideoTranscription;
     }
 
+    /// <summary>
+    /// Lists transcription artifacts available for a video.
+    /// </summary>
+    /// <param name="videoId">Video identifier.</param>
+    /// <param name="shareToken">Optional share token for anonymously shared videos.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The transcription artifacts available for the video.</returns>
     [HttpGet]
     [AllowAnonymous]
     public async Task<ActionResult<IReadOnlyList<VideoTranscriptionDto>>> List(
@@ -57,6 +67,9 @@ public sealed class VideoTranscriptionsController : ControllerBase
         return Ok(await _listVideoTranscriptions.Handle(videoId, shareToken, cancellationToken));
     }
 
+    /// <summary>
+    /// Lists grouped transcription jobs for a video.
+    /// </summary>
     [HttpGet("/api/v1/videos/{videoId:guid}/transcription-jobs")]
     [AllowAnonymous]
     public async Task<ActionResult<IReadOnlyList<VideoTranscriptionJobDto>>> ListJobs(
@@ -67,6 +80,9 @@ public sealed class VideoTranscriptionsController : ControllerBase
         return Ok(await _listVideoTranscriptionJobs.Handle(videoId, shareToken, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets status details for a single transcription artifact.
+    /// </summary>
     [HttpGet("{transcriptionId:guid}/status")]
     [AllowAnonymous]
     public async Task<ActionResult<VideoTranscriptionDto>> GetStatus(
@@ -78,6 +94,9 @@ public sealed class VideoTranscriptionsController : ControllerBase
         return Ok(await _getVideoTranscriptionStatus.Handle(videoId, transcriptionId, shareToken, cancellationToken));
     }
 
+    /// <summary>
+    /// Downloads or streams the stored transcription artifact content.
+    /// </summary>
     [HttpGet("{transcriptionId:guid}")]
     [HttpGet("{transcriptionId:guid}/content")]
     [AllowAnonymous]
@@ -96,6 +115,9 @@ public sealed class VideoTranscriptionsController : ControllerBase
         return File(file.Stream, file.ContentType, enableRangeProcessing: true);
     }
 
+    /// <summary>
+    /// Gets structured transcript chunks for transcript-reader experiences.
+    /// </summary>
     [HttpGet("{transcriptionId:guid}/chunks")]
     [AllowAnonymous]
     public async Task<ActionResult<IReadOnlyList<TranscriptChunkDto>>> GetChunks(
@@ -107,6 +129,9 @@ public sealed class VideoTranscriptionsController : ControllerBase
         return Ok(await _getVideoTranscriptionChunks.Handle(videoId, transcriptionId, shareToken, cancellationToken));
     }
 
+    /// <summary>
+    /// Searches transcript chunks lexically within a single video.
+    /// </summary>
     [HttpGet("/api/v1/videos/{videoId:guid}/transcript-search")]
     [AllowAnonymous]
     public async Task<ActionResult<PagedResponseDto<TranscriptSearchResultDto>>> Search(
@@ -121,6 +146,9 @@ public sealed class VideoTranscriptionsController : ControllerBase
         return Ok(await _searchVideoTranscript.Handle(videoId, query, language, page, pageSize, shareToken, cancellationToken));
     }
 
+    /// <summary>
+    /// Searches transcript chunks semantically within a single video.
+    /// </summary>
     [HttpGet("/api/v1/videos/{videoId:guid}/transcript-semantic-search")]
     [AllowAnonymous]
     public async Task<ActionResult<PagedResponseDto<TranscriptSemanticSearchResultDto>>> SearchSemantic(
@@ -135,6 +163,9 @@ public sealed class VideoTranscriptionsController : ControllerBase
         return Ok(await _searchVideoTranscriptSemantic.Handle(videoId, query, language, page, pageSize, shareToken, cancellationToken));
     }
 
+    /// <summary>
+    /// Searches transcript chunks with hybrid lexical and semantic retrieval within a single video.
+    /// </summary>
     [HttpGet("/api/v1/videos/{videoId:guid}/transcript-hybrid-search")]
     [AllowAnonymous]
     public async Task<ActionResult<PagedResponseDto<TranscriptHybridSearchResultDto>>> SearchHybrid(
@@ -149,6 +180,9 @@ public sealed class VideoTranscriptionsController : ControllerBase
         return Ok(await _searchVideoTranscriptHybrid.Handle(videoId, query, language, page, pageSize, shareToken, cancellationToken));
     }
 
+    /// <summary>
+    /// Answers a grounded question about a single video using cited transcript evidence.
+    /// </summary>
     [HttpPost("/api/v1/videos/{videoId:guid}/questions")]
     [AllowAnonymous]
     public async Task<ActionResult<GroundedQuestionAnswerDto>> AskQuestion(
@@ -165,6 +199,9 @@ public sealed class VideoTranscriptionsController : ControllerBase
             cancellationToken));
     }
 
+    /// <summary>
+    /// Requests transcription generation for a video.
+    /// </summary>
     [HttpPost]
     [Authorize]
     public async Task<ActionResult<IReadOnlyList<VideoTranscriptionDto>>> RequestTranscription(

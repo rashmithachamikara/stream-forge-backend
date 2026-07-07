@@ -1,5 +1,8 @@
 namespace StreamForge.Application.DTOs.Processing;
 
+/// <summary>
+/// Query parameters for the admin video-processing jobs endpoint.
+/// </summary>
 public sealed class AdminVideoProcessingJobsQueryDto
 {
     public int Page { get; init; }
@@ -19,6 +22,9 @@ public sealed class AdminVideoProcessingJobsQueryDto
     public string? SortDirection { get; init; }
 }
 
+/// <summary>
+/// Lightweight processing status payload for a single video.
+/// </summary>
 public sealed record VideoProcessingStatusDto(
     Guid VideoId,
     Guid ProcessingJobId,
@@ -26,6 +32,9 @@ public sealed record VideoProcessingStatusDto(
     int Progress,
     string? ErrorMessage);
 
+/// <summary>
+/// Administrative view of a video-processing job.
+/// </summary>
 public sealed record AdminVideoProcessingJobDto(
     string JobKey,
     Guid VideoId,

@@ -8,6 +8,9 @@ using StreamForge.Domain.Exceptions;
 
 namespace StreamForge.Api.Controllers;
 
+/// <summary>
+/// Exposes platform-wide administrative analytics and report-export endpoints.
+/// </summary>
 [ApiController]
 [Route("api/v1/admin/analytics")]
 [Authorize(Roles = "Admin")]
@@ -54,6 +57,9 @@ public sealed class AdminAnalyticsController : ControllerBase
         _options = options;
     }
 
+    /// <summary>
+    /// Gets the overall platform analytics summary.
+    /// </summary>
     [HttpGet("summary")]
     public async Task<ActionResult<AnalyticsSummaryDto>> GetSummary(
         [FromQuery] DateTime? from,
@@ -64,6 +70,9 @@ public sealed class AdminAnalyticsController : ControllerBase
         return Ok(await _getSummary.Handle(from, to, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets platform view counts over time.
+    /// </summary>
     [HttpGet("views-over-time")]
     public async Task<ActionResult<IReadOnlyList<AnalyticsTimeSeriesPointDto>>> GetViewsOverTime(
         [FromQuery] DateTime? from,
@@ -74,6 +83,9 @@ public sealed class AdminAnalyticsController : ControllerBase
         return Ok(await _getViewsOverTime.Handle(ownerId: null, from, to, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets the most watched videos across the platform.
+    /// </summary>
     [HttpGet("most-watched-videos")]
     public async Task<ActionResult<PagedResponseDto<RankedVideoAnalyticsDto>>> GetMostWatchedVideos(
         [FromQuery] DateTime? from,
@@ -86,6 +98,9 @@ public sealed class AdminAnalyticsController : ControllerBase
         return Ok(await _getRankedVideos.Handle(ownerId: null, AnalyticsRankingType.MostWatched, from, to, page, pageSize, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets the most liked videos across the platform.
+    /// </summary>
     [HttpGet("most-liked-videos")]
     public async Task<ActionResult<PagedResponseDto<RankedVideoAnalyticsDto>>> GetMostLikedVideos(
         [FromQuery] DateTime? from,
@@ -98,6 +113,9 @@ public sealed class AdminAnalyticsController : ControllerBase
         return Ok(await _getRankedVideos.Handle(ownerId: null, AnalyticsRankingType.MostLiked, from, to, page, pageSize, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets the most commented videos across the platform.
+    /// </summary>
     [HttpGet("most-commented-videos")]
     public async Task<ActionResult<PagedResponseDto<RankedVideoAnalyticsDto>>> GetMostCommentedVideos(
         [FromQuery] DateTime? from,
@@ -110,6 +128,9 @@ public sealed class AdminAnalyticsController : ControllerBase
         return Ok(await _getRankedVideos.Handle(ownerId: null, AnalyticsRankingType.MostCommented, from, to, page, pageSize, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets the most engaged videos across the platform.
+    /// </summary>
     [HttpGet("most-engaged-videos")]
     public async Task<ActionResult<PagedResponseDto<RankedVideoAnalyticsDto>>> GetMostEngagedVideos(
         [FromQuery] DateTime? from,
@@ -122,6 +143,9 @@ public sealed class AdminAnalyticsController : ControllerBase
         return Ok(await _getRankedVideos.Handle(ownerId: null, AnalyticsRankingType.MostEngaged, from, to, page, pageSize, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets the current active viewer count across the platform.
+    /// </summary>
     [HttpGet("active-viewers")]
     public async Task<ActionResult<ActiveViewersDto>> GetActiveViewers(CancellationToken cancellationToken)
     {
@@ -129,6 +153,9 @@ public sealed class AdminAnalyticsController : ControllerBase
         return Ok(await _getActiveViewers.Handle(ownerId: null, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets platform peak watch-time data.
+    /// </summary>
     [HttpGet("peak-watch-time")]
     public async Task<ActionResult<IReadOnlyList<PeakWatchTimeItemDto>>> GetPeakWatchTime(
         [FromQuery] DateTime? from,
@@ -139,6 +166,9 @@ public sealed class AdminAnalyticsController : ControllerBase
         return Ok(await _getPeakWatchTime.Handle(ownerId: null, from, to, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets the platform device breakdown.
+    /// </summary>
     [HttpGet("device-breakdown")]
     public async Task<ActionResult<IReadOnlyList<DeviceBreakdownItemDto>>> GetDeviceBreakdown(
         [FromQuery] DateTime? from,
@@ -149,6 +179,9 @@ public sealed class AdminAnalyticsController : ControllerBase
         return Ok(await _getDeviceBreakdown.Handle(ownerId: null, from, to, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets the platform browser breakdown.
+    /// </summary>
     [HttpGet("browser-breakdown")]
     public async Task<ActionResult<IReadOnlyList<BrowserBreakdownItemDto>>> GetBrowserBreakdown(
         [FromQuery] DateTime? from,
@@ -159,6 +192,9 @@ public sealed class AdminAnalyticsController : ControllerBase
         return Ok(await _getBrowserBreakdown.Handle(ownerId: null, from, to, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets the platform authenticated-versus-anonymous viewer breakdown.
+    /// </summary>
     [HttpGet("auth-breakdown")]
     public async Task<ActionResult<AuthBreakdownDto>> GetAuthBreakdown(
         [FromQuery] DateTime? from,
@@ -169,6 +205,9 @@ public sealed class AdminAnalyticsController : ControllerBase
         return Ok(await _getAuthBreakdown.Handle(ownerId: null, from, to, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets the platform category breakdown.
+    /// </summary>
     [HttpGet("category-breakdown")]
     public async Task<ActionResult<IReadOnlyList<CategoryBreakdownItemDto>>> GetCategoryBreakdown(
         [FromQuery] DateTime? from,
@@ -179,6 +218,9 @@ public sealed class AdminAnalyticsController : ControllerBase
         return Ok(await _getCategoryBreakdown.Handle(ownerId: null, from, to, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets the platform tag breakdown.
+    /// </summary>
     [HttpGet("tag-breakdown")]
     public async Task<ActionResult<IReadOnlyList<TagBreakdownItemDto>>> GetTagBreakdown(
         [FromQuery] DateTime? from,
@@ -189,6 +231,9 @@ public sealed class AdminAnalyticsController : ControllerBase
         return Ok(await _getTagBreakdown.Handle(ownerId: null, from, to, cancellationToken));
     }
 
+    /// <summary>
+    /// Exports a platform analytics overview report.
+    /// </summary>
     [HttpGet("reports/overview")]
     public async Task<IActionResult> ExportReport(
         [FromQuery] DateTime? from,

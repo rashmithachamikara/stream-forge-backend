@@ -6,6 +6,9 @@ using StreamForge.Application.UseCases.Transcriptions;
 
 namespace StreamForge.Api.Controllers.Internal;
 
+/// <summary>
+/// Receives authenticated callbacks from the transcription worker.
+/// </summary>
 [ApiController]
 [Route("internal/transcriptions")]
 public sealed class TranscriptionCallbacksController : ControllerBase
@@ -21,6 +24,9 @@ public sealed class TranscriptionCallbacksController : ControllerBase
         _options = options.Value;
     }
 
+    /// <summary>
+    /// Accepts a transcription worker callback and finalizes transcription state.
+    /// </summary>
     [HttpPost("callback")]
     public async Task<IActionResult> Callback(
         [FromBody] TranscriptionCallbackRequestDto request,

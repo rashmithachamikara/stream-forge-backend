@@ -7,6 +7,9 @@ using StreamForge.Application.UseCases.Analytics;
 
 namespace StreamForge.Api.Controllers;
 
+/// <summary>
+/// Exposes analytics and report-export endpoints scoped to the authenticated user's own videos.
+/// </summary>
 [ApiController]
 [Route("api/v1/me/analytics")]
 [Authorize]
@@ -47,6 +50,9 @@ public sealed class MeAnalyticsController : ControllerBase
         _exportReport = exportReport;
     }
 
+    /// <summary>
+    /// Gets the analytics summary for the authenticated user's videos.
+    /// </summary>
     [HttpGet("summary")]
     public async Task<ActionResult<AnalyticsSummaryDto>> GetSummary(
         [FromQuery] DateTime? from,
@@ -56,6 +62,9 @@ public sealed class MeAnalyticsController : ControllerBase
         return Ok(await _getSummary.Handle(from, to, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets the authenticated user's most watched videos.
+    /// </summary>
     [HttpGet("top-videos")]
     public async Task<ActionResult<PagedResponseDto<RankedVideoAnalyticsDto>>> GetTopVideos(
         [FromQuery] DateTime? from,
@@ -67,6 +76,9 @@ public sealed class MeAnalyticsController : ControllerBase
         return Ok(await _getRankedVideos.Handle(RequireUserId(), AnalyticsRankingType.MostWatched, from, to, page, pageSize, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets the authenticated user's most liked videos.
+    /// </summary>
     [HttpGet("most-liked-videos")]
     public async Task<ActionResult<PagedResponseDto<RankedVideoAnalyticsDto>>> GetMostLikedVideos(
         [FromQuery] DateTime? from,
@@ -78,6 +90,9 @@ public sealed class MeAnalyticsController : ControllerBase
         return Ok(await _getRankedVideos.Handle(RequireUserId(), AnalyticsRankingType.MostLiked, from, to, page, pageSize, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets the authenticated user's most commented videos.
+    /// </summary>
     [HttpGet("most-commented-videos")]
     public async Task<ActionResult<PagedResponseDto<RankedVideoAnalyticsDto>>> GetMostCommentedVideos(
         [FromQuery] DateTime? from,
@@ -89,6 +104,9 @@ public sealed class MeAnalyticsController : ControllerBase
         return Ok(await _getRankedVideos.Handle(RequireUserId(), AnalyticsRankingType.MostCommented, from, to, page, pageSize, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets the authenticated user's most engaged videos.
+    /// </summary>
     [HttpGet("most-engaged-videos")]
     public async Task<ActionResult<PagedResponseDto<RankedVideoAnalyticsDto>>> GetMostEngagedVideos(
         [FromQuery] DateTime? from,
@@ -100,6 +118,9 @@ public sealed class MeAnalyticsController : ControllerBase
         return Ok(await _getRankedVideos.Handle(RequireUserId(), AnalyticsRankingType.MostEngaged, from, to, page, pageSize, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets view counts over time for the authenticated user's videos.
+    /// </summary>
     [HttpGet("views-over-time")]
     public async Task<ActionResult<IReadOnlyList<AnalyticsTimeSeriesPointDto>>> GetViewsOverTime(
         [FromQuery] DateTime? from,
@@ -109,6 +130,9 @@ public sealed class MeAnalyticsController : ControllerBase
         return Ok(await _getViewsOverTime.Handle(RequireUserId(), from, to, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets the device breakdown for the authenticated user's videos.
+    /// </summary>
     [HttpGet("device-breakdown")]
     public async Task<ActionResult<IReadOnlyList<DeviceBreakdownItemDto>>> GetDeviceBreakdown(
         [FromQuery] DateTime? from,
@@ -118,6 +142,9 @@ public sealed class MeAnalyticsController : ControllerBase
         return Ok(await _getDeviceBreakdown.Handle(RequireUserId(), from, to, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets the browser breakdown for the authenticated user's videos.
+    /// </summary>
     [HttpGet("browser-breakdown")]
     public async Task<ActionResult<IReadOnlyList<BrowserBreakdownItemDto>>> GetBrowserBreakdown(
         [FromQuery] DateTime? from,
@@ -127,6 +154,9 @@ public sealed class MeAnalyticsController : ControllerBase
         return Ok(await _getBrowserBreakdown.Handle(RequireUserId(), from, to, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets the authenticated-versus-anonymous viewer breakdown for the authenticated user's videos.
+    /// </summary>
     [HttpGet("auth-breakdown")]
     public async Task<ActionResult<AuthBreakdownDto>> GetAuthBreakdown(
         [FromQuery] DateTime? from,
@@ -136,6 +166,9 @@ public sealed class MeAnalyticsController : ControllerBase
         return Ok(await _getAuthBreakdown.Handle(RequireUserId(), from, to, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets the category breakdown for the authenticated user's videos.
+    /// </summary>
     [HttpGet("category-breakdown")]
     public async Task<ActionResult<IReadOnlyList<CategoryBreakdownItemDto>>> GetCategoryBreakdown(
         [FromQuery] DateTime? from,
@@ -145,6 +178,9 @@ public sealed class MeAnalyticsController : ControllerBase
         return Ok(await _getCategoryBreakdown.Handle(RequireUserId(), from, to, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets the tag breakdown for the authenticated user's videos.
+    /// </summary>
     [HttpGet("tag-breakdown")]
     public async Task<ActionResult<IReadOnlyList<TagBreakdownItemDto>>> GetTagBreakdown(
         [FromQuery] DateTime? from,
@@ -154,6 +190,9 @@ public sealed class MeAnalyticsController : ControllerBase
         return Ok(await _getTagBreakdown.Handle(RequireUserId(), from, to, cancellationToken));
     }
 
+    /// <summary>
+    /// Exports a report for the authenticated user's video analytics.
+    /// </summary>
     [HttpGet("reports/videos")]
     public async Task<IActionResult> ExportReport(
         [FromQuery] DateTime? from,

@@ -6,6 +6,9 @@ using StreamForge.Application.UseCases.Engagement;
 
 namespace StreamForge.Api.Controllers;
 
+/// <summary>
+/// Exposes playlist management and playlist-video membership endpoints.
+/// </summary>
 [ApiController]
 [Route("api/v1/playlists")]
 public sealed class PlaylistsController : ControllerBase
@@ -42,6 +45,9 @@ public sealed class PlaylistsController : ControllerBase
         _reorderPlaylistVideos = reorderPlaylistVideos;
     }
 
+    /// <summary>
+    /// Lists playlists, optionally filtered by owner.
+    /// </summary>
     [HttpGet]
     [AllowAnonymous]
     public async Task<ActionResult<PagedResponseDto<PlaylistDto>>> List(
@@ -53,6 +59,9 @@ public sealed class PlaylistsController : ControllerBase
         return Ok(await _listPlaylists.Handle(new ListPlaylistsQuery(ownerId, page, pageSize), cancellationToken));
     }
 
+    /// <summary>
+    /// Creates a new playlist for the authenticated user.
+    /// </summary>
     [HttpPost]
     [Authorize]
     public async Task<ActionResult<PlaylistDto>> Create(
@@ -62,6 +71,9 @@ public sealed class PlaylistsController : ControllerBase
         return Ok(await _createPlaylist.Handle(request, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets a single playlist by identifier.
+    /// </summary>
     [HttpGet("{playlistId:guid}")]
     [AllowAnonymous]
     public async Task<ActionResult<PlaylistDto>> Get(Guid playlistId, CancellationToken cancellationToken)
@@ -69,6 +81,9 @@ public sealed class PlaylistsController : ControllerBase
         return Ok(await _getPlaylist.Handle(playlistId, cancellationToken));
     }
 
+    /// <summary>
+    /// Updates a playlist owned by the authenticated user.
+    /// </summary>
     [HttpPatch("{playlistId:guid}")]
     [Authorize]
     public async Task<ActionResult<PlaylistDto>> Update(
@@ -79,6 +94,9 @@ public sealed class PlaylistsController : ControllerBase
         return Ok(await _updatePlaylist.Handle(playlistId, request, cancellationToken));
     }
 
+    /// <summary>
+    /// Deletes a playlist owned by the authenticated user.
+    /// </summary>
     [HttpDelete("{playlistId:guid}")]
     [Authorize]
     public async Task<IActionResult> Delete(Guid playlistId, CancellationToken cancellationToken)
@@ -87,6 +105,9 @@ public sealed class PlaylistsController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Gets the paged videos contained in a playlist.
+    /// </summary>
     [HttpGet("{playlistId:guid}/videos")]
     [AllowAnonymous]
     public async Task<ActionResult<PlaylistVideosPageDto>> GetVideos(
@@ -98,6 +119,9 @@ public sealed class PlaylistsController : ControllerBase
         return Ok(await _getPlaylistVideos.Handle(playlistId, page, pageSize, cancellationToken));
     }
 
+    /// <summary>
+    /// Adds a video to a playlist.
+    /// </summary>
     [HttpPost("{playlistId:guid}/videos")]
     [Authorize]
     public async Task<IActionResult> AddVideo(
@@ -109,6 +133,9 @@ public sealed class PlaylistsController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Removes a video from a playlist.
+    /// </summary>
     [HttpDelete("{playlistId:guid}/videos/{videoId:guid}")]
     [Authorize]
     public async Task<IActionResult> RemoveVideo(Guid playlistId, Guid videoId, CancellationToken cancellationToken)
@@ -117,6 +144,9 @@ public sealed class PlaylistsController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Reorders the videos inside a playlist.
+    /// </summary>
     [HttpPost("{playlistId:guid}/videos/reorder")]
     [Authorize]
     public async Task<IActionResult> ReorderVideos(

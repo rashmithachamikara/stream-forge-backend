@@ -2,6 +2,9 @@ using StreamForge.Domain.Enums;
 
 namespace StreamForge.Application.DTOs.Content;
 
+/// <summary>
+/// Generic paged response wrapper used by list and search endpoints.
+/// </summary>
 public sealed record PagedResponseDto<T>(
     IReadOnlyList<T> Items,
     int Page,
@@ -11,6 +14,9 @@ public sealed record PagedResponseDto<T>(
     bool HasNextPage,
     bool HasPreviousPage);
 
+/// <summary>
+/// Summary representation of a video item in listing responses.
+/// </summary>
 public sealed record VideoSummaryDto(
     Guid Id,
     string Title,
@@ -29,6 +35,9 @@ public sealed record VideoSummaryDto(
     string PlaybackManifestUrl,
     IReadOnlyList<TagSummaryDto> Tags);
 
+/// <summary>
+/// Detailed representation of a single video.
+/// </summary>
 public sealed record VideoDetailDto(
     Guid Id,
     string Title,
@@ -53,6 +62,9 @@ public sealed record VideoDetailDto(
     string PlaybackManifestUrl,
     IReadOnlyList<TagSummaryDto> Tags);
 
+/// <summary>
+/// Partial update payload for editable video metadata and player settings.
+/// </summary>
 public sealed record UpdateVideoRequestDto(
     string? Title,
     string? Description,
@@ -67,6 +79,9 @@ public sealed record UpdateVideoRequestDto(
     bool? CaptionsEnabled,
     string? PlayerTheme);
 
+/// <summary>
+/// Current processing-state payload for a video.
+/// </summary>
 public sealed record VideoProcessingStatusDetailsDto(
     Guid VideoId,
     VideoStatus VideoStatus,
@@ -78,6 +93,9 @@ public sealed record VideoProcessingStatusDetailsDto(
     DateTime? StartedAt,
     DateTime? CompletedAt);
 
+/// <summary>
+/// Category payload returned by category endpoints.
+/// </summary>
 public sealed record CategoryDto(
     Guid Id,
     string Name,
@@ -86,12 +104,18 @@ public sealed record CategoryDto(
     int DisplayOrder,
     DateTime CreatedAt);
 
+/// <summary>
+/// Request payload for creating a category.
+/// </summary>
 public sealed record CreateCategoryRequestDto(
     string Name,
     string? Description,
     Guid? ParentCategoryId,
     int DisplayOrder);
 
+/// <summary>
+/// Request payload for updating an existing category.
+/// </summary>
 public sealed record UpdateCategoryRequestDto(
     string? Name,
     string? Description,
@@ -100,15 +124,27 @@ public sealed record UpdateCategoryRequestDto(
     int? DisplayOrder,
     bool ClearDescription);
 
+/// <summary>
+/// Tag summary payload returned in listings and video metadata.
+/// </summary>
 public sealed record TagSummaryDto(
     Guid Id,
     string Name,
     int UsageCount);
 
+/// <summary>
+/// Request payload for creating a tag.
+/// </summary>
 public sealed record CreateTagRequestDto(string Name);
 
+/// <summary>
+/// Request payload for renaming a tag.
+/// </summary>
 public sealed record UpdateTagRequestDto(string? Name);
 
+/// <summary>
+/// User profile payload returned by user and profile endpoints.
+/// </summary>
 public sealed record UserProfileDto(
     Guid Id,
     string Name,
@@ -117,6 +153,9 @@ public sealed record UserProfileDto(
     bool? IsActive,
     DateTime CreatedAt);
 
+/// <summary>
+/// Summary representation of an upload session.
+/// </summary>
 public sealed record UploadSessionSummaryDto(
     Guid Id,
     Guid VideoId,
@@ -131,6 +170,9 @@ public sealed record UploadSessionSummaryDto(
     DateTime CreatedAt,
     DateTime UpdatedAt);
 
+/// <summary>
+/// Video access grant payload returned by access-management endpoints.
+/// </summary>
 public sealed record AccessGrantDto(
     Guid Id,
     Guid VideoId,
@@ -142,6 +184,9 @@ public sealed record AccessGrantDto(
     bool IsActive,
     DateTime CreatedAt);
 
+/// <summary>
+/// Request payload for creating a video access grant.
+/// </summary>
 public sealed record CreateAccessGrantRequestDto(
     Guid? UserId,
     string? ShareToken,

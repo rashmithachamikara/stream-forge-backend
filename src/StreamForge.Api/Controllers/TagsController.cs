@@ -5,6 +5,9 @@ using StreamForge.Application.UseCases.Content;
 
 namespace StreamForge.Api.Controllers;
 
+/// <summary>
+/// Exposes tag management and tag-scoped video listing endpoints.
+/// </summary>
 [ApiController]
 [Route("api/v1/tags")]
 public sealed class TagsController : ControllerBase
@@ -32,6 +35,9 @@ public sealed class TagsController : ControllerBase
         _listVideos = listVideos;
     }
 
+    /// <summary>
+    /// Lists tags with optional search and paging.
+    /// </summary>
     [HttpGet]
     [AllowAnonymous]
     public async Task<ActionResult<PagedResponseDto<TagSummaryDto>>> List(
@@ -44,6 +50,9 @@ public sealed class TagsController : ControllerBase
         return Ok(await _listTags.Handle(query, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets a single tag by identifier.
+    /// </summary>
     [HttpGet("{tagId:guid}")]
     [AllowAnonymous]
     public async Task<ActionResult<TagSummaryDto>> Get(Guid tagId, CancellationToken cancellationToken)
@@ -51,6 +60,9 @@ public sealed class TagsController : ControllerBase
         return Ok(await _getTag.Handle(tagId, cancellationToken));
     }
 
+    /// <summary>
+    /// Creates a new tag.
+    /// </summary>
     [HttpPost]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<TagSummaryDto>> Create(
@@ -61,6 +73,9 @@ public sealed class TagsController : ControllerBase
         return CreatedAtAction(nameof(Get), new { tagId = created.Id }, created);
     }
 
+    /// <summary>
+    /// Updates an existing tag.
+    /// </summary>
     [HttpPatch("{tagId:guid}")]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<TagSummaryDto>> Update(
@@ -71,6 +86,9 @@ public sealed class TagsController : ControllerBase
         return Ok(await _updateTag.Handle(tagId, request, cancellationToken));
     }
 
+    /// <summary>
+    /// Deletes a tag.
+    /// </summary>
     [HttpDelete("{tagId:guid}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(Guid tagId, CancellationToken cancellationToken)
@@ -79,6 +97,9 @@ public sealed class TagsController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Lists videos currently associated with a tag.
+    /// </summary>
     [HttpGet("{tagId:guid}/videos")]
     [AllowAnonymous]
     public async Task<ActionResult<PagedResponseDto<VideoSummaryDto>>> ListVideos(

@@ -8,6 +8,9 @@ using StreamForge.Domain.Enums;
 
 namespace StreamForge.Api.Controllers;
 
+/// <summary>
+/// Exposes authenticated current-user endpoints for content, bookmarks, playlists, and notifications.
+/// </summary>
 [ApiController]
 [Route("api/v1/me")]
 [Authorize]
@@ -48,6 +51,9 @@ public sealed class MeController : ControllerBase
         _deleteReadNotifications = deleteReadNotifications;
     }
 
+    /// <summary>
+    /// Lists videos owned by the authenticated user.
+    /// </summary>
     [HttpGet("videos")]
     public async Task<ActionResult<PagedResponseDto<VideoSummaryDto>>> ListVideos(
         [FromQuery] VideoStatus? status,
@@ -62,6 +68,9 @@ public sealed class MeController : ControllerBase
         return Ok(await _listMyVideos.Handle(query, cancellationToken));
     }
 
+    /// <summary>
+    /// Lists upload sessions owned by the authenticated user.
+    /// </summary>
     [HttpGet("upload-sessions")]
     public async Task<ActionResult<PagedResponseDto<UploadSessionSummaryDto>>> ListUploadSessions(
         [FromQuery] UploadSessionStatus? status,
@@ -73,6 +82,9 @@ public sealed class MeController : ControllerBase
         return Ok(await _listMyUploadSessions.Handle(query, cancellationToken));
     }
 
+    /// <summary>
+    /// Lists bookmarks created by the authenticated user.
+    /// </summary>
     [HttpGet("bookmarks")]
     public async Task<ActionResult<PagedResponseDto<BookmarkDto>>> ListBookmarks(
         [FromQuery] Guid? videoId,
@@ -83,6 +95,9 @@ public sealed class MeController : ControllerBase
         return Ok(await _listBookmarks.Handle(new ListBookmarksQuery(videoId, page, pageSize), cancellationToken));
     }
 
+    /// <summary>
+    /// Lists playlists owned by the authenticated user.
+    /// </summary>
     [HttpGet("playlists")]
     public async Task<ActionResult<PagedResponseDto<PlaylistDto>>> ListPlaylists(
         [FromQuery] int page = 1,
@@ -92,6 +107,9 @@ public sealed class MeController : ControllerBase
         return Ok(await _listMyPlaylists.Handle(page, pageSize, cancellationToken));
     }
 
+    /// <summary>
+    /// Lists notifications for the authenticated user.
+    /// </summary>
     [HttpGet("notifications")]
     public async Task<ActionResult<PagedResponseDto<NotificationDto>>> ListNotifications(
         [FromQuery] bool? isRead,
@@ -102,12 +120,18 @@ public sealed class MeController : ControllerBase
         return Ok(await _listNotifications.Handle(new ListNotificationsQuery(isRead, page, pageSize), cancellationToken));
     }
 
+    /// <summary>
+    /// Gets the unread notification count for the authenticated user.
+    /// </summary>
     [HttpGet("notifications/unread-count")]
     public async Task<ActionResult<UnreadNotificationCountDto>> GetUnreadCount(CancellationToken cancellationToken)
     {
         return Ok(await _getUnreadNotificationCount.Handle(cancellationToken));
     }
 
+    /// <summary>
+    /// Marks a notification as read.
+    /// </summary>
     [HttpPost("notifications/{notificationId:guid}/read")]
     public async Task<IActionResult> MarkRead(Guid notificationId, CancellationToken cancellationToken)
     {
@@ -115,6 +139,9 @@ public sealed class MeController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Marks a notification as unread.
+    /// </summary>
     [HttpPost("notifications/{notificationId:guid}/unread")]
     public async Task<IActionResult> MarkUnread(Guid notificationId, CancellationToken cancellationToken)
     {
@@ -122,6 +149,9 @@ public sealed class MeController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Marks all notifications as read.
+    /// </summary>
     [HttpPost("notifications/mark-all-read")]
     public async Task<IActionResult> MarkAllRead(CancellationToken cancellationToken)
     {
@@ -129,6 +159,9 @@ public sealed class MeController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Deletes a single notification.
+    /// </summary>
     [HttpDelete("notifications/{notificationId:guid}")]
     public async Task<IActionResult> DeleteNotification(Guid notificationId, CancellationToken cancellationToken)
     {
@@ -136,6 +169,9 @@ public sealed class MeController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Deletes all read notifications for the authenticated user.
+    /// </summary>
     [HttpDelete("notifications/read")]
     public async Task<IActionResult> DeleteReadNotifications(CancellationToken cancellationToken)
     {

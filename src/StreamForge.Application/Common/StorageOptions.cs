@@ -5,6 +5,9 @@ namespace StreamForge.Application.Common;
 /// </summary>
 public class StorageOptions
 {
+    /// <summary>
+    /// Configuration section name used when binding storage settings.
+    /// </summary>
     public const string SectionName = "Storage";
 
     /// <summary>
@@ -23,6 +26,9 @@ public class StorageOptions
     public S3StorageOptions S3 { get; set; } = new();
 }
 
+/// <summary>
+/// Placeholder for future S3-specific storage configuration values.
+/// </summary>
 public class S3StorageOptions
 {
 }

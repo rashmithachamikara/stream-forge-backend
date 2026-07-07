@@ -1,5 +1,8 @@
 namespace StreamForge.Application.DTOs.Transcriptions;
 
+/// <summary>
+/// Query parameters for the admin transcription-jobs endpoint.
+/// </summary>
 public sealed class AdminTranscriptionJobsQueryDto
 {
     public int Page { get; init; }
@@ -19,6 +22,9 @@ public sealed class AdminTranscriptionJobsQueryDto
     public string? SortDirection { get; init; }
 }
 
+/// <summary>
+/// User-facing transcription artifact metadata.
+/// </summary>
 public sealed record VideoTranscriptionDto(
     Guid Id,
     Guid VideoId,
@@ -34,6 +40,9 @@ public sealed record VideoTranscriptionDto(
     DateTime? UpdatedAt,
     TranscriptionLiveStatusDto? LiveStatus);
 
+/// <summary>
+/// Provider-reported live transcription job status.
+/// </summary>
 public sealed record TranscriptionLiveStatusDto(
     string Status,
     int ProgressPercent,
@@ -45,6 +54,9 @@ public sealed record TranscriptionLiveStatusDto(
     double? MediaDurationSeconds,
     double? TranscribedUntilSeconds);
 
+/// <summary>
+/// Metadata for a single transcription artifact in a grouped job response.
+/// </summary>
 public sealed record VideoTranscriptionArtifactDto(
     Guid Id,
     string Format,
@@ -53,6 +65,9 @@ public sealed record VideoTranscriptionArtifactDto(
     DateTime CreatedAt,
     DateTime? UpdatedAt);
 
+/// <summary>
+/// Video-scoped grouped transcription job payload.
+/// </summary>
 public sealed record VideoTranscriptionJobDto(
     string JobKey,
     Guid VideoId,
@@ -68,6 +83,9 @@ public sealed record VideoTranscriptionJobDto(
     TranscriptionLiveStatusDto? LiveStatus,
     IReadOnlyList<VideoTranscriptionArtifactDto> Artifacts);
 
+/// <summary>
+/// Admin grouped transcription job payload with video title context.
+/// </summary>
 public sealed record AdminTranscriptionJobDto(
     string JobKey,
     Guid VideoId,
@@ -84,10 +102,16 @@ public sealed record AdminTranscriptionJobDto(
     TranscriptionLiveStatusDto? LiveStatus,
     IReadOnlyList<VideoTranscriptionArtifactDto> Artifacts);
 
+/// <summary>
+/// Request payload for starting transcription for a video.
+/// </summary>
 public sealed record RequestVideoTranscriptionRequestDto(
     string? Language,
     IReadOnlyCollection<string>? OutputFormats);
 
+/// <summary>
+/// Keyword transcript search result for a single chunk.
+/// </summary>
 public sealed record TranscriptSearchResultDto(
     Guid ChunkId,
     Guid VideoId,
@@ -97,6 +121,9 @@ public sealed record TranscriptSearchResultDto(
     double EndSeconds,
     string Content);
 
+/// <summary>
+/// Semantic transcript search result for a single chunk.
+/// </summary>
 public sealed record TranscriptSemanticSearchResultDto(
     Guid ChunkId,
     Guid VideoId,
@@ -107,6 +134,9 @@ public sealed record TranscriptSemanticSearchResultDto(
     string Content,
     double Score);
 
+/// <summary>
+/// Cross-video semantic transcript search result.
+/// </summary>
 public sealed record CrossVideoTranscriptSemanticSearchResultDto(
     Guid ChunkId,
     Guid VideoId,
@@ -118,6 +148,9 @@ public sealed record CrossVideoTranscriptSemanticSearchResultDto(
     string Content,
     double Score);
 
+/// <summary>
+/// Hybrid lexical-plus-semantic transcript search result.
+/// </summary>
 public sealed record TranscriptHybridSearchResultDto(
     Guid ChunkId,
     Guid VideoId,
@@ -130,6 +163,9 @@ public sealed record TranscriptHybridSearchResultDto(
     double? LexicalScore,
     double? SemanticScore);
 
+/// <summary>
+/// Cross-video hybrid transcript search result.
+/// </summary>
 public sealed record CrossVideoTranscriptHybridSearchResultDto(
     Guid ChunkId,
     Guid VideoId,
@@ -143,15 +179,24 @@ public sealed record CrossVideoTranscriptHybridSearchResultDto(
     double? LexicalScore,
     double? SemanticScore);
 
+/// <summary>
+/// Request payload for asking a grounded question about a single video.
+/// </summary>
 public sealed record AskVideoQuestionRequestDto(
     string Question,
     string? Language);
 
+/// <summary>
+/// Request payload for asking a grounded question across multiple videos.
+/// </summary>
 public sealed record AskQuestionAcrossVideosRequestDto(
     string Question,
     string? Language,
     IReadOnlyCollection<Guid>? VideoIds);
 
+/// <summary>
+/// Citation payload for grounded question-answering responses.
+/// </summary>
 public sealed record GroundedQuestionCitationDto(
     Guid VideoId,
     string VideoTitle,
@@ -161,6 +206,9 @@ public sealed record GroundedQuestionCitationDto(
     double EndSeconds,
     string Content);
 
+/// <summary>
+/// Grounded question-answering response with cited transcript evidence.
+/// </summary>
 public sealed record GroundedQuestionAnswerDto(
     string Question,
     string RetrievalMode,
@@ -168,6 +216,9 @@ public sealed record GroundedQuestionAnswerDto(
     int UsedChunkCount,
     IReadOnlyList<GroundedQuestionCitationDto> Citations);
 
+/// <summary>
+/// Structured transcript chunk payload for transcript reading UIs.
+/// </summary>
 public sealed record TranscriptChunkDto(
     Guid ChunkId,
     Guid VideoId,
@@ -177,6 +228,9 @@ public sealed record TranscriptChunkDto(
     double EndSeconds,
     string Content);
 
+/// <summary>
+/// Admin transcription settings payload.
+/// </summary>
 public sealed record AdminTranscriptionSettingsDto(
     bool Enabled,
     bool AutoTranscribeOnReady,
@@ -190,6 +244,9 @@ public sealed record AdminTranscriptionSettingsDto(
     bool EnableVad,
     bool EnableWordTimestamps);
 
+/// <summary>
+/// Request payload for updating admin transcription settings.
+/// </summary>
 public sealed record UpdateAdminTranscriptionSettingsRequestDto(
     bool Enabled,
     bool AutoTranscribeOnReady,
@@ -203,10 +260,16 @@ public sealed record UpdateAdminTranscriptionSettingsRequestDto(
     bool EnableVad,
     bool EnableWordTimestamps);
 
+/// <summary>
+/// Worker callback artifact descriptor.
+/// </summary>
 public sealed record TranscriptionCallbackArtifactDto(
     string Kind,
     string Path);
 
+/// <summary>
+/// Request payload posted by the transcription worker callback.
+/// </summary>
 public sealed record TranscriptionCallbackRequestDto(
     string CorrelationId,
     Guid VideoId,

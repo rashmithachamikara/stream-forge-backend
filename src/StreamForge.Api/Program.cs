@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using System.Reflection;
 using Microsoft.AspNetCore.DataProtection;
 using AppDataProtectionOptions = StreamForge.Application.Common.DataProtectionOptions;
 using Hangfire;
@@ -79,6 +80,23 @@ builder.Services.AddSwaggerGen(options =>
             Array.Empty<string>()
         }
     });
+
+    var xmlDocumentationAssemblies = new[]
+    {
+        Assembly.GetExecutingAssembly(),
+        typeof(StreamForge.Application.DTOs.Auth.AuthResponseDto).Assembly,
+        typeof(StreamForge.Domain.Entities.Video).Assembly
+    };
+
+    foreach (var assembly in xmlDocumentationAssemblies.Distinct())
+    {
+        var xmlFile = $"{assembly.GetName().Name}.xml";
+        var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+        if (File.Exists(xmlPath))
+        {
+            options.IncludeXmlComments(xmlPath, includeControllerXmlComments: true);
+        }
+    }
 });
 builder.Services.AddControllers()
     .AddJsonOptions(options =>

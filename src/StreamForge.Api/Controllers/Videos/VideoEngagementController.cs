@@ -6,6 +6,9 @@ using StreamForge.Application.UseCases.Engagement;
 
 namespace StreamForge.Api.Controllers.Videos;
 
+/// <summary>
+/// Exposes reactions, comments, and bookmarks endpoints for a single video.
+/// </summary>
 [ApiController]
 [Route("api/v1/videos/{videoId:guid}")]
 public sealed class VideoEngagementController : ControllerBase
@@ -48,6 +51,9 @@ public sealed class VideoEngagementController : ControllerBase
         _deleteBookmark = deleteBookmark;
     }
 
+    /// <summary>
+    /// Gets the reaction summary for a video.
+    /// </summary>
     [HttpGet("reactions/summary")]
     [AllowAnonymous]
     public async Task<ActionResult<ReactionSummaryDto>> GetReactionSummary(
@@ -58,6 +64,9 @@ public sealed class VideoEngagementController : ControllerBase
         return Ok(await _getReactionSummary.Handle(videoId, shareToken, cancellationToken));
     }
 
+    /// <summary>
+    /// Sets the authenticated user's reaction for a video.
+    /// </summary>
     [HttpPut("reaction")]
     [Authorize]
     public async Task<ActionResult<ReactionSummaryDto>> SetReaction(
@@ -68,6 +77,9 @@ public sealed class VideoEngagementController : ControllerBase
         return Ok(await _setReaction.Handle(videoId, request, cancellationToken));
     }
 
+    /// <summary>
+    /// Removes the authenticated user's reaction for a video.
+    /// </summary>
     [HttpDelete("reaction")]
     [Authorize]
     public async Task<ActionResult<ReactionSummaryDto>> RemoveReaction(Guid videoId, CancellationToken cancellationToken)
@@ -75,6 +87,9 @@ public sealed class VideoEngagementController : ControllerBase
         return Ok(await _removeReaction.Handle(videoId, cancellationToken));
     }
 
+    /// <summary>
+    /// Lists comments for a video.
+    /// </summary>
     [HttpGet("comments")]
     [AllowAnonymous]
     public async Task<ActionResult<PagedResponseDto<CommentDto>>> ListComments(
@@ -88,6 +103,9 @@ public sealed class VideoEngagementController : ControllerBase
         return Ok(await _listComments.Handle(new ListCommentsQuery(videoId, parentCommentId, page, pageSize), shareToken, cancellationToken));
     }
 
+    /// <summary>
+    /// Creates a new comment on a video.
+    /// </summary>
     [HttpPost("comments")]
     [Authorize]
     public async Task<ActionResult<CommentDto>> CreateComment(
@@ -98,6 +116,9 @@ public sealed class VideoEngagementController : ControllerBase
         return Ok(await _createComment.Handle(videoId, request, cancellationToken));
     }
 
+    /// <summary>
+    /// Updates an existing comment on a video.
+    /// </summary>
     [HttpPatch("comments/{commentId:guid}")]
     [Authorize]
     public async Task<ActionResult<CommentDto>> UpdateComment(
@@ -109,6 +130,9 @@ public sealed class VideoEngagementController : ControllerBase
         return Ok(await _updateComment.Handle(videoId, commentId, request, cancellationToken));
     }
 
+    /// <summary>
+    /// Deletes a comment from a video.
+    /// </summary>
     [HttpDelete("comments/{commentId:guid}")]
     [Authorize]
     public async Task<IActionResult> DeleteComment(Guid videoId, Guid commentId, CancellationToken cancellationToken)
@@ -117,6 +141,9 @@ public sealed class VideoEngagementController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Lists bookmarks for a video owned by the authenticated user.
+    /// </summary>
     [HttpGet("bookmarks")]
     [Authorize]
     public async Task<ActionResult<PagedResponseDto<BookmarkDto>>> ListBookmarks(
@@ -128,6 +155,9 @@ public sealed class VideoEngagementController : ControllerBase
         return Ok(await _listBookmarks.Handle(videoId, page, pageSize, cancellationToken));
     }
 
+    /// <summary>
+    /// Creates a bookmark for a video.
+    /// </summary>
     [HttpPost("bookmarks")]
     [Authorize]
     public async Task<ActionResult<BookmarkDto>> CreateBookmark(
@@ -138,6 +168,9 @@ public sealed class VideoEngagementController : ControllerBase
         return Ok(await _createBookmark.Handle(videoId, request, cancellationToken));
     }
 
+    /// <summary>
+    /// Updates a bookmark for a video.
+    /// </summary>
     [HttpPatch("bookmarks/{bookmarkId:guid}")]
     [Authorize]
     public async Task<ActionResult<BookmarkDto>> UpdateBookmark(
@@ -149,6 +182,9 @@ public sealed class VideoEngagementController : ControllerBase
         return Ok(await _updateBookmark.Handle(videoId, bookmarkId, request, cancellationToken));
     }
 
+    /// <summary>
+    /// Deletes a bookmark from a video.
+    /// </summary>
     [HttpDelete("bookmarks/{bookmarkId:guid}")]
     [Authorize]
     public async Task<IActionResult> DeleteBookmark(Guid videoId, Guid bookmarkId, CancellationToken cancellationToken)

@@ -145,11 +145,25 @@ public interface IStorageService
         string algorithm = "SHA256",
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Opens a stored file for streaming reads.
+    /// </summary>
+    /// <param name="storagePath">Provider-relative storage path or key.</param>
+    /// <param name="contentType">Content type to associate with the returned stream descriptor.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A stream descriptor for the stored file.</returns>
     Task<StoredFileDescriptor> OpenReadAsync(
         string storagePath,
         string contentType,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Imports an existing local file into storage at a provider-relative destination path.
+    /// </summary>
+    /// <param name="sourceFilePath">Source file path on the local filesystem.</param>
+    /// <param name="destinationStoragePath">Destination provider-relative storage path or key.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The provider-relative path or key of the imported file.</returns>
     Task<string> ImportFileAsync(
         string sourceFilePath,
         string destinationStoragePath,

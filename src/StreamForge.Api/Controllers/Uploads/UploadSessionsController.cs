@@ -6,6 +6,9 @@ using StreamForge.Application.UseCases.Uploads.CreateSession;
 
 namespace StreamForge.Api.Controllers.Uploads;
 
+/// <summary>
+/// Exposes authenticated upload-session lifecycle endpoints for chunked uploads.
+/// </summary>
 [ApiController]
 [Route("api/v1/uploads/sessions")]
 [Authorize]
@@ -28,6 +31,9 @@ public sealed class UploadSessionsController : ControllerBase
         _completeUploadSession = completeUploadSession;
     }
 
+    /// <summary>
+    /// Creates a new upload session for a video source file.
+    /// </summary>
     [HttpPost]
     public async Task<ActionResult<CreateUploadSessionResponseDto>> CreateSession(
         [FromBody] CreateUploadSessionRequestDto request,
@@ -45,6 +51,9 @@ public sealed class UploadSessionsController : ControllerBase
         return Ok(await _createUploadSession.Handle(command, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets the upload target metadata for a specific file part.
+    /// </summary>
     [HttpGet("{sessionId:guid}/target")]
     public async Task<ActionResult<UploadTargetDto>> GetUploadTarget(
         Guid sessionId,
@@ -56,6 +65,9 @@ public sealed class UploadSessionsController : ControllerBase
         return Ok(await _getUploadTarget.Handle(command, cancellationToken));
     }
 
+    /// <summary>
+    /// Uploads a single multipart file chunk for an existing session.
+    /// </summary>
     [HttpPost("{sessionId:guid}/parts/{partNumber:int}")]
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<UploadPartResponseDto>> UploadPart(
@@ -76,6 +88,9 @@ public sealed class UploadSessionsController : ControllerBase
         return Ok(await _uploadPart.Handle(command, cancellationToken));
     }
 
+    /// <summary>
+    /// Completes an upload session after all parts have been uploaded.
+    /// </summary>
     [HttpPost("{sessionId:guid}/complete")]
     public async Task<ActionResult<CompleteUploadSessionResponseDto>> CompleteSession(
         Guid sessionId,

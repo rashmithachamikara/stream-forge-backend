@@ -5,6 +5,9 @@ using StreamForge.Application.UseCases.Analytics;
 
 namespace StreamForge.Api.Controllers.Videos;
 
+/// <summary>
+/// Exposes analytics ingestion and reporting endpoints for a single video.
+/// </summary>
 [ApiController]
 [Route("api/v1/videos/{videoId:guid}/analytics")]
 public sealed class VideoAnalyticsController : ControllerBase
@@ -26,6 +29,9 @@ public sealed class VideoAnalyticsController : ControllerBase
         _getEngagement = getEngagement;
     }
 
+    /// <summary>
+    /// Records a playback analytics event for a video.
+    /// </summary>
     [HttpPost("events")]
     [AllowAnonymous]
     public async Task<ActionResult<RecordAnalyticsEventResultDto>> RecordEvent(
@@ -36,6 +42,9 @@ public sealed class VideoAnalyticsController : ControllerBase
         return Ok(await _recordAnalyticsEvent.Handle(videoId, request, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets summary analytics for a single video.
+    /// </summary>
     [HttpGet("summary")]
     [Authorize]
     public async Task<ActionResult<AnalyticsSummaryDto>> GetSummary(
@@ -47,6 +56,9 @@ public sealed class VideoAnalyticsController : ControllerBase
         return Ok(await _getSummary.Handle(videoId, from, to, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets analytics time-series data for a single video.
+    /// </summary>
     [HttpGet("timeseries")]
     [Authorize]
     public async Task<ActionResult<IReadOnlyList<AnalyticsTimeSeriesPointDto>>> GetTimeSeries(
@@ -58,6 +70,9 @@ public sealed class VideoAnalyticsController : ControllerBase
         return Ok(await _getTimeSeries.Handle(videoId, from, to, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets engagement analytics for a single video.
+    /// </summary>
     [HttpGet("engagement")]
     [Authorize]
     public async Task<ActionResult<AnalyticsEngagementSummaryDto>> GetEngagement(

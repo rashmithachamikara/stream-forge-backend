@@ -6,6 +6,9 @@ using StreamForge.Domain.Enums;
 
 namespace StreamForge.Api.Controllers;
 
+/// <summary>
+/// Exposes user profile and user-scoped video listing endpoints.
+/// </summary>
 [ApiController]
 [Route("api/v1/users")]
 public sealed class UsersController : ControllerBase
@@ -24,6 +27,9 @@ public sealed class UsersController : ControllerBase
         _listVideos = listVideos;
     }
 
+    /// <summary>
+    /// Lists users for administrative management.
+    /// </summary>
     [HttpGet]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<PagedResponseDto<UserProfileDto>>> List(
@@ -40,6 +46,9 @@ public sealed class UsersController : ControllerBase
         return Ok(await _listUsers.Handle(query, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets a public-facing user profile.
+    /// </summary>
     [HttpGet("{userId:guid}")]
     [AllowAnonymous]
     public async Task<ActionResult<UserProfileDto>> Get(Guid userId, CancellationToken cancellationToken)
@@ -47,6 +56,9 @@ public sealed class UsersController : ControllerBase
         return Ok(await _getUserProfile.Handle(userId, cancellationToken));
     }
 
+    /// <summary>
+    /// Lists videos uploaded by a specific user.
+    /// </summary>
     [HttpGet("{userId:guid}/videos")]
     [AllowAnonymous]
     public async Task<ActionResult<PagedResponseDto<VideoSummaryDto>>> ListVideos(

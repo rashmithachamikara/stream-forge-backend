@@ -5,6 +5,9 @@ using StreamForge.Application.UseCases.Processing;
 
 namespace StreamForge.Api.Controllers.Videos;
 
+/// <summary>
+/// Serves playback manifests, HLS assets, and thumbnails for authorized viewers.
+/// </summary>
 [ApiController]
 [Route("api/v1/videos/{videoId:guid}")]
 public sealed class VideoPlaybackController : ControllerBase
@@ -23,6 +26,13 @@ public sealed class VideoPlaybackController : ControllerBase
         _getVideoThumbnail = getVideoThumbnail;
     }
 
+    /// <summary>
+    /// Gets the rewritten playback manifest for a video.
+    /// </summary>
+    /// <param name="videoId">Video identifier.</param>
+    /// <param name="shareToken">Optional share token for anonymously shared videos.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The HLS master manifest file.</returns>
     [HttpGet("playback/manifest")]
     [AllowAnonymous]
     public async Task<IActionResult> GetManifest(
@@ -34,6 +44,9 @@ public sealed class VideoPlaybackController : ControllerBase
         return ToFileResult(file);
     }
 
+    /// <summary>
+    /// Gets a playback asset referenced from the HLS manifest, such as a rendition playlist or segment.
+    /// </summary>
     [HttpGet("playback/assets/{*assetPath}")]
     [AllowAnonymous]
     public async Task<IActionResult> GetAsset(
@@ -46,6 +59,9 @@ public sealed class VideoPlaybackController : ControllerBase
         return ToFileResult(file);
     }
 
+    /// <summary>
+    /// Gets the default thumbnail for a video.
+    /// </summary>
     [HttpGet("thumbnail")]
     [AllowAnonymous]
     public async Task<IActionResult> GetThumbnail(

@@ -2,16 +2,34 @@ using System.ComponentModel.DataAnnotations;
 
 namespace StreamForge.Application.Common;
 
+/// <summary>
+/// Configures transcript intelligence, retrieval, and grounded question-answering behavior.
+/// </summary>
 public sealed class RagOptions
 {
+    /// <summary>
+    /// Configuration section name.
+    /// </summary>
     public const string SectionName = "Rag";
 
+    /// <summary>
+    /// Gets or sets whether transcript intelligence features are enabled.
+    /// </summary>
     public bool Enabled { get; set; }
 
+    /// <summary>
+    /// Gets or sets whether semantic transcript search is enabled.
+    /// </summary>
     public bool SemanticSearchEnabled { get; set; }
 
+    /// <summary>
+    /// Gets or sets whether per-video grounded questions are enabled.
+    /// </summary>
     public bool VideoQuestionsEnabled { get; set; }
 
+    /// <summary>
+    /// Gets or sets whether cross-video grounded questions are enabled.
+    /// </summary>
     public bool CrossVideoQuestionsEnabled { get; set; }
 
     [Required]
@@ -65,6 +83,9 @@ public sealed class RagOptions
     public RagQaProviderConfigs QaProviderConfigs { get; set; } = new();
 }
 
+/// <summary>
+/// Groups provider-specific question-answering configuration.
+/// </summary>
 public sealed class RagQaProviderConfigs
 {
     public RagGeminiQaOptions Gemini { get; set; } = new();
@@ -72,6 +93,9 @@ public sealed class RagQaProviderConfigs
     public RagGroqQaOptions Groq { get; set; } = new();
 }
 
+/// <summary>
+/// Configures Gemini-specific grounded question-answering connectivity.
+/// </summary>
 public sealed class RagGeminiQaOptions
 {
     [Required]
@@ -86,6 +110,9 @@ public sealed class RagGeminiQaOptions
     public int TimeoutSeconds { get; set; } = 60;
 }
 
+/// <summary>
+/// Configures Grok-specific grounded question-answering connectivity.
+/// </summary>
 public sealed class RagGrokQaOptions
 {
     [Required]
@@ -100,6 +127,9 @@ public sealed class RagGrokQaOptions
     public int TimeoutSeconds { get; set; } = 60;
 }
 
+/// <summary>
+/// Configures Groq-specific grounded question-answering connectivity.
+/// </summary>
 public sealed class RagGroqQaOptions
 {
     [Required]

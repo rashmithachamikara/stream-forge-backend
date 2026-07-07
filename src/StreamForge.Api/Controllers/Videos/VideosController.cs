@@ -6,6 +6,9 @@ using StreamForge.Domain.Enums;
 
 namespace StreamForge.Api.Controllers.Videos;
 
+/// <summary>
+/// Exposes core video listing, detail, metadata update, processing, and access-management endpoints.
+/// </summary>
 [ApiController]
 [Route("api/v1/videos")]
 public sealed class VideosController : ControllerBase
@@ -39,6 +42,9 @@ public sealed class VideosController : ControllerBase
         _revokeAccessGrant = revokeAccessGrant;
     }
 
+    /// <summary>
+    /// Lists videos using the supplied filters, sorting, and paging options.
+    /// </summary>
     [HttpGet]
     [AllowAnonymous]
     public async Task<ActionResult<PagedResponseDto<VideoSummaryDto>>> List(
@@ -60,6 +66,9 @@ public sealed class VideosController : ControllerBase
         return Ok(await _listVideos.Handle(query, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets detailed metadata for a single video.
+    /// </summary>
     [HttpGet("{videoId:guid}")]
     [AllowAnonymous]
     public async Task<ActionResult<VideoDetailDto>> Get(
@@ -70,6 +79,9 @@ public sealed class VideosController : ControllerBase
         return Ok(await _getVideoDetails.Handle(videoId, shareToken, cancellationToken));
     }
 
+    /// <summary>
+    /// Gets the current processing status for a video visible to the authenticated caller.
+    /// </summary>
     [HttpGet("{videoId:guid}/processing-status")]
     [Authorize]
     public async Task<ActionResult<VideoProcessingStatusDetailsDto>> GetProcessingStatus(
@@ -79,6 +91,9 @@ public sealed class VideosController : ControllerBase
         return Ok(await _getProcessingStatus.Handle(videoId, cancellationToken));
     }
 
+    /// <summary>
+    /// Updates editable metadata and player settings for a video.
+    /// </summary>
     [HttpPatch("{videoId:guid}")]
     [Authorize]
     public async Task<ActionResult<VideoDetailDto>> Update(
@@ -89,6 +104,9 @@ public sealed class VideosController : ControllerBase
         return Ok(await _updateVideo.Handle(videoId, request, cancellationToken));
     }
 
+    /// <summary>
+    /// Archives a video without permanently deleting its historical record.
+    /// </summary>
     [HttpPost("{videoId:guid}/archive")]
     [Authorize]
     public async Task<IActionResult> Archive(Guid videoId, CancellationToken cancellationToken)
@@ -97,6 +115,9 @@ public sealed class VideosController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Deletes a video by routing through the archive workflow.
+    /// </summary>
     [HttpDelete("{videoId:guid}")]
     [Authorize]
     public async Task<IActionResult> Delete(Guid videoId, CancellationToken cancellationToken)
@@ -105,6 +126,9 @@ public sealed class VideosController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Lists access grants defined for a video.
+    /// </summary>
     [HttpGet("{videoId:guid}/access")]
     [Authorize]
     public async Task<ActionResult<PagedResponseDto<AccessGrantDto>>> ListAccessGrants(
@@ -118,6 +142,9 @@ public sealed class VideosController : ControllerBase
         return Ok(await _listAccessGrants.Handle(query, cancellationToken));
     }
 
+    /// <summary>
+    /// Creates a direct user or share-token access grant for a video.
+    /// </summary>
     [HttpPost("{videoId:guid}/access")]
     [Authorize]
     public async Task<ActionResult<AccessGrantDto>> CreateAccessGrant(
@@ -128,6 +155,9 @@ public sealed class VideosController : ControllerBase
         return Ok(await _createAccessGrant.Handle(videoId, request, cancellationToken));
     }
 
+    /// <summary>
+    /// Revokes an access grant from a video.
+    /// </summary>
     [HttpDelete("{videoId:guid}/access/{accessControlId:guid}")]
     [Authorize]
     public async Task<IActionResult> RevokeAccessGrant(
