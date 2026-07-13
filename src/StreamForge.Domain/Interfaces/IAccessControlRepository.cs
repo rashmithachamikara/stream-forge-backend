@@ -10,4 +10,6 @@ public interface IAccessControlRepository : IRepository<AccessControl>
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
+
+    Task<AccessControl?> GetByIdWithUserAsync(Guid id, CancellationToken cancellationToken = default);
 }

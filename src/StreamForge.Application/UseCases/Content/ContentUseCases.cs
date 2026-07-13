@@ -791,7 +791,8 @@ public sealed class CreateVideoAccessGrantService
         await _unitOfWork.AccessControls.AddAsync(accessControl, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return ContentMapper.ToAccessGrant(accessControl);
+        var reloaded = await _unitOfWork.AccessControls.GetByIdWithUserAsync(accessControl.Id, cancellationToken);
+        return ContentMapper.ToAccessGrant(reloaded ?? accessControl);
     }
 
     private async Task EnsureCanManageAsync(Guid videoId, CancellationToken cancellationToken)

@@ -40,4 +40,11 @@ public sealed class AccessControlRepository : BaseRepository<AccessControl>, IAc
 
         return new PagedQueryResult<AccessControl>(items, totalCount, page, pageSize);
     }
+
+    public async Task<AccessControl?> GetByIdWithUserAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Include(accessControl => accessControl.User)
+            .FirstOrDefaultAsync(accessControl => accessControl.Id == id, cancellationToken);
+    }
 }
