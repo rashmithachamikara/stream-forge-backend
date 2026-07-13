@@ -146,6 +146,10 @@ public sealed class VideoRepository : BaseRepository<Video>, IVideoRepository
         {
             query = query.Where(video => video.Status == status.Value);
         }
+        else
+        {
+            query = query.Where(video => video.Status != VideoStatus.Deleted);
+        }
 
         if (visibility.HasValue)
         {
