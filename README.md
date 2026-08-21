@@ -273,9 +273,9 @@ Use `docker compose -f compose.full.yaml -f compose.frontend.yaml down` to stop 
 
 For smaller backend-only stacks, use `compose.yaml` by itself or combine it with `compose.transcription.yaml` and/or `compose.embedding.yaml`; these variants retain named-volume storage.
 
-### Deploy with registry images
+### Deploy using registry images
 
-To deploy without either source repository, copy `.env.example` and `compose.registry.yaml`, then run:
+To deploy without either source repository, copy `.env.example` to `.env` and replace at least `POSTGRES_PASSWORD`, `STREAMFORGE_JWT_SIGNING_KEY`, `STREAMFORGE_TRANSCRIPTION_CALLBACK_SECRET`, and `STREAMFORGE_SEED_ADMIN_PASSWORD` with strong values.
 
 ```bash
 docker compose -f compose.registry.yaml pull
