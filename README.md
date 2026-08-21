@@ -271,7 +271,7 @@ Open the frontend at `http://localhost:3000`; the API and readiness endpoint are
 
 Use `docker compose -f compose.full.yaml -f compose.frontend.yaml down` to stop the stack without deleting named-volume data. Do not add `-v` unless the database and other persisted data should also be removed.
 
-For smaller backend-only stacks, use `compose.yaml` by itself or combine it with `compose.transcription.yaml` and/or `compose.embedding.yaml`. Add `compose.host-paths.yaml` last when host-directory storage is preferred over the default named volumes.
+For smaller backend-only stacks, use `compose.yaml` by itself or combine it with `compose.transcription.yaml` and/or `compose.embedding.yaml`; these variants retain named-volume storage.
 
 ### Deploy with registry images
 
@@ -283,6 +283,17 @@ docker compose -f compose.registry.yaml up -d
 ```
 
 The registry deployment applies pending migrations during API startup because the published runtime image does not contain the .NET SDK or EF CLI.
+
+### Complete stack with host paths
+
+Append the same host-path override to either complete stack:
+
+```bash
+docker compose -f compose.full.yaml -f compose.frontend.yaml -f compose.host-paths.yaml up -d --build
+docker compose -f compose.registry.yaml -f compose.host-paths.yaml up -d
+```
+
+The override maps PostgreSQL, shared API/transcription data, Data Protection keys, and both worker model caches to the paths configured in `.env`. It is a complete-stack override and should not be combined with core-only `compose.yaml`.
 
 ## Development Guidelines
 

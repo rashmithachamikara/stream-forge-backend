@@ -7,3 +7,12 @@ services:
     volumes:
       - ${STREAMFORGE_SHARED_DATA_HOST_PATH:-./docker-data/shared-data}:/app/data
       - ${STREAMFORGE_DATA_PROTECTION_KEYS_HOST_PATH:-./docker-data/data-protection-keys}:/app/data/keys
+
+  transcription-worker:
+    volumes:
+      - ${STREAMFORGE_SHARED_DATA_HOST_PATH:-./docker-data/shared-data}:/app/data
+      - ${STREAMFORGE_TRANSCRIPTION_MODEL_CACHE_HOST_PATH:-./docker-data/transcription-models}:/root/.cache
+
+  embedding-worker:
+    volumes:
+      - ${STREAMFORGE_EMBEDDING_MODEL_CACHE_HOST_PATH:-./docker-data/embedding-models}:/root/.cache
