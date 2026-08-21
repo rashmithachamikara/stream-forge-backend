@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using Microsoft.EntityFrameworkCore;
 using StreamForge.Application.DTOs.Auth;
 using StreamForge.Application.Interfaces;
@@ -12,11 +10,6 @@ namespace StreamForge.Infrastructure.Authentication;
 
 public sealed class AuthenticationService : IAuthenticationService
 {
-    private const int _saltSize = 16;
-    private const int _keySize = 32;
-    private const int _iterations = 100_000;
-    private const char _delimiter = '$';
-
     private readonly StreamForgeDbContext _dbContext;
     private readonly ITokenService _tokenService;
     private readonly ICurrentUserService _currentUserService;
@@ -51,7 +44,7 @@ public sealed class AuthenticationService : IAuthenticationService
             throw new DuplicateEntityException("User", "Email", email);
         }
 
-        var passwordHash = HashPassword(request.Password);
+        var passwordHash = PasswordHasher.Hash(request.Password);
         var user = User.Create(name, email, passwordHash, UserRole.Viewer);
 
         _dbContext.Users.Add(user);
@@ -65,7 +58,7 @@ public sealed class AuthenticationService : IAuthenticationService
         var email = NormalizeEmail(request.Email);
         var user = await _dbContext.Users.SingleOrDefaultAsync(candidate => candidate.Email == email, cancellationToken);
 
-        if (user is null || !user.IsActive || !VerifyPassword(request.Password, user.PasswordHash))
+        if (user is null || !user.IsActive || !PasswordHasher.Verify(request.Password, user.PasswordHash))
         {
             throw new StreamForge.Domain.Exceptions.UnauthorizedAccessException("Invalid email or password.");
         }
@@ -136,36 +129,4 @@ public sealed class AuthenticationService : IAuthenticationService
         return email.Trim().ToLowerInvariant();
     }
 
-    private static string HashPassword(string password)
-    {
-        var salt = RandomNumberGenerator.GetBytes(_saltSize);
-        var subkey = Rfc2898DeriveBytes.Pbkdf2(password, salt, _iterations, HashAlgorithmName.SHA256, _keySize);
-
-        return string.Join(_delimiter, "PBKDF2", _iterations.ToString(), Convert.ToBase64String(salt), Convert.ToBase64String(subkey));
-    }
-
-    private static bool VerifyPassword(string password, string passwordHash)
-    {
-        if (string.IsNullOrWhiteSpace(passwordHash))
-        {
-            return false;
-        }
-
-        var parts = passwordHash.Split(_delimiter, 4, StringSplitOptions.None);
-        if (parts.Length != 4 || !string.Equals(parts[0], "PBKDF2", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        if (!int.TryParse(parts[1], out var iterations) || iterations <= 0)
-        {
-            return false;
-        }
-
-        var salt = Convert.FromBase64String(parts[2]);
-        var expectedSubkey = Convert.FromBase64String(parts[3]);
-        var actualSubkey = Rfc2898DeriveBytes.Pbkdf2(password, salt, iterations, HashAlgorithmName.SHA256, expectedSubkey.Length);
-
-        return CryptographicOperations.FixedTimeEquals(actualSubkey, expectedSubkey);
-    }
 }

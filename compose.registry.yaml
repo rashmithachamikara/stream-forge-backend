@@ -31,6 +31,9 @@ services:
       Database__ApplyMigrationsOnStartup: "true"
       Database__SeedOnStartup: ${STREAMFORGE_DB_SEED_ON_STARTUP:-true}
       Database__WarnOnPendingMigrations: ${STREAMFORGE_DB_WARN_ON_PENDING_MIGRATIONS:-true}
+      SeedAdmin__Name: ${STREAMFORGE_SEED_ADMIN_NAME:-Administrator}
+      SeedAdmin__Email: ${STREAMFORGE_SEED_ADMIN_EMAIL:-admin@streamforge.local}
+      SeedAdmin__Password: ${STREAMFORGE_SEED_ADMIN_PASSWORD:-}
       Jwt__Issuer: ${STREAMFORGE_JWT_ISSUER:-StreamForge}
       Jwt__Audience: ${STREAMFORGE_JWT_AUDIENCE:-StreamForge.Api}
       Jwt__SigningKey: ${STREAMFORGE_JWT_SIGNING_KEY}
@@ -151,4 +154,3 @@ volumes:
   streamforge_dataprotection_keys:
   streamforge_transcription_models:
   streamforge_embedding_models:
-

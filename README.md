@@ -247,7 +247,7 @@ GET /health/ready
 
 The complete local stack includes PostgreSQL, the API, transcription and embedding workers, and the Next.js frontend. `compose.frontend.yaml` expects the repositories to be sibling directories named `stream-forge-backend` and `stream-forge-frontend`.
 
-1. Copy `.env.example` to `.env` and replace at least `POSTGRES_PASSWORD`, `STREAMFORGE_JWT_SIGNING_KEY`, and `STREAMFORGE_TRANSCRIPTION_CALLBACK_SECRET` with strong values.
+1. Copy `.env.example` to `.env` and replace at least `POSTGRES_PASSWORD`, `STREAMFORGE_JWT_SIGNING_KEY`, `STREAMFORGE_TRANSCRIPTION_CALLBACK_SECRET`, and `STREAMFORGE_SEED_ADMIN_PASSWORD` with strong values.
 2. Validate the combined configuration:
 
 ```bash
@@ -268,6 +268,8 @@ docker compose -f compose.full.yaml -f compose.frontend.yaml up -d --build
 ```
 
 Open the frontend at `http://localhost:3000`; the API and readiness endpoint are at `http://localhost:8080` and `http://localhost:8080/health/ready`. `STREAMFORGE_PUBLIC_API_URL` is embedded in the frontend during its image build, so rebuild the frontend after changing it.
+
+`STREAMFORGE_SEED_ADMIN_PASSWORD` creates the initial administrator when the configured email does not already exist; it never resets an existing account password.
 
 Use `docker compose -f compose.full.yaml -f compose.frontend.yaml down` to stop the stack without deleting named-volume data. Do not add `-v` unless the database and other persisted data should also be removed.
 

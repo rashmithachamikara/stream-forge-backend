@@ -1,15 +1,20 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using StreamForge.Application.Common;
 using StreamForge.Domain.Entities;
 using StreamForge.Domain.Enums;
+using StreamForge.Infrastructure.Authentication;
 using StreamForge.Infrastructure.Data;
 
 namespace StreamForge.Infrastructure.Persistence;
 
 public static class DataSeeder
 {
-    public static async Task SeedAsync(StreamForgeDbContext context, ILogger? logger = null)
+    public static async Task SeedAsync(
+        StreamForgeDbContext context,
+        ILogger? logger = null,
+        SeedAdminOptions? seedAdminOptions = null)
     {
         if (context is null) throw new ArgumentNullException(nameof(context));
 
@@ -37,13 +42,36 @@ public static class DataSeeder
             seededItems.Add("default categories");
         }
 
-        // Admin user placeholder (skip password hashing here)
-        if (!await context.Users.AnyAsync())
+        if (seedAdminOptions is not null && !string.IsNullOrWhiteSpace(seedAdminOptions.Password))
         {
-            // Use the factory method to create the admin user
-            var admin = User.Create("Administrator", "admin@streamforge.local", "CHANGE_ME", UserRole.Admin);
-            context.Users.Add(admin);
-            seededItems.Add("admin user placeholder");
+            if (seedAdminOptions.Password.Length < 8)
+            {
+                throw new InvalidOperationException("The seeded administrator password must be at least 8 characters long.");
+            }
+
+            if (string.IsNullOrWhiteSpace(seedAdminOptions.Name) || string.IsNullOrWhiteSpace(seedAdminOptions.Email))
+            {
+                throw new InvalidOperationException("The seeded administrator name and email must not be empty.");
+            }
+
+            var adminEmail = seedAdminOptions.Email.Trim().ToLowerInvariant();
+            var existingAdmin = await context.Users.SingleOrDefaultAsync(user => user.Email == adminEmail);
+
+            if (existingAdmin is null)
+            {
+                var admin = User.Create(
+                    seedAdminOptions.Name.Trim(),
+                    adminEmail,
+                    PasswordHasher.Hash(seedAdminOptions.Password),
+                    UserRole.Admin);
+                context.Users.Add(admin);
+                seededItems.Add("administrator account");
+            }
+        }
+        else if (!await context.Users.AnyAsync())
+        {
+            logger?.LogWarning(
+                "No administrator was seeded because SeedAdmin:Password is empty. Configure STREAMFORGE_SEED_ADMIN_PASSWORD before first startup.");
         }
 
         if (seededItems.Count == 0)

@@ -191,6 +191,10 @@ var databaseOptions = builder.Configuration.GetSection(DatabaseOptions.SectionNa
     .Get<DatabaseOptions>()
     ?? new DatabaseOptions();
 
+var seedAdminOptions = builder.Configuration.GetSection(SeedAdminOptions.SectionName)
+    .Get<SeedAdminOptions>()
+    ?? new SeedAdminOptions();
+
 var corsOptions = builder.Configuration.GetSection(CorsOptions.SectionName)
     .Get<CorsOptions>()
     ?? new CorsOptions();
@@ -581,7 +585,7 @@ using (var scope = app.Services.CreateScope())
     if (databaseOptions.SeedOnStartup && schemaIsCurrent)
     {
         var seedLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(DataSeeder).FullName!);
-        await DataSeeder.SeedAsync(context, seedLogger);
+        await DataSeeder.SeedAsync(context, seedLogger, seedAdminOptions);
     }
     else if (databaseOptions.SeedOnStartup && !schemaIsCurrent)
     {
