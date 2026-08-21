@@ -1,0 +1,21 @@
+services:
+  frontend:
+    build:
+      context: ../stream-forge-frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${STREAMFORGE_PUBLIC_API_URL:-http://localhost:8080}
+        NEXT_PUBLIC_ANALYTICS_INGESTION_ENABLED: "${NEXT_PUBLIC_ANALYTICS_INGESTION_ENABLED:-true}"
+        NEXT_PUBLIC_ANALYTICS_SEND_ANONYMOUS: "${NEXT_PUBLIC_ANALYTICS_SEND_ANONYMOUS:-true}"
+        NEXT_PUBLIC_ANALYTICS_TRACK_PAUSE: "${NEXT_PUBLIC_ANALYTICS_TRACK_PAUSE:-true}"
+        NEXT_PUBLIC_ANALYTICS_TRACK_SEEK: "${NEXT_PUBLIC_ANALYTICS_TRACK_SEEK:-true}"
+        NEXT_PUBLIC_ANALYTICS_TRACK_CLOSE: "${NEXT_PUBLIC_ANALYTICS_TRACK_CLOSE:-true}"
+        NEXT_PUBLIC_ANALYTICS_ENDPOINT_BASE_URL: "${NEXT_PUBLIC_ANALYTICS_ENDPOINT_BASE_URL:-}"
+    restart: unless-stopped
+    init: true
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${STREAMFORGE_FRONTEND_PORT:-3000}:3000"
+

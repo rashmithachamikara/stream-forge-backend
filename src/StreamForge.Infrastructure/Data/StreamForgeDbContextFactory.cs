@@ -10,6 +10,7 @@ public sealed class StreamForgeDbContextFactory : IDesignTimeDbContextFactory<St
     {
         var connectionString =
             Environment.GetEnvironmentVariable("STREAMFORGE_MIGRATIONS_CONNECTION_STRING")
+            ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
             ?? "Host=localhost;Database=streamforge_design;Username=postgres;Password=postgres";
 
         var optionsBuilder = new DbContextOptionsBuilder<StreamForgeDbContext>();

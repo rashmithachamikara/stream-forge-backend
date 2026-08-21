@@ -38,7 +38,7 @@ services:
       - -lc
       - |
         dotnet tool install --global dotnet-ef --version 9.* &&
-        export PATH="$PATH:/root/.dotnet/tools" &&
+        export PATH="$$PATH:/root/.dotnet/tools" &&
         dotnet ef database update --project src/StreamForge.Infrastructure --startup-project src/StreamForge.Api
 
   api:
