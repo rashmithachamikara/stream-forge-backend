@@ -273,6 +273,17 @@ Use `docker compose -f compose.full.yaml -f compose.frontend.yaml down` to stop 
 
 For smaller backend-only stacks, use `compose.yaml` by itself or combine it with `compose.transcription.yaml` and/or `compose.embedding.yaml`. Add `compose.host-paths.yaml` last when host-directory storage is preferred over the default named volumes.
 
+### Deploy with registry images
+
+To deploy without either source repository, copy `.env.example` and `compose.registry.yaml`, then run:
+
+```bash
+docker compose -f compose.registry.yaml pull
+docker compose -f compose.registry.yaml up -d
+```
+
+The registry deployment applies pending migrations during API startup because the published runtime image does not contain the .NET SDK or EF CLI.
+
 ## Development Guidelines
 
 ### SOLID Principles

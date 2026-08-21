@@ -1,0 +1,154 @@
+name: streamforge
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-streamforge}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - streamforge_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  api:
+    image: vulture546/stream-forge:api
+    pull_policy: always
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-streamforge};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD}
+      Database__ApplyMigrationsOnStartup: "true"
+      Database__SeedOnStartup: ${STREAMFORGE_DB_SEED_ON_STARTUP:-true}
+      Database__WarnOnPendingMigrations: ${STREAMFORGE_DB_WARN_ON_PENDING_MIGRATIONS:-true}
+      Jwt__Issuer: ${STREAMFORGE_JWT_ISSUER:-StreamForge}
+      Jwt__Audience: ${STREAMFORGE_JWT_AUDIENCE:-StreamForge.Api}
+      Jwt__SigningKey: ${STREAMFORGE_JWT_SIGNING_KEY}
+      Jwt__AccessTokenMinutes: ${STREAMFORGE_JWT_ACCESS_TOKEN_MINUTES:-15}
+      Jwt__RefreshTokenDays: ${STREAMFORGE_JWT_REFRESH_TOKEN_DAYS:-30}
+      RateLimiter__PermitLimit: ${STREAMFORGE_RATE_LIMITER_PERMIT_LIMIT:-1000}
+      RateLimiter__WindowMinutes: ${STREAMFORGE_RATE_LIMITER_WINDOW_MINUTES:-1}
+      RateLimiter__SegmentsPerWindow: ${STREAMFORGE_RATE_LIMITER_SEGMENTS_PER_WINDOW:-8}
+      RateLimiter__UploadPermitLimit: ${STREAMFORGE_RATE_LIMITER_UPLOAD_PERMIT_LIMIT:-5000}
+      RateLimiter__UploadWindowMinutes: ${STREAMFORGE_RATE_LIMITER_UPLOAD_WINDOW_MINUTES:-1}
+      RateLimiter__UploadSegmentsPerWindow: ${STREAMFORGE_RATE_LIMITER_UPLOAD_SEGMENTS_PER_WINDOW:-8}
+      RateLimiter__PlaybackPermitLimit: ${STREAMFORGE_RATE_LIMITER_PLAYBACK_PERMIT_LIMIT:-10000}
+      RateLimiter__PlaybackWindowMinutes: ${STREAMFORGE_RATE_LIMITER_PLAYBACK_WINDOW_MINUTES:-1}
+      RateLimiter__PlaybackSegmentsPerWindow: ${STREAMFORGE_RATE_LIMITER_PLAYBACK_SEGMENTS_PER_WINDOW:-8}
+      Storage__ProviderType: local
+      Storage__Local__RootPath: /app/data
+      Storage__Local__UploadsRelativePath: uploads
+      Storage__Local__TranscriptionOutputRelativePath: transcription-output
+      VideoProcessing__FfmpegPath: /usr/bin/ffmpeg
+      VideoProcessing__FfprobePath: /usr/bin/ffprobe
+      DataProtection__ApplicationName: ${STREAMFORGE_DATA_PROTECTION_APP_NAME:-StreamForge}
+      DataProtection__KeysPath: /app/data/keys
+      Cors__AllowedOrigins__0: ${STREAMFORGE_CORS_ORIGIN:-http://localhost:3000}
+      Transcription__Enabled: ${STREAMFORGE_TRANSCRIPTION_ENABLED:-true}
+      Transcription__AutoTranscribeOnReady: ${STREAMFORGE_TRANSCRIPTION_AUTO_ON_READY:-true}
+      Transcription__WorkerBaseUrl: http://transcription-worker:8090
+      Transcription__CallbackBaseUrl: http://api:8080
+      Transcription__WorkerCallbackSecret: ${STREAMFORGE_TRANSCRIPTION_CALLBACK_SECRET:-}
+      Transcription__WorkerCallbackAuthHeader: ${STREAMFORGE_TRANSCRIPTION_CALLBACK_HEADER:-X-StreamForge-Worker-Secret}
+      Transcription__LocalFasterWhisper__Model: ${STREAMFORGE_TRANSCRIPTION_MODEL:-small}
+      Transcription__LocalFasterWhisper__Device: ${STREAMFORGE_TRANSCRIPTION_DEVICE:-cpu}
+      Transcription__LocalFasterWhisper__ComputeType: ${STREAMFORGE_TRANSCRIPTION_COMPUTE_TYPE:-int8}
+      Transcription__LocalFasterWhisper__BeamSize: ${STREAMFORGE_TRANSCRIPTION_BEAM_SIZE:-5}
+      Transcription__LocalFasterWhisper__EnableVad: ${STREAMFORGE_TRANSCRIPTION_ENABLE_VAD:-true}
+      Transcription__LocalFasterWhisper__EnableWordTimestamps: ${STREAMFORGE_TRANSCRIPTION_ENABLE_WORD_TIMESTAMPS:-false}
+      Rag__Enabled: ${STREAMFORGE_RAG_ENABLED:-true}
+      Rag__SemanticSearchEnabled: ${STREAMFORGE_RAG_SEMANTIC_SEARCH_ENABLED:-true}
+      Rag__VideoQuestionsEnabled: ${STREAMFORGE_RAG_VIDEO_QUESTIONS_ENABLED:-true}
+      Rag__CrossVideoQuestionsEnabled: ${STREAMFORGE_RAG_CROSS_VIDEO_QUESTIONS_ENABLED:-true}
+      Rag__WorkerBaseUrl: http://embedding-worker:8091
+      Rag__EmbeddingProvider: ${STREAMFORGE_RAG_EMBEDDING_PROVIDER:-local-sentence-transformer}
+      Rag__EmbeddingModel: ${STREAMFORGE_RAG_EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      Rag__QaProvider: ${STREAMFORGE_RAG_QA_PROVIDER:-disabled}
+      Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command: ${STREAMFORGE_EF_CORE_LOG_LEVEL:-Warning}
+    ports:
+      - "${STREAMFORGE_API_PORT:-8080}:8080"
+    volumes:
+      - streamforge_shared_data:/app/data
+      - streamforge_dataprotection_keys:/app/data/keys
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  transcription-worker:
+    image: vulture546/stream-forge:transcription-worker
+    pull_policy: always
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      STREAMFORGE_LOCAL_STORAGE_ROOT: /app/data
+      TRANSCRIPTION_WORKER_SHARED_MEDIA_ROOT: /app/data/uploads
+      TRANSCRIPTION_WORKER_OUTPUT_ROOT: /app/data/transcription-output
+      TRANSCRIPTION_WORKER_CALLBACK_AUTH_HEADER: ${STREAMFORGE_TRANSCRIPTION_CALLBACK_HEADER:-X-StreamForge-Worker-Secret}
+      TRANSCRIPTION_WORKER_CALLBACK_SECRET: ${STREAMFORGE_TRANSCRIPTION_CALLBACK_SECRET:-}
+      TRANSCRIPTION_WORKER_DEFAULT_MODEL: ${STREAMFORGE_TRANSCRIPTION_MODEL:-small}
+      TRANSCRIPTION_WORKER_DEFAULT_DEVICE: ${STREAMFORGE_TRANSCRIPTION_DEVICE:-cpu}
+      TRANSCRIPTION_WORKER_DEFAULT_COMPUTE_TYPE: ${STREAMFORGE_TRANSCRIPTION_COMPUTE_TYPE:-int8}
+      TRANSCRIPTION_WORKER_DEFAULT_BEAM_SIZE: ${STREAMFORGE_TRANSCRIPTION_BEAM_SIZE:-5}
+      TRANSCRIPTION_WORKER_ENABLE_VAD: ${STREAMFORGE_TRANSCRIPTION_ENABLE_VAD:-true}
+      TRANSCRIPTION_WORKER_WORD_TIMESTAMPS: ${STREAMFORGE_TRANSCRIPTION_ENABLE_WORD_TIMESTAMPS:-false}
+    volumes:
+      - streamforge_shared_data:/app/data
+      - streamforge_transcription_models:/root/.cache
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health').read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  embedding-worker:
+    image: vulture546/stream-forge:embedding-worker
+    pull_policy: always
+    restart: unless-stopped
+    environment:
+      EMBEDDING_DEFAULT_PROVIDER: ${STREAMFORGE_RAG_EMBEDDING_PROVIDER:-local-sentence-transformer}
+      EMBEDDING_DEFAULT_MODEL: ${STREAMFORGE_RAG_EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      EMBEDDING_DEVICE: ${STREAMFORGE_RAG_EMBEDDING_DEVICE:-cpu}
+      HF_HOME: /root/.cache/huggingface
+    volumes:
+      - streamforge_embedding_models:/root/.cache
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8091/health').read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  frontend:
+    image: vulture546/stream-forge:frontend
+    pull_policy: always
+    restart: unless-stopped
+    init: true
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${STREAMFORGE_FRONTEND_PORT:-3000}:3000"
+
+volumes:
+  streamforge_postgres:
+  streamforge_shared_data:
+  streamforge_dataprotection_keys:
+  streamforge_transcription_models:
+  streamforge_embedding_models:
+
