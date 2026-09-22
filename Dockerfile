@@ -1,4 +1,5 @@
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+ARG TARGETARCH
 WORKDIR /src
 
 COPY ["StreamForge.sln", "./"]
@@ -7,10 +8,10 @@ COPY ["src/StreamForge.Application/StreamForge.Application.csproj", "src/StreamF
 COPY ["src/StreamForge.Infrastructure/StreamForge.Infrastructure.csproj", "src/StreamForge.Infrastructure/"]
 COPY ["src/StreamForge.Api/StreamForge.Api.csproj", "src/StreamForge.Api/"]
 
-RUN dotnet restore "src/StreamForge.Api/StreamForge.Api.csproj"
+RUN dotnet restore "src/StreamForge.Api/StreamForge.Api.csproj" -a $TARGETARCH
 
 COPY . .
-RUN dotnet publish "src/StreamForge.Api/StreamForge.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "src/StreamForge.Api/StreamForge.Api.csproj" -c Release -a $TARGETARCH --no-restore -o /app/publish /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 RUN apt-get update \

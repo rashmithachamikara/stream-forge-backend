@@ -247,7 +247,7 @@ GET /health/ready
 
 The complete local stack includes PostgreSQL, the API, transcription and embedding workers, and the Next.js frontend. `compose.frontend.yaml` expects the repositories to be sibling directories named `stream-forge-backend` and `stream-forge-frontend`.
 
-1. Copy `.env.example` to `.env` and replace at least `POSTGRES_PASSWORD`, `STREAMFORGE_JWT_SIGNING_KEY`, `STREAMFORGE_TRANSCRIPTION_CALLBACK_SECRET`, and `STREAMFORGE_SEED_ADMIN_PASSWORD` with strong values.
+1. Copy `.env.example` to `.env`, set `STREAMFORGE_PUBLIC_API_URL` to the browser-reachable API origin, and replace `POSTGRES_PASSWORD`, `STREAMFORGE_JWT_SIGNING_KEY`, `STREAMFORGE_TRANSCRIPTION_CALLBACK_SECRET`, and `STREAMFORGE_SEED_ADMIN_PASSWORD` with strong values.
 2. Validate the combined configuration:
 
 ```bash
@@ -267,7 +267,7 @@ docker compose -f compose.full.yaml -f compose.frontend.yaml --profile migration
 docker compose -f compose.full.yaml -f compose.frontend.yaml up -d --build
 ```
 
-Open the frontend at `http://localhost:3000`; the API and readiness endpoint are at `http://localhost:8080` and `http://localhost:8080/health/ready`. `STREAMFORGE_PUBLIC_API_URL` is embedded in the frontend during its image build, so rebuild the frontend after changing it.
+Open the frontend at `http://localhost:3000` and the API at `http://localhost:8080`. Set `STREAMFORGE_CORS_ORIGIN` when their origins differ; behind Nginx, route `/api` to the backend. Frontend URL (STREAMFORGE_PUBLIC_API_URL) and analytics settings are runtime values. Recreate the frontend container after changing them; no rebuild is needed.
 
 `STREAMFORGE_SEED_ADMIN_PASSWORD` creates the initial administrator when the configured email does not already exist; it never resets an existing account password.
 
@@ -277,7 +277,7 @@ For smaller backend-only stacks, use `compose.yaml` by itself or combine it with
 
 ### Deploy using registry images
 
-To deploy without either source repository, copy `.env.example` to `.env` and replace at least `POSTGRES_PASSWORD`, `STREAMFORGE_JWT_SIGNING_KEY`, `STREAMFORGE_TRANSCRIPTION_CALLBACK_SECRET`, and `STREAMFORGE_SEED_ADMIN_PASSWORD` with strong values.
+To deploy without source repositories, prepare `.env` as above, then:
 
 ```bash
 docker compose -f compose.registry.yaml pull
