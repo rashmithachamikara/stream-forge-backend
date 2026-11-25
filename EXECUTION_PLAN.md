@@ -108,7 +108,8 @@
 - [X] Add repository and PostgreSQL integration tests
 - [X] Add first API integration tests for auth, category/tag, video, engagement, and analytics endpoints
 - [X] Add local upload API integration tests for session creation, upload target generation, chunk upload, completion, and processing handoff
-- [ ] Add API integration tests for playback manifest, segment, and thumbnail access, playlists, notifications, and analytics reporting
+- [X] Add API integration tests for HLS manifest, rendition playlist, segment, and thumbnail access
+- [ ] Add API integration tests for playlists, notifications, and analytics reporting
 - [ ] Add end-to-end tests
 
 ### Phase 11: Deployment (Week 12+)

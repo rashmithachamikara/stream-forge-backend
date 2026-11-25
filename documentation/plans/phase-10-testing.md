@@ -105,7 +105,7 @@ Use `dotnet restore StreamForge.sln` first after cloning or after test package c
 - [X] Auth happy paths, refresh, and `/auth/me`
 - [X] Unauthorized/forbidden behavior for representative protected endpoints
 - [X] Local upload create/target/part/complete flow with assembled source validation and processing handoff
-- [ ] Playback manifest, segment, and thumbnail access rules
+- [X] Playback manifest, rendition playlist, segment, and thumbnail access rules for public, private, and token-based access
 - [X] Video list/detail/processing-status endpoints
 - [X] Category/tag read and admin mutation endpoints
 - [X] Reactions, comments, and bookmarks endpoints
