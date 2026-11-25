@@ -1,7 +1,9 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using FluentAssertions;
 using StreamForge.Application.DTOs.Auth;
 using StreamForge.Domain.Enums;
 using StreamForge.Infrastructure.Data;
@@ -64,5 +66,29 @@ internal static class ApiTestClient
         }
 
         return request;
+    }
+
+    public static async Task<HttpResponseMessage> SendRequestAsync(
+        this HttpClient client, HttpMethod method, string url, string? accessToken = null, object? body = null)
+    {
+        using var request = JsonRequest(method, url, body, accessToken);
+        return await client.SendAsync(request);
+    }
+
+    public static async Task<T> ReadOkJsonAsync<T>(
+        this HttpClient client, HttpMethod method, string url, string? accessToken = null, object? body = null)
+        where T : class
+    {
+        using var response = await client.SendRequestAsync(method, url, accessToken, body);
+        response.StatusCode.Should().Be(HttpStatusCode.OK, $"{method} {url} should succeed");
+        return await response.Content.ReadFromJsonAsync<T>(JsonOptions)
+            ?? throw new InvalidOperationException($"{method} {url} returned no JSON body.");
+    }
+
+    public static async Task AssertStatusAsync(
+        this HttpClient client, HttpStatusCode status, HttpMethod method, string url, string? accessToken = null, object? body = null)
+    {
+        using var response = await client.SendRequestAsync(method, url, accessToken, body);
+        response.StatusCode.Should().Be(status, $"{method} {url} should return {status}");
     }
 }

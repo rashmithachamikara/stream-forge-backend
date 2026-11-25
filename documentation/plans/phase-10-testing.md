@@ -109,9 +109,9 @@ Use `dotnet restore StreamForge.sln` first after cloning or after test package c
 - [X] Video list/detail/processing-status endpoints
 - [X] Category/tag read and admin mutation endpoints
 - [X] Reactions, comments, and bookmarks endpoints
-- [ ] Playlists, notifications, and notification delete endpoints
+- [X] Playlist management and visibility, video ordering, and notification read and delete endpoints with recipient authorization
 - [X] Analytics ingestion endpoint
-- [ ] Analytics owner/admin reporting endpoints
+- [X] Per-video and owner analytics summaries, representative platform reports, and owner and admin CSV exports with authorization and scope checks
 
 ## Local End-To-End Smoke Path
 
