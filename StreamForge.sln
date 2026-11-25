@@ -25,6 +25,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StreamForge.Api.Tests", "te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StreamForge.Api.IntegrationTests", "tests\StreamForge.Api.IntegrationTests\StreamForge.Api.IntegrationTests.csproj", "{DD3FFF04-F8D2-4D5F-9B9C-18D75A989683}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StreamForge.Infrastructure.IntegrationTests", "tests\StreamForge.Infrastructure.IntegrationTests\StreamForge.Infrastructure.IntegrationTests.csproj", "{17EC0E25-D0A6-49F3-9CC1-8C454ACB91E8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -143,6 +145,18 @@ Global
 		{DD3FFF04-F8D2-4D5F-9B9C-18D75A989683}.Release|x64.Build.0 = Release|Any CPU
 		{DD3FFF04-F8D2-4D5F-9B9C-18D75A989683}.Release|x86.ActiveCfg = Release|Any CPU
 		{DD3FFF04-F8D2-4D5F-9B9C-18D75A989683}.Release|x86.Build.0 = Release|Any CPU
+		{17EC0E25-D0A6-49F3-9CC1-8C454ACB91E8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{17EC0E25-D0A6-49F3-9CC1-8C454ACB91E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{17EC0E25-D0A6-49F3-9CC1-8C454ACB91E8}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{17EC0E25-D0A6-49F3-9CC1-8C454ACB91E8}.Debug|x64.Build.0 = Debug|Any CPU
+		{17EC0E25-D0A6-49F3-9CC1-8C454ACB91E8}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{17EC0E25-D0A6-49F3-9CC1-8C454ACB91E8}.Debug|x86.Build.0 = Debug|Any CPU
+		{17EC0E25-D0A6-49F3-9CC1-8C454ACB91E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{17EC0E25-D0A6-49F3-9CC1-8C454ACB91E8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{17EC0E25-D0A6-49F3-9CC1-8C454ACB91E8}.Release|x64.ActiveCfg = Release|Any CPU
+		{17EC0E25-D0A6-49F3-9CC1-8C454ACB91E8}.Release|x64.Build.0 = Release|Any CPU
+		{17EC0E25-D0A6-49F3-9CC1-8C454ACB91E8}.Release|x86.ActiveCfg = Release|Any CPU
+		{17EC0E25-D0A6-49F3-9CC1-8C454ACB91E8}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -157,5 +171,6 @@ Global
 		{305F8024-854F-4AFF-A96E-13996EEAF31A} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{61A0BCFB-18C0-46D7-8E67-3DE8AFC664E3} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{DD3FFF04-F8D2-4D5F-9B9C-18D75A989683} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{17EC0E25-D0A6-49F3-9CC1-8C454ACB91E8} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal
