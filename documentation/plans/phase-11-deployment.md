@@ -179,17 +179,13 @@ Start with an explicit migration step outside normal app startup. That is easier
 
 ## 8. CI/CD Pipeline
 
-- Add an initial CI pipeline to:
-  - restore
-  - build
-  - run default tests
-  - optionally run Docker build validation
+- [Backend CI](../../.github/workflows/backend-ci.yml) restores and builds the solution with .NET 9 on Ubuntu for pull requests, pushes to `main`, and manual runs.
+- CI runs default tests and enables the API integration suite in a separate step. Testcontainers starts PostgreSQL with pgvector on the runner.
 - Add a first CD-oriented workflow to publish container images on tagged releases or selected branches.
-- Keep Docker/Testcontainers integration suites opt-in until CI agents with Docker are deliberately configured.
+- Keep the infrastructure PostgreSQL suite opt-in.
 
-### Recommended First Step
+### Follow-up Work
 
-- CI: build + `dotnet test StreamForge.sln --no-restore`
 - Optional CI extension: `docker build`
 - CD: publish versioned image to a container registry
 

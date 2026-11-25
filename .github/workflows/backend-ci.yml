@@ -1,0 +1,43 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build and test backend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET 9
+        uses: actions/setup-dotnet@v6
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore solution
+        run: dotnet restore StreamForge.sln
+
+      - name: Build solution
+        run: dotnet build StreamForge.sln --configuration Release --no-restore
+
+      - name: Run default tests
+        run: dotnet test StreamForge.sln --configuration Release --no-build --filter 'Category!=ApiIntegration'
+
+      - name: Run API integration tests
+        env:
+          STREAMFORGE_RUN_API_INTEGRATION_TESTS: 'true'
+        run: dotnet test tests/StreamForge.Api.IntegrationTests/StreamForge.Api.IntegrationTests.csproj --configuration Release --no-build --filter 'Category=ApiIntegration'
