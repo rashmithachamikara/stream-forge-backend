@@ -118,6 +118,7 @@
 - [X] Support first-start admin password seeding without resetting an existing account password
 - [X] Add ARM64 API image builds and runtime Compose configuration for the frontend API URL and analytics
 - [X] Add GitHub Actions CI for backend restore, build, default tests, and Docker-backed API integration tests
+- [X] Add a separate CI job for PostgreSQL infrastructure integration tests
 - [ ] Add CD workflow to publish versioned container images
 - [ ] Configure production database
 - [ ] Deploy to cloud

@@ -135,4 +135,4 @@ Use `dotnet restore StreamForge.sln` first after cloning or after test package c
 
 - Frontend/player tests are outside Phase 10.
 - EF InMemory should not be used for repository behavior that depends on relational/PostgreSQL semantics.
-- Docker-backed tests should stay categorized as `PostgresIntegration` until CI has Docker/Testcontainers support configured.
+- Infrastructure integration tests use the `PostgresIntegration` category and run in a separate Backend CI job. Local runs remain opt-in.

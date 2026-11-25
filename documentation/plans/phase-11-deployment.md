@@ -181,8 +181,8 @@ Start with an explicit migration step outside normal app startup. That is easier
 
 - [Backend CI](../../.github/workflows/backend-ci.yml) restores and builds the solution with .NET 9 on Ubuntu for pull requests, pushes to `main`, and manual runs.
 - CI runs default tests and enables the API integration suite in a separate step. Testcontainers starts PostgreSQL with pgvector on the runner.
+- A separate PostgreSQL integration job runs the infrastructure suite with its own Testcontainers database.
 - Add a first CD-oriented workflow to publish container images on tagged releases or selected branches.
-- Keep the infrastructure PostgreSQL suite opt-in.
 
 ### Follow-up Work
 

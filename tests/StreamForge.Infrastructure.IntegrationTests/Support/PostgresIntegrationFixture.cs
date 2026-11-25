@@ -7,6 +7,8 @@ namespace StreamForge.Infrastructure.Tests.Support;
 
 public sealed class PostgresIntegrationFixture : IAsyncLifetime
 {
+    internal const string Image = "pgvector/pgvector:pg16";
+
     private PostgreSqlContainer? _container;
 
     public async Task InitializeAsync()
@@ -17,7 +19,7 @@ public sealed class PostgresIntegrationFixture : IAsyncLifetime
         }
 
         _container = new PostgreSqlBuilder()
-            .WithImage("postgres:16")
+            .WithImage(Image)
             .WithDatabase("streamforge_tests")
             .WithUsername("postgres")
             .WithPassword("postgres")

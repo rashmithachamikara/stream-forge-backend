@@ -10,7 +10,7 @@ public sealed class PostgresContainerSmokeTests
     public async Task PostgreSqlContainer_ShouldStart()
     {
         await using var container = new PostgreSqlBuilder()
-            .WithImage("postgres:16")
+            .WithImage(PostgresIntegrationFixture.Image)
             .WithDatabase("streamforge_tests")
             .WithUsername("postgres")
             .WithPassword("postgres")
