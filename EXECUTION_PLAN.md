@@ -43,7 +43,7 @@
 - [X] Create video at upload-session start and hand completed uploads to processing
 - [X] Validate chunks, assemble final file, compute checksum, and delete temporary chunks
 
-### Phase 6: Video Processing And Streaming (Week 5-8)
+### Phase 6: Video Processing And Streaming (Week 5-8) [X]
 - [X] Install and configure Hangfire with PostgreSQL storage
 - [X] Add processing queue integration after upload completion
 - [X] Implement Application abstractions for background jobs, media processing, and streaming asset access
@@ -56,6 +56,7 @@
 - [X] Add manifest, segment, and thumbnail endpoints with existing video access control
 - [X] Keep API controllers thin and keep Hangfire, FFmpeg, filesystem, and EF orchestration outside controllers
 - [X] Run FFmpeg/Hangfire smoke test with a sample video
+- [X] Tune FFmpeg HLS encoding settings and the Hangfire PostgreSQL job invisibility timeout
 
 ### Phase 7: Video Streaming (Week 7-8) [X] Folded into Phase 6
 - [X] HLS playlist generation moved to Phase 6
@@ -71,8 +72,10 @@
 - [X] Add category list/detail and category-video browse APIs
 - [X] Add paginated tag list/search and tag-video browse APIs
 - [X] Add basic video search, filtering, paging, and deterministic ordering
+- [X] Add creation-date filters to user and video listings and exclude deleted videos from video listings
 - [X] Add public/user profile metadata APIs if creator pages require them
 - [X] Add video access/share-token management APIs if sharing management is required
+- [X] Include usernames in video access-grant responses
 - [X] Add shared pagination request/response DTOs for unbounded collection endpoints
 - [X] Keep content controllers thin and enforce existing video authorization rules
 
@@ -104,12 +107,16 @@
 - [X] Add processing, video update/archive, engagement, and analytics application tests
 - [X] Add repository and PostgreSQL integration tests
 - [X] Add first API integration tests for auth, category/tag, video, engagement, and analytics endpoints
-- [ ] Add remaining API tests for upload, playback, playlists, notifications, and analytics reporting endpoints
-- [ ] Add local/backend upload API tests
+- [ ] Add local upload API integration tests for session creation, upload target generation, chunk upload, completion, and processing handoff
+- [ ] Add API integration tests for playback manifest, segment, and thumbnail access, playlists, notifications, and analytics reporting
 - [ ] Add end-to-end tests
 
 ### Phase 11: Deployment (Week 12+)
 - [X] Dockerize application
+- [X] Add full-stack Docker Compose with PostgreSQL, the API, transcription and embedding workers, and a frontend overlay
+- [X] Add registry-image Compose and host-path overrides for both workers
+- [X] Support first-start admin password seeding without resetting an existing account password
+- [X] Add ARM64 API image builds and runtime Compose configuration for the frontend API URL and analytics
 - [ ] Set up CI/CD pipeline
 - [ ] Configure production database
 - [ ] Deploy to cloud
@@ -136,12 +143,12 @@
 - [ ] Capture FFmpeg progress using `-progress pipe:1` during HLS generation
 - [ ] Estimate HLS generation percentage from processed timestamp versus probed media duration
 - [ ] Add a live processing-progress store using memory cache or Redis to avoid frequent database writes
-- [ ] Merge persisted job state with live progress in the processing-status endpoint
+- [ ] Merge live progress into the processing-status endpoint and fall back to persisted milestones when live progress is unavailable
 - [ ] Throttle any optional database progress writes by percentage or time interval
-- [ ] Keep milestone-based DB progress as the durable fallback after restarts
+- [X] Persist milestone-based job progress in the database across restarts
 - [ ] Add tests for progress parsing, throttling, and fallback behavior
 
-### Phase 15: AI Transcription and Captions
+### Phase 15: AI Transcription and Captions [X]
 - [X] Add transcription configuration and provider abstraction for local and hosted transcription providers
 - [X] Queue transcription after upload/processing completes and source media is ready
 - [X] Implement .NET transcription adapter that submits jobs to a local Python Faster-Whisper worker
@@ -166,18 +173,26 @@
 - [ ] Extend storage/media-access abstractions so future S3/object-storage providers can return presigned read URLs
 - [ ] Keep current content/search DTO media URLs stable during transition, then migrate frontend clients to the media-access bundle
 - [ ] Add tests for signed URL issuance, tamper/expiry rejection, manifest rewriting, and caption delivery
-- [ ] Document signed media delivery flow, expiry behavior, and local-vs-S3 strategy in a dedicated phase plan
+- [X] Document the planned delivery flow, expiry behavior, and local/S3 strategy in [the signed media access plan](documentation/plans/phase-16-signed-media-urls.md)
 
 ### Phase 17: Transcript Intelligence and RAG
 - [X] Upgrade transcript search from keyword search to PostgreSQL full-text + pg_trgm search
-- [ ] [OPTIONAL] Add transcript ranking/highlighting behavior for full-text matches over persisted chunks
+- [X] Rank full-text matches over persisted transcript chunks
+- [ ] [OPTIONAL] Highlight matching text in full-text search results
 - [X] Define the embedding pipeline and move embedding generation into a dedicated post-transcription stage or worker
 - [X] Add schema support for embedding storage and vector indexes in a new schema version
 - [X] Add `pgvector`-backed semantic retrieval over transcript chunks
 - [X] Add dedicated hybrid transcript search endpoints over combined lexical + semantic retrieval
 - [X] Add grounded video Q&A endpoints over retrieved transcript passages with cited time ranges
-- [ ] Add retrieval/answering tests for full-text search, semantic search, citation integrity, and failure handling
-- [ ] Add docker support
+- [X] Support Gemini, Grok, and Groq for grounded Q&A with runtime model selection
+- [X] Store provider API keys encrypted and expose masked key status through admin RAG settings
+- [X] Add PostgreSQL integration tests for full-text and semantic retrieval and application tests for hybrid retrieval and authorization
+- [X] Test embedding job enqueue on transcription completion and batched embedding generation
+- [X] Test Q&A citation integrity, insufficient evidence, malformed provider responses, and provider rate limits
+- [X] Add API integration tests for admin RAG settings, model validation, and masked secrets
+- [X] Add an embedding-worker Dockerfile and Compose support through an override, the full stack, and registry images
+- [ ] Add API integration tests for transcript search and grounded Q&A endpoints, including access rules and provider failure responses
+- [ ] Add regression coverage for embedding refresh after transcript replacement and embedding provider failures
 
 ## Backlog
 - [ ] Add multi-language support for PostgreSQL full-text search so transcript chunks use language-aware text search configuration instead of the current fixed English configuration
