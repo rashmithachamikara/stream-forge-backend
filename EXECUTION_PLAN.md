@@ -107,7 +107,7 @@
 - [X] Add processing, video update/archive, engagement, and analytics application tests
 - [X] Add repository and PostgreSQL integration tests
 - [X] Add first API integration tests for auth, category/tag, video, engagement, and analytics endpoints
-- [ ] Add local upload API integration tests for session creation, upload target generation, chunk upload, completion, and processing handoff
+- [X] Add local upload API integration tests for session creation, upload target generation, chunk upload, completion, and processing handoff
 - [ ] Add API integration tests for playback manifest, segment, and thumbnail access, playlists, notifications, and analytics reporting
 - [ ] Add end-to-end tests
 

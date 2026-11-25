@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -7,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using StreamForge.Application.Interfaces;
 using StreamForge.Infrastructure.Data;
 using StreamForge.Infrastructure.Persistence;
 using Testcontainers.PostgreSql;
@@ -21,6 +23,7 @@ public sealed class ApiIntegrationFixture : IAsyncLifetime
     private Dictionary<string, string?>? _originalEnvironmentValues;
 
     public HttpClient Client { get; private set; } = null!;
+    internal ConcurrentQueue<Guid> EnqueuedProcessingJobIds { get; } = new();
 
     public static bool IsEnabled =>
         string.Equals(
@@ -39,7 +42,7 @@ public sealed class ApiIntegrationFixture : IAsyncLifetime
         Directory.CreateDirectory(_storagePath);
 
         _container = new PostgreSqlBuilder()
-            .WithImage("postgres:16")
+            .WithImage("pgvector/pgvector:pg16")
             .WithDatabase("streamforge_api_tests")
             .WithUsername("postgres")
             .WithPassword("postgres")
@@ -61,6 +64,8 @@ public sealed class ApiIntegrationFixture : IAsyncLifetime
                 builder.ConfigureTestServices(services =>
                 {
                     services.RemoveAll<IHostedService>();
+                    services.RemoveAll<IVideoProcessingQueue>();
+                    services.AddSingleton<IVideoProcessingQueue>(new RecordingVideoProcessingQueue(EnqueuedProcessingJobIds));
                 });
             });
 
@@ -90,10 +95,17 @@ public sealed class ApiIntegrationFixture : IAsyncLifetime
     public async Task ResetDatabaseAsync()
     {
         EnsureEnabled();
+        EnqueuedProcessingJobIds.Clear();
         await using var context = CreateContext();
         await context.Database.EnsureDeletedAsync();
         await context.Database.MigrateAsync();
         await DataSeeder.SeedAsync(context);
+    }
+
+    internal IServiceScope CreateScope()
+    {
+        EnsureEnabled();
+        return _factory!.Services.CreateScope();
     }
 
     public StreamForgeDbContext CreateContext()
@@ -198,6 +210,15 @@ public sealed class ApiIntegrationFixture : IAsyncLifetime
         if (!IsEnabled)
         {
             throw new InvalidOperationException("API integration tests are disabled.");
+        }
+    }
+
+    private sealed class RecordingVideoProcessingQueue(ConcurrentQueue<Guid> jobIds) : IVideoProcessingQueue
+    {
+        public Task EnqueueAsync(Guid processingJobId, CancellationToken cancellationToken = default)
+        {
+            jobIds.Enqueue(processingJobId);
+            return Task.CompletedTask;
         }
     }
 }
