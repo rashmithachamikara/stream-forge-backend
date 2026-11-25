@@ -1,12 +1,12 @@
 using System.Net;
 using System.Net.Http.Headers;
-using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using StreamForge.Api.IntegrationTests.Support;
 using StreamForge.Application.Interfaces;
 using StreamForge.Domain.Entities;
 using StreamForge.Domain.Enums;
+using static StreamForge.Api.IntegrationTests.Support.PlaybackTestMedia;
 
 namespace StreamForge.Api.IntegrationTests.Endpoints;
 
@@ -14,17 +14,6 @@ namespace StreamForge.Api.IntegrationTests.Endpoints;
 [Trait("Category", "ApiIntegration")]
 public sealed class VideoPlaybackEndpointTests
 {
-    private const string _hlsContentType = "application/vnd.apple.mpegurl";
-    private const string _variantDirectory = "360p";
-    private const string _playlistFileName = "index.m3u8";
-    private const string _segmentFileName = "segment_00000.ts";
-    private const string _playlistPath = $"{_variantDirectory}/{_playlistFileName}";
-    private const string _segmentPath = $"{_variantDirectory}/{_segmentFileName}";
-    private const string _masterHeader = "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=400000,RESOLUTION=640x360\n";
-    private const string _variantPlaylist = $"#EXTM3U\n#EXT-X-TARGETDURATION:6\n#EXTINF:6.0,\n{_segmentFileName}\n#EXT-X-ENDLIST\n";
-    private static readonly byte[] _segmentBytes = [0x47, 0x20, 0x00, 0x10, 0xA5];
-    private static readonly byte[] _thumbnailBytes = [0xFF, 0xD8, 0xFF, 0xD9];
-
     private readonly ApiIntegrationFixture _fixture;
 
     public VideoPlaybackEndpointTests(ApiIntegrationFixture fixture)
@@ -41,12 +30,12 @@ public sealed class VideoPlaybackEndpointTests
 
         await AssertPlaybackAsync(videoId);
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/videos/{videoId}/playback/assets/{_segmentPath}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/videos/{videoId}/playback/assets/{SegmentPath}");
         request.Headers.Range = new RangeHeaderValue(1, 3);
         using var response = await _fixture.Client.SendAsync(request);
         response.StatusCode.Should().Be(HttpStatusCode.PartialContent);
-        response.Content.Headers.ContentRange.Should().Be(new ContentRangeHeaderValue(1, 3, _segmentBytes.Length));
-        (await response.Content.ReadAsByteArrayAsync()).Should().Equal(_segmentBytes[1..4]);
+        response.Content.Headers.ContentRange.Should().Be(new ContentRangeHeaderValue(1, 3, SegmentBytes.Length));
+        (await response.Content.ReadAsByteArrayAsync()).Should().Equal(SegmentBytes[1..4]);
     }
 
     [ApiIntegrationFact]
@@ -88,33 +77,33 @@ public sealed class VideoPlaybackEndpointTests
     {
         var videoUrl = $"/api/v1/videos/{videoId}";
         var shareQuery = shareToken is null ? string.Empty : $"?shareToken={Uri.EscapeDataString(shareToken)}";
-        var playlistReference = $"assets/{_playlistPath}{shareQuery}";
+        var playlistReference = $"assets/{PlaylistPath}{shareQuery}";
 
         using var manifest = await GetAsync($"{videoUrl}/playback/manifest{shareQuery}", accessToken);
         manifest.StatusCode.Should().Be(HttpStatusCode.OK);
-        (manifest.Content.Headers.ContentType?.MediaType).Should().Be(_hlsContentType);
-        (await manifest.Content.ReadAsStringAsync()).Should().Be($"{_masterHeader}{playlistReference}\n");
+        (manifest.Content.Headers.ContentType?.MediaType).Should().Be(HlsContentType);
+        (await manifest.Content.ReadAsStringAsync()).Should().Be($"{MasterHeader}{playlistReference}\n");
 
         using var playlist = await GetAsync($"{videoUrl}/playback/{playlistReference}", accessToken);
         playlist.StatusCode.Should().Be(HttpStatusCode.OK);
-        (playlist.Content.Headers.ContentType?.MediaType).Should().Be(_hlsContentType);
-        (await playlist.Content.ReadAsStringAsync()).Should().Be(_variantPlaylist);
+        (playlist.Content.Headers.ContentType?.MediaType).Should().Be(HlsContentType);
+        (await playlist.Content.ReadAsStringAsync()).Should().Be(VariantPlaylist);
 
-        using var segment = await GetAsync($"{videoUrl}/playback/assets/{_segmentPath}{shareQuery}", accessToken);
+        using var segment = await GetAsync($"{videoUrl}/playback/assets/{SegmentPath}{shareQuery}", accessToken);
         segment.StatusCode.Should().Be(HttpStatusCode.OK);
         (segment.Content.Headers.ContentType?.MediaType).Should().Be("video/mp2t");
-        (await segment.Content.ReadAsByteArrayAsync()).Should().Equal(_segmentBytes);
+        (await segment.Content.ReadAsByteArrayAsync()).Should().Equal(SegmentBytes);
 
         using var thumbnail = await GetAsync($"{videoUrl}/thumbnail{shareQuery}", accessToken);
         thumbnail.StatusCode.Should().Be(HttpStatusCode.OK);
         (thumbnail.Content.Headers.ContentType?.MediaType).Should().Be("image/jpeg");
-        (await thumbnail.Content.ReadAsByteArrayAsync()).Should().Equal(_thumbnailBytes);
+        (await thumbnail.Content.ReadAsByteArrayAsync()).Should().Equal(ThumbnailBytes);
     }
 
     private async Task AssertPlaybackDeniedAsync(Guid videoId, string? accessToken = null, string? shareToken = null)
     {
         var shareQuery = shareToken is null ? string.Empty : $"?shareToken={Uri.EscapeDataString(shareToken)}";
-        string[] paths = ["playback/manifest", $"playback/assets/{_playlistPath}", $"playback/assets/{_segmentPath}", "thumbnail"];
+        string[] paths = ["playback/manifest", $"playback/assets/{PlaylistPath}", $"playback/assets/{SegmentPath}", "thumbnail"];
         foreach (var path in paths)
         {
             using var response = await GetAsync($"/api/v1/videos/{videoId}/{path}{shareQuery}", accessToken);
@@ -131,36 +120,19 @@ public sealed class VideoPlaybackEndpointTests
     private async Task<Guid> SeedReadyVideoAsync(Guid ownerId, VideoVisibility visibility)
     {
         var video = Video.Create("Playback integration test", null, ownerId, visibility: visibility, status: VideoStatus.Ready);
-        var processingPath = Path.Combine("processing", video.Id.ToString("N"));
-        var hlsPath = Path.Combine(processingPath, "hls");
-        var masterBytes = Encoding.UTF8.GetBytes($"{_masterHeader}{_playlistPath}\n");
 
         using var scope = _fixture.CreateScope();
         var storage = scope.ServiceProvider.GetRequiredService<IStorageService>();
-        var masterPath = await ImportAsync(storage, Path.Combine(hlsPath, "master.m3u8"), masterBytes);
-        await ImportAsync(storage, Path.Combine(hlsPath, _variantDirectory, _playlistFileName), Encoding.UTF8.GetBytes(_variantPlaylist));
-        await ImportAsync(storage, Path.Combine(hlsPath, _variantDirectory, _segmentFileName), _segmentBytes);
-        var thumbnailPath = await ImportAsync(storage, Path.Combine(processingPath, "thumbnail.jpg"), _thumbnailBytes);
+        var hls = await WriteHlsAsync(storage, video.Id);
+        var thumbnail = await WriteThumbnailAsync(storage, video.Id);
 
         await using var context = _fixture.CreateContext();
         context.Videos.Add(video);
-        context.VideoVersions.Add(VideoVersion.Create(video.Id, "adaptive", VideoFormat.HLS, masterPath, masterBytes.Length, durationSeconds: 6));
-        context.VideoThumbnails.Add(VideoThumbnail.Create(video.Id, thumbnailPath, 640, 360, _thumbnailBytes.Length, isDefault: true));
+        context.VideoVersions.Add(VideoVersion.Create(video.Id, "adaptive", VideoFormat.HLS,
+            hls.MasterPlaylistPath, hls.MasterPlaylistSize, Metadata.DurationSeconds));
+        context.VideoThumbnails.Add(VideoThumbnail.Create(video.Id, thumbnail.StoragePath, thumbnail.Width,
+            thumbnail.Height, thumbnail.SizeBytes, isDefault: true));
         await context.SaveChangesAsync();
         return video.Id;
-    }
-
-    private static async Task<string> ImportAsync(IStorageService storage, string storagePath, byte[] bytes)
-    {
-        var sourcePath = Path.GetTempFileName();
-        try
-        {
-            await File.WriteAllBytesAsync(sourcePath, bytes);
-            return await storage.ImportFileAsync(sourcePath, storagePath);
-        }
-        finally
-        {
-            File.Delete(sourcePath);
-        }
     }
 }

@@ -115,13 +115,12 @@ Use `dotnet restore StreamForge.sln` first after cloning or after test package c
 
 ## Local End-To-End Smoke Path
 
-- [ ] Create user/editor/admin fixtures
-- [ ] Create upload session
-- [ ] Upload a small sample file in chunks
-- [ ] Complete upload
-- [ ] Assert the video enters the processing path
-- [ ] Use fake FFmpeg/media processing by default so CI stays reliable
-- [ ] Keep real FFmpeg smoke testing optional/manual unless CI explicitly provides FFmpeg
+- [X] Create an editor fixture and upload a small payload in chunks through the API
+- [X] Complete the upload and verify the recorded processing job is pending
+- [X] Run that job with the real processing service and fake media generation, then verify the completed job and ready video
+- [X] Fetch the generated HLS manifest, follow the rendition and segment references, and verify segment and thumbnail delivery
+
+Real FFmpeg smoke testing is optional and runs manually unless CI explicitly provides FFmpeg.
 
 ## Acceptance Criteria
 

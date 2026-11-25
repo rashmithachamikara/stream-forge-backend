@@ -5,8 +5,10 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using StreamForge.Api.IntegrationTests.Support;
+using StreamForge.Application.DTOs.Content;
 using StreamForge.Application.DTOs.Uploads;
 using StreamForge.Application.Interfaces;
+using StreamForge.Application.UseCases.Processing;
 using StreamForge.Domain.Enums;
 
 namespace StreamForge.Api.IntegrationTests.Endpoints;
@@ -15,6 +17,9 @@ namespace StreamForge.Api.IntegrationTests.Endpoints;
 [Trait("Category", "ApiIntegration")]
 public sealed class UploadSessionsEndpointTests
 {
+    private const string _sourceFileName = "source.mp4";
+    private const string _sourceContentType = "video/mp4";
+
     private readonly ApiIntegrationFixture _fixture;
 
     public UploadSessionsEndpointTests(ApiIntegrationFixture fixture)
@@ -27,37 +32,8 @@ public sealed class UploadSessionsEndpointTests
     {
         await _fixture.ResetDatabaseAsync();
         var editor = await _fixture.CreateUserAsync(UserRole.Editor, "upload-editor@example.com");
-        const string title = "Local upload integration test";
-        const string fileName = "source.mp4";
-        const string contentType = "video/mp4";
         byte[] sourceBytes = [0x00, 0x41, 0xFF, 0x10, 0x72, 0x05, 0x80];
-
-        using var createRequest = ApiTestClient.JsonRequest(
-            HttpMethod.Post,
-            "/api/v1/uploads/sessions",
-            new CreateUploadSessionRequestDto(title, null, sourceBytes.Length, contentType),
-            editor.AccessToken);
-        using var createResponse = await _fixture.Client.SendAsync(createRequest);
-        createResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var session = await createResponse.Content.ReadFromJsonAsync<CreateUploadSessionResponseDto>(ApiTestClient.JsonOptions);
-        session.Should().NotBeNull();
-        session!.SessionId.Should().NotBeEmpty();
-        session.VideoId.Should().NotBeEmpty();
-        session.VideoTitle.Should().Be(title);
-
-        var sessionUrl = $"/api/v1/uploads/sessions/{session.SessionId}";
-        await UploadPartAsync(session.SessionId, sessionUrl, 2, sourceBytes[3..], fileName, editor.AccessToken);
-        await UploadPartAsync(session.SessionId, sessionUrl, 1, sourceBytes[..3], fileName, editor.AccessToken);
-
-        using var completeRequest = ApiTestClient.JsonRequest(
-            HttpMethod.Post,
-            $"{sessionUrl}/complete",
-            new CompleteUploadSessionRequestDto(session.SessionId, fileName),
-            editor.AccessToken);
-        using var completeResponse = await _fixture.Client.SendAsync(completeRequest);
-        completeResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var completion = await completeResponse.Content.ReadFromJsonAsync<CompleteUploadSessionResponseDto>(ApiTestClient.JsonOptions);
-        completion.Should().Be(new CompleteUploadSessionResponseDto(session.SessionId, session.VideoId, nameof(UploadSessionStatus.Completed)));
+        var session = await UploadInChunksAsync("Local upload integration test", sourceBytes, editor.AccessToken);
 
         await using var context = _fixture.CreateContext();
         var savedSession = await context.UploadSessions.SingleAsync(item => item.Id == session.SessionId);
@@ -73,7 +49,7 @@ public sealed class UploadSessionsEndpointTests
 
         using var scope = _fixture.CreateScope();
         var storage = scope.ServiceProvider.GetRequiredService<IStorageService>();
-        var storedFile = await storage.OpenReadAsync(file.FilePath, contentType);
+        var storedFile = await storage.OpenReadAsync(file.FilePath, _sourceContentType);
         await using var storedStream = storedFile.Stream;
         using var storedBytes = new MemoryStream();
         await storedStream.CopyToAsync(storedBytes);
@@ -92,7 +68,98 @@ public sealed class UploadSessionsEndpointTests
         _fixture.EnqueuedProcessingJobIds.Should().Equal(job.Id);
     }
 
-    private async Task UploadPartAsync(Guid sessionId, string sessionUrl, int partNumber, byte[] bytes, string fileName, string accessToken)
+    [ApiIntegrationFact]
+    public async Task UploadThroughPlayback_ShouldCompleteProcessingAndServeGeneratedMedia()
+    {
+        await _fixture.ResetDatabaseAsync();
+        var editor = await _fixture.CreateUserAsync(UserRole.Editor, "processing-smoke@example.com");
+        var accessToken = editor.AccessToken;
+        var session = await UploadInChunksAsync("Upload through playback", [0x00, 0x41, 0xFF, 0x10, 0x72], accessToken);
+        _fixture.EnqueuedProcessingJobIds.Should().ContainSingle();
+        var jobId = _fixture.EnqueuedProcessingJobIds.Single();
+        var client = _fixture.Client;
+        var videoUrl = $"/api/v1/videos/{session.VideoId}";
+        var statusUrl = $"{videoUrl}/processing-status";
+
+        var pending = await client.ReadOkJsonAsync<VideoProcessingStatusDetailsDto>(HttpMethod.Get, statusUrl, accessToken);
+        pending.ProcessingJobId.Should().Be(jobId);
+        pending.JobStatus.Should().Be(nameof(ProcessingJobStatus.Pending));
+        pending.VideoStatus.Should().Be(VideoStatus.Processing);
+
+        using (var scope = _fixture.CreateScope())
+        {
+            var processor = scope.ServiceProvider.GetRequiredService<ProcessVideoJobService>();
+            await processor.Handle(jobId);
+        }
+
+        // The status endpoint can reconcile persisted state, so verify what the processor saved first.
+        await using (var context = _fixture.CreateContext())
+        {
+            var processed = await context.VideoProcessingJobs.Include(job => job.Video).SingleAsync(job => job.Id == jobId);
+            processed.ErrorMessage.Should().BeNull();
+            processed.Status.Should().Be(ProcessingJobStatus.Completed);
+            processed.Video.Status.Should().Be(VideoStatus.Ready);
+        }
+
+        var completed = await client.ReadOkJsonAsync<VideoProcessingStatusDetailsDto>(HttpMethod.Get, statusUrl, accessToken);
+        completed.ProcessingJobId.Should().Be(jobId);
+        completed.JobStatus.Should().Be(nameof(ProcessingJobStatus.Completed));
+        completed.VideoStatus.Should().Be(VideoStatus.Ready);
+        completed.Progress.Should().Be(100);
+
+        var manifestUrl = new Uri(client.BaseAddress!, $"{videoUrl}/playback/manifest");
+        using var manifest = await client.SendRequestAsync(HttpMethod.Get, manifestUrl.PathAndQuery, accessToken);
+        manifest.StatusCode.Should().Be(HttpStatusCode.OK);
+        (manifest.Content.Headers.ContentType?.MediaType).Should().Be(PlaybackTestMedia.HlsContentType);
+        var playlistReference = await ReadHlsReferenceAsync(manifest);
+        playlistReference.Should().Be($"assets/{PlaybackTestMedia.PlaylistPath}");
+
+        var playlistUrl = new Uri(manifestUrl, playlistReference);
+        using var playlist = await client.SendRequestAsync(HttpMethod.Get, playlistUrl.PathAndQuery, accessToken);
+        playlist.StatusCode.Should().Be(HttpStatusCode.OK);
+        var segmentReference = await ReadHlsReferenceAsync(playlist);
+        segmentReference.Should().Be(PlaybackTestMedia.SegmentFileName);
+
+        var segmentUrl = new Uri(playlistUrl, segmentReference);
+        using var segment = await client.SendRequestAsync(HttpMethod.Get, segmentUrl.PathAndQuery, accessToken);
+        segment.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await segment.Content.ReadAsByteArrayAsync()).Should().Equal(PlaybackTestMedia.SegmentBytes);
+
+        using var thumbnail = await client.SendRequestAsync(HttpMethod.Get, $"{videoUrl}/thumbnail", accessToken);
+        thumbnail.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await thumbnail.Content.ReadAsByteArrayAsync()).Should().Equal(PlaybackTestMedia.ThumbnailBytes);
+    }
+
+    private static async Task<string> ReadHlsReferenceAsync(HttpResponseMessage response)
+    {
+        var text = await response.Content.ReadAsStringAsync();
+        text.Should().StartWith("#EXTM3U\n");
+        var references = text.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Where(line => !line.StartsWith('#'));
+        return references.Should().ContainSingle().Which;
+    }
+
+    private async Task<CreateUploadSessionResponseDto> UploadInChunksAsync(string title, byte[] bytes, string accessToken)
+    {
+        var client = _fixture.Client;
+        var session = await client.ReadOkJsonAsync<CreateUploadSessionResponseDto>(HttpMethod.Post, "/api/v1/uploads/sessions", accessToken,
+            new CreateUploadSessionRequestDto(title, null, bytes.Length, _sourceContentType));
+        session.SessionId.Should().NotBeEmpty();
+        session.VideoId.Should().NotBeEmpty();
+        session.VideoTitle.Should().Be(title);
+
+        var sessionUrl = $"/api/v1/uploads/sessions/{session.SessionId}";
+        var split = bytes.Length / 2;
+        await UploadPartAsync(session.SessionId, sessionUrl, 2, bytes[split..], accessToken);
+        await UploadPartAsync(session.SessionId, sessionUrl, 1, bytes[..split], accessToken);
+
+        var completion = await client.ReadOkJsonAsync<CompleteUploadSessionResponseDto>(HttpMethod.Post, $"{sessionUrl}/complete", accessToken,
+            new CompleteUploadSessionRequestDto(session.SessionId, _sourceFileName));
+        completion.Should().Be(new CompleteUploadSessionResponseDto(session.SessionId, session.VideoId, nameof(UploadSessionStatus.Completed)));
+        return session;
+    }
+
+    private async Task UploadPartAsync(Guid sessionId, string sessionUrl, int partNumber, byte[] bytes, string accessToken)
     {
         using var targetRequest = ApiTestClient.JsonRequest(
             HttpMethod.Get,
@@ -109,7 +176,7 @@ public sealed class UploadSessionsEndpointTests
         using var uploadRequest = ApiTestClient.JsonRequest(new HttpMethod(target.HttpMethod!), target.Url, accessToken: accessToken);
         var form = new MultipartFormDataContent();
         uploadRequest.Content = form;
-        form.Add(new ByteArrayContent(bytes), "file", fileName);
+        form.Add(new ByteArrayContent(bytes), "file", _sourceFileName);
         form.Add(new StringContent(Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant()), "checksum");
 
         using var uploadResponse = await _fixture.Client.SendAsync(uploadRequest);

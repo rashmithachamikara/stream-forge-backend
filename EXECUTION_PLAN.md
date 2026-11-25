@@ -110,7 +110,7 @@
 - [X] Add local upload API integration tests for session creation, upload target generation, chunk upload, completion, and processing handoff
 - [X] Add API integration tests for HLS manifest, rendition playlist, segment, and thumbnail access
 - [X] Add API integration tests for playlists, notifications, and analytics reporting
-- [ ] Add end-to-end tests
+- [X] Add an end-to-end upload, processing, and playback smoke test with fake media generation
 
 ### Phase 11: Deployment (Week 12+)
 - [X] Dockerize application

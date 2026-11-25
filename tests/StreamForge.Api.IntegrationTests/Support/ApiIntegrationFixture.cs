@@ -66,6 +66,8 @@ public sealed class ApiIntegrationFixture : IAsyncLifetime
                     services.RemoveAll<IHostedService>();
                     services.RemoveAll<IVideoProcessingQueue>();
                     services.AddSingleton<IVideoProcessingQueue>(new RecordingVideoProcessingQueue(EnqueuedProcessingJobIds));
+                    services.RemoveAll<IMediaProcessingService>();
+                    services.AddScoped<IMediaProcessingService, FakeMediaProcessingService>();
                 });
             });
 
@@ -157,6 +159,8 @@ public sealed class ApiIntegrationFixture : IAsyncLifetime
             ["VideoProcessing:FfprobePath"] = "ffprobe",
             ["VideoProcessing:HlsSegmentSeconds"] = "6",
             ["VideoProcessing:ThumbnailTimestampPercent"] = "10",
+            ["Transcription:Enabled"] = "false",
+            ["Transcription:AutoTranscribeOnReady"] = "false",
             ["Analytics:Enabled"] = "true",
             ["Analytics:IngestionEnabled"] = "true",
             ["Analytics:ReportingEnabled"] = "true",
