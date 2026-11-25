@@ -150,6 +150,7 @@ public sealed class EmbeddingPipelineUseCaseTests
             QaTemperature = 0d,
             QaMaxOutputTokens = 512
         };
+        defaults.QaProviderConfigs.Gemini.Model = "gemini-3.1-flash-lite";
 
         var service = new GetAdminRagSettingsService(
             new ResolveRagSettingsService(unitOfWork, defaults, store),
@@ -187,6 +188,13 @@ public sealed class EmbeddingPipelineUseCaseTests
             {
                 updatedSettings.Add(call.Arg<SystemSetting>());
                 return Task.CompletedTask;
+            });
+
+        settingsRepo.GetByKeysAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var keys = call.Arg<IReadOnlyCollection<string>>();
+                return addedSettings.Concat(updatedSettings).Where(setting => keys.Contains(setting.Key)).ToArray();
             });
 
         var unitOfWork = Substitute.For<IUnitOfWork>();

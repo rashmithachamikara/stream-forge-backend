@@ -273,7 +273,8 @@ public sealed class GeminiVideoQuestionAnsweringProviderTests
     private static ResolveRagSettingsService CreateSettingsResolver(string apiKey)
     {
         var unitOfWork = new FixedUnitOfWork();
-        return new ResolveRagSettingsService(unitOfWork, new RagOptions(), new FixedSecretStoreService(apiKey));
+        var options = new RagOptions { QaProvider = "gemini" };
+        return new ResolveRagSettingsService(unitOfWork, options, new FixedSecretStoreService(apiKey));
     }
 
     private sealed class FixedUnitOfWork : IUnitOfWork

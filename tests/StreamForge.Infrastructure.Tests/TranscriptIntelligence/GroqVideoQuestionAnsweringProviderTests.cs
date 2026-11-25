@@ -187,7 +187,8 @@ public sealed class GroqVideoQuestionAnsweringProviderTests
     private static ResolveRagSettingsService CreateSettingsResolver(string apiKey)
     {
         var unitOfWork = new FixedUnitOfWork();
-        return new ResolveRagSettingsService(unitOfWork, new RagOptions(), new FixedSecretStoreService(apiKey));
+        var options = new RagOptions { QaProvider = "groq" };
+        return new ResolveRagSettingsService(unitOfWork, options, new FixedSecretStoreService(apiKey));
     }
 
     private sealed class FixedUnitOfWork : IUnitOfWork
